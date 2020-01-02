@@ -1,0 +1,4 @@
+name: Two arrows in sequence
+
+a >: b <
+b >: c <

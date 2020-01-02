@@ -1,0 +1,4 @@
+name: Absorption test
+
+a >: [x, [x, y]]
+x, y <: a

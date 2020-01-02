@@ -1,0 +1,84 @@
+name: required-by-clap
+args:
+    - MAIN_PATH:
+        help: Path to a .cex file
+        required: false
+        default_value: data/arrow.cex
+        multiple: true
+        index: 1
+    - SAT_ENCODING:
+        help: Preferred encoding
+        long: sat-encoding
+        short: e
+        takes_value: true
+        possible_values: [port-link, fork-join, PL, FJ]
+        multiple: false
+        global: false
+    - SAT_SEARCH:
+        help: Search for all, or only minimal solutions
+        long: sat-search
+        short: s
+        takes_value: true
+        possible_values: [min, all]
+        multiple: false
+        global: false
+    - TRIGGER:
+        help: Run a cause-effect computation
+        long: go
+        short: g
+        takes_value: true
+        multiple: false
+        global: false
+    - SEMANTICS:
+        help: Choose state transitions according to sequential or parallel semantics
+        long: semantics
+        takes_value: true
+        possible_values: [seq, par]
+        multiple: false
+        global: false
+    - MAX_STEPS:
+        help: Maximum number of state transitions
+        long: max-steps
+        short: x
+        takes_value: true
+        multiple: false
+        global: false
+    - log:
+        help: Turn on logging to file
+        long: log
+        short: l
+        multiple: true
+        global: true
+    - LOG_DIR:
+        help: Specify a directory for log files (and force its creation)
+        long: log-dir
+        takes_value: true
+        global: true
+    - verbose:
+        help: Increase verbosity level
+        long: verbose
+        short: v
+        multiple: true
+        global: true
+
+subcommands:
+
+    - validate:
+        name: required-by-clap
+        about: Reads all .cex files from a given glob path and checks them for errors
+        args:
+            - GLOB_PATH:
+                help: Glob pattern or path to directory
+                required: false
+                default_value: data
+                index: 1
+            - abort:
+                help: Aborts after first error
+                long: abort
+            - recursive:
+                help: Visits subdirectories
+                long: recursive
+                short: r
+            - syntax:
+                help: Reports syntax errors only
+                long: syntax

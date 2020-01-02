@@ -1,0 +1,9 @@
+name: Road over bridge with U-turn possible
+
+E, W >: B <
+e, w <: B >
+
+e >: e' <
+w >: w' <
+E <: E' >
+W <: W' >

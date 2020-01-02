@@ -1,0 +1,44 @@
+# stable configuration options
+
+max_width = 100
+hard_tabs = false
+tab_spaces = 4
+newline_style = "Unix"
+use_small_heuristics = "Max"
+reorder_imports = false
+reorder_modules = false
+remove_nested_parens = true
+edition = "2018"
+merge_derives = true
+use_try_shorthand = true
+use_field_init_shorthand = true
+force_explicit_abi = true
+
+# unstable configuration options
+
+unstable_features = true
+indent_style = "Block"
+binop_separator = "Front"
+combine_control_expr = true
+condense_wildcard_suffixes = true
+control_brace_style = "AlwaysSameLine"
+#fn_args_layout = "Tall"
+brace_style = "SameLineWhere"
+empty_item_single_line = true
+fn_single_line = false
+where_single_line = false
+format_strings = true
+imports_indent = "Block"
+imports_layout = "Mixed"
+merge_imports = true
+report_todo = "Unnumbered"
+report_fixme = "Unnumbered"
+space_after_colon = true
+space_before_colon = false
+struct_field_align_threshold = 16
+struct_lit_single_line = true
+trailing_comma = "Vertical"
+trailing_semicolon = false
+type_punctuation_density = "Wide"
+match_arm_blocks = true
+blank_lines_upper_bound = 1

@@ -1,0 +1,4 @@
+name: Correct syntax (this is a single arrow)
+
+a effects:
+  - [u v w x y z <]

@@ -1,0 +1,10 @@
+#!/bin/bash
+
+CRATES="log clap glob"
+
+for crate in $CRATES ; do
+    echo -n "$crate = "
+    grep -m 1 "$crate = " cli/Cargo.toml | cut -z -d\" -f2
+    echo -n " -> "
+    cargo search --limit 1 $crate | head -1 | awk '{print $3}'
+done

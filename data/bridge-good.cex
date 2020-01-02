@@ -1,0 +1,9 @@
+name: Road over bridge without U-turn
+
+B <: [[E >, r >], [W >, l >]]
+B >: [[e <, r <], [w <, l <]]
+
+e >: e' <
+w >: w' <
+E <: E' >
+W <: W' >

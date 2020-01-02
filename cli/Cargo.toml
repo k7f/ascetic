@@ -1,0 +1,24 @@
+[package]
+
+name = "ascetic_cli"
+version = "0.0.1-pre"
+description = "Command-line tools for analysis and synthesis of cause-effect synchronised interacting systems"
+authors = ["k7f"]
+edition = "2018"
+license = "MIT"
+repository = "https://github.com/k7f/ascetic"
+readme = "README.md"
+
+[dependencies]
+
+log = "0.4"
+clap = { version = "2.33", features = ["yaml"] }
+glob = "0.3"
+# aces = { path = "../aces" }
+aces = { git = "https://github.com/k7f/aces", rev = "71bc5fa" }
+# aces = "0.0.10"
+
+[[bin]]
+
+name = "ascesis"
+path = "src/main.rs"
