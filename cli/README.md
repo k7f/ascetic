@@ -1,5 +1,5 @@
-Ascetic
-=======
+ascetic_cli
+===========
 [![Latest version](https://img.shields.io/crates/v/ascetic_cli.svg)](https://crates.io/crates/ascetic_cli)
 [![docs](https://docs.rs/ascetic_cli/badge.svg)](https://docs.rs/ascetic_cli)
 ![Rust](https://img.shields.io/badge/rust-nightly-brightgreen.svg)

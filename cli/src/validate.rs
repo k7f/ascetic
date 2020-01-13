@@ -1,5 +1,5 @@
-use std::error::Error;
-use aces::{Context, ContentOrigin, CEStructure, AcesError};
+use std::{rc::Rc, path::PathBuf, error::Error};
+use ascesis::{Context, CEStructure, AscesisFormat, YamlFormat, AcesError};
 use super::{App, Command};
 
 pub struct Validate {
@@ -32,18 +32,24 @@ impl Command for Validate {
     }
 
     fn run(&mut self) -> Result<(), Box<dyn Error>> {
-        // FIXME
-        let ref glob_path = format!("{}/*.cex", self.glob_path);
-
-        let mut num_bad_files = 0;
-
-        let ctx = Context::new_toplevel("validate", ContentOrigin::cex_stream());
+        let mut glob_path = PathBuf::from(&self.glob_path);
 
         if self.is_recursive {
-            // FIXME
+            println!("FIXME recursive");
+            glob_path.push("**");
         }
+        glob_path.push("*.ce[sx]");
 
-        match glob::glob(glob_path) {
+        let ref glob_pattern = glob_path.to_string_lossy();
+        let mut glob_options = glob::MatchOptions::new();
+        glob_options.case_sensitive = false;
+
+        let mut num_all_files = 0;
+        let mut num_bad_files = 0;
+
+        let ctx = Context::new_toplevel("validate", Rc::new(YamlFormat::new()));
+
+        match glob::glob_with(glob_pattern, glob_options) {
             Ok(path_list) => {
                 for entry in path_list {
                     match entry {
@@ -52,9 +58,16 @@ impl Command for Validate {
                                 info!("> {}", path.display());
                             }
 
-                            ctx.lock().unwrap().reset(ContentOrigin::cex_script(path));
+                            ctx.lock().unwrap().reset(Rc::new(YamlFormat::from_path(path)));
 
-                            let result = CEStructure::from_file(&ctx, path);
+                            let result = CEStructure::from_file(
+                                &ctx,
+                                path,
+                                &[&YamlFormat::from_path(path), &AscesisFormat::from_path(path)],
+                            );
+
+                            num_all_files += 1;
+
                             match result {
                                 Ok(ces) => {
                                     if self.verbosity >= 2 {
@@ -102,19 +115,20 @@ impl Command for Validate {
 
                 if num_bad_files > 0 {
                     println!(
-                        "... Done ({} bad file{}).",
+                        "... Done ({} bad file{} out of {} checked).",
                         num_bad_files,
                         if num_bad_files == 1 { "" } else { "s" },
+                        num_all_files,
                     );
                 } else {
-                    println!("... Done (no bad files).");
+                    println!("... Done (no bad files out of {} checked).", num_all_files);
                 }
 
                 if self.verbosity >= 3 {
                     if self.verbosity >= 4 {
                         trace!("{:?}", ctx.lock().unwrap());
                     } else {
-                        // FIXME visibility of `get_nodes()`
+                        // FIXME replace `get_nodes()` with `Node`s iterator
                         // trace!("{:?}", ctx.lock().unwrap().get_nodes());
                     }
                 }

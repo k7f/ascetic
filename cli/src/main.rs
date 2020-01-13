@@ -4,7 +4,7 @@
 extern crate log;
 
 use std::error::Error;
-use aces::Logger;
+use ascesis::Logger;
 use ascetic_cli::{App, Solve, Go, Validate};
 
 fn main() -> Result<(), Box<dyn Error>> {

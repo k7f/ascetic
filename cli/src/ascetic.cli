@@ -1,9 +1,9 @@
 name: required-by-clap
 args:
     - MAIN_PATH:
-        help: Path to a .cex file
+        help: Path to a script file
         required: false
-        default_value: data/arrow.cex
+        default_value: scripts/arrow.ces
         multiple: true
         index: 1
     - SAT_ENCODING:
@@ -65,12 +65,12 @@ subcommands:
 
     - validate:
         name: required-by-clap
-        about: Reads all .cex files from a given glob path and checks them for errors
+        about: Reads all script files from a given glob path and checks them for errors
         args:
             - GLOB_PATH:
                 help: Glob pattern or path to directory
                 required: false
-                default_value: data
+                default_value: scripts
                 index: 1
             - abort:
                 help: Aborts after first error

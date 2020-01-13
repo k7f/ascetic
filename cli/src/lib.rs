@@ -7,7 +7,7 @@ mod solve;
 mod go;
 mod validate;
 
-use aces::{ContextHandle, Semantics};
+use ascesis::{ContextHandle, Semantics};
 
 pub use solve::Solve;
 pub use go::Go;

@@ -1,5 +1,5 @@
-use std::{str::FromStr, error::Error};
-use aces::{Context, ContextHandle, Contextual, ContentOrigin, CEStructure, sat};
+use std::{str::FromStr, rc::Rc, error::Error};
+use ascesis::{Context, ContextHandle, Contextual, CEStructure, AscesisFormat, YamlFormat, sat};
 use super::{App, Command};
 
 pub struct Solve {
@@ -31,9 +31,13 @@ impl Solve {
             _ => unreachable!(),
         });
 
-        let context_name =
-            format!("aces-{}", app.get_mode().expect("unexpected anonymous mode").to_lowercase());
-        let context = Context::new_toplevel(context_name, ContentOrigin::cex_script(&main_path));
+        let context_name = format!(
+            "ascetic-{}",
+            app.get_mode().expect("unexpected anonymous mode").to_lowercase()
+        );
+        let context =
+            // FIXME origin
+            Context::new_toplevel(context_name, Rc::new(YamlFormat::from_path(&main_path)));
         let ces = CEStructure::new(&context);
 
         app.accept_selectors(&["SAT_ENCODING", "SAT_SEARCH"]);
@@ -76,7 +80,7 @@ impl Command for Solve {
         } else {
         }
 
-        "aces.log".to_owned()
+        "ascetic.log".to_owned()
     }
 
     fn console_level(&self) -> Option<log::LevelFilter> {
@@ -97,10 +101,13 @@ impl Command for Solve {
             self.ces.get_context().lock().unwrap().set_search(search);
         }
 
-        self.ces.add_from_file(&self.main_path)?;
+        let all_paths = Some(&self.main_path).into_iter().chain(self.more_paths.iter());
 
-        for path in self.more_paths.iter() {
-            self.ces.add_from_file(path)?;
+        for path in all_paths {
+            self.ces.add_from_file(
+                path,
+                &[&YamlFormat::from_path(path), &AscesisFormat::from_path(path)],
+            )?;
         }
 
         trace!("{:?}", self.ces);
