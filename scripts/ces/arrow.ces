@@ -1,0 +1,12 @@
+vis {
+    title: "Single arrow",
+
+    labels: {
+        a: "Source",
+        z: "Sink",
+    },
+}
+
+ces Main {
+    a => z
+}

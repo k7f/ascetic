@@ -1,0 +1,7 @@
+vis {
+    title: "Meet (two arrows)"
+}
+
+ces Main {
+    a + b => z
+}

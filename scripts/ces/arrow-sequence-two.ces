@@ -1,0 +1,7 @@
+vis {
+    title: "Two arrows in sequence"
+}
+
+ces Main {
+    a => b => c
+}

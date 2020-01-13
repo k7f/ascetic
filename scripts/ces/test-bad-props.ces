@@ -1,0 +1,7 @@
+vis {
+    title: "Invalid selector (and missing Main)",
+}
+
+bad {
+    key: value,
+}

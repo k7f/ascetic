@@ -1,0 +1,10 @@
+vis {
+    title: "Road over bridge with U-turn possible"
+}
+
+ces Main {
+    EW() + WE()
+}
+
+ces EW { E_entry => E => B => e => e_exit }
+ces WE { W_entry => W => B => w => w_exit }

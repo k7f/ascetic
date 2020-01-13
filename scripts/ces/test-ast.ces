@@ -1,0 +1,7 @@
+vis {
+    title: "Test of AST compilation"
+}
+
+ces Main {
+    { { a => a1 } { { b => b1 } + { c => c1 } } } + { d => d1 }
+}

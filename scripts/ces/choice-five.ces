@@ -1,0 +1,7 @@
+vis {
+    title: "Choice (five arrows)"
+}
+
+ces Main {
+    a => v + w + x + y + z
+}

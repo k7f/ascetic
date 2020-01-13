@@ -1,0 +1,7 @@
+vis {
+    title: "Sequence of six arrows"
+}
+
+ces Main {
+    a => b => c => d => e => f => g
+}

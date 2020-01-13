@@ -1,0 +1,12 @@
+vis {
+    title: "Six independent arrows"
+}
+
+ces Main {
+    { a => u }
+    { b => v }
+    { c => w }
+    { d => x }
+    { e => y }
+    { f => z }
+}

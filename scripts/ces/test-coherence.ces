@@ -1,0 +1,10 @@
+vis {
+    title: "Structural error (link incoherence)"
+}
+
+ces Main {
+    { a -> x }
+    { b -> y }
+    { x -> b }
+    { y -> a }
+}

@@ -1,0 +1,12 @@
+vis {
+    title: "Absorption test"
+}
+
+sat {
+    encoding: port-link,
+    search:   all,
+}
+
+ces Main {
+    a => x + x y
+}

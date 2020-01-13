@@ -1,0 +1,7 @@
+vis {
+    title: "Fork with six tines"
+}
+
+ces Main {
+    a => u v w x y z
+}

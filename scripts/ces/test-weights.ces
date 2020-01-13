@@ -1,0 +1,19 @@
+vis {
+    title: "Two arrows in sequence with node capacities and hyperarc weights"
+}
+
+cap {
+    2 a b,
+    3 c,
+}
+
+mul {
+    @@ a -> b,
+    2 b <- a,
+    2 b -> c,
+    0 c <- b,
+}
+
+ces Main {
+    a => b => c
+}

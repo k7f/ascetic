@@ -1,0 +1,16 @@
+vis {
+    title: "Join of three lanes with node capacities and fork inhibitors"
+}
+
+cap {
+    2 a b,
+    3 c,
+}
+
+inh {
+    a c -> z,
+}
+
+ces Main {
+    a b c => z
+}

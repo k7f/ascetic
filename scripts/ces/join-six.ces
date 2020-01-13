@@ -1,0 +1,7 @@
+vis {
+    title: "Join of six lanes"
+}
+
+ces Main {
+    a b c d e f => z
+}
