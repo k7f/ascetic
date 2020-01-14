@@ -35,16 +35,23 @@ will automatically download, build, and install the latest
 
 ## Command line interface
 
-C-e structures may be defined in `.cex` text files.  The format of
-textual description is YAML-based, but nowhere documented and very
-likely to change.  There are some, perhaps self-explanatory,
-[examples](data/).
+C-e structures may be defined in text files by using the
+[_Ascesis_](https://github.com/k7f/ascesis) language or the `.cex`
+format of textual description.  The _Ascesis_ language has formally
+specified
+[syntax](https://github.com/k7f/ascesis/blob/master/spec/ascesis-syntax.ebnf)
+and informally described
+[semantics](https://github.com/k7f/ascesis/blob/master/spec/parser-implementation.md).
+The format of `.cex` text files is YAML-based, but nowhere documented
+and very likely to change (there are some, perhaps self-explanatory,
+[examples](../scripts/cex)).
 
-Run the `ascesis` executable to load c-e structures from `.cex` files
-and analyse them.  By default, the program will check link coherence
-and print firing components, if there are any, or inform about
-structural deadlock.  To see the list of available subcommands and
-options run
+Run the `ascesis` executable to load c-e structures from (one or more)
+`.ces` or `.cex` files and analyse them.  By default, the program will
+check link coherence and print firing components, if there are any, or
+inform about structural deadlock.  When instructed, it may run a
+simulation or validate a set of files.  To see the list of available
+subcommands and options run
 
 ```bash
 $ ascesis --help

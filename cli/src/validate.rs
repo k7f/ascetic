@@ -47,7 +47,7 @@ impl Command for Validate {
         let mut num_all_files = 0;
         let mut num_bad_files = 0;
 
-        let ctx = Context::new_toplevel("validate", Rc::new(YamlFormat::new()));
+        let ctx = Context::new_toplevel("validate");
 
         match glob::glob_with(glob_pattern, glob_options) {
             Ok(path_list) => {
@@ -58,12 +58,15 @@ impl Command for Validate {
                                 info!("> {}", path.display());
                             }
 
-                            ctx.lock().unwrap().reset(Rc::new(YamlFormat::from_path(path)));
+                            ctx.lock().unwrap().reset();
 
                             let result = CEStructure::from_file(
                                 &ctx,
                                 path,
-                                &[&YamlFormat::from_path(path), &AscesisFormat::from_path(path)],
+                                &[
+                                    Rc::new(YamlFormat::from_path(path)),
+                                    Rc::new(AscesisFormat::from_path(path)),
+                                ],
                             );
 
                             num_all_files += 1;

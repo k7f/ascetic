@@ -35,10 +35,8 @@ impl Solve {
             "ascetic-{}",
             app.get_mode().expect("unexpected anonymous mode").to_lowercase()
         );
-        let context =
-            // FIXME origin
-            Context::new_toplevel(context_name, Rc::new(YamlFormat::from_path(&main_path)));
-        let ces = CEStructure::new(&context);
+        let context = Context::new_toplevel(context_name);
+        let ces = CEStructure::new_interactive(&context);
 
         app.accept_selectors(&["SAT_ENCODING", "SAT_SEARCH"]);
 
@@ -101,12 +99,17 @@ impl Command for Solve {
             self.ces.get_context().lock().unwrap().set_search(search);
         }
 
-        let all_paths = Some(&self.main_path).into_iter().chain(self.more_paths.iter());
+        let path = &self.main_path;
 
-        for path in all_paths {
+        self.ces.add_from_file_as_origin(
+            path,
+            &[Rc::new(YamlFormat::from_path(path)), Rc::new(AscesisFormat::from_path(path))],
+        )?;
+
+        for path in self.more_paths.iter() {
             self.ces.add_from_file(
                 path,
-                &[&YamlFormat::from_path(path), &AscesisFormat::from_path(path)],
+                &[Rc::new(YamlFormat::from_path(path)), Rc::new(AscesisFormat::from_path(path))],
             )?;
         }
 
