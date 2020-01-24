@@ -8,12 +8,26 @@ pub struct Go {
 }
 
 impl Go {
+    fn trigger_parse<S: AsRef<str>>(name: S) -> (String, Multiplicity) {
+        let name = name.as_ref();
+
+        if let Some(pos) = name.rfind(':') {
+            if pos > 0 && pos < name.len() {
+                if let Ok(weight) = name[pos + 1..].parse::<Multiplicity>() {
+                    return (name[..pos].to_owned(), weight)
+                }
+            }
+        }
+
+        (name.to_owned(), Multiplicity::one())
+    }
+
     pub(crate) fn new(app: &mut App) -> Self {
         let solve = Solve::new(app);
         let mut triggers = Vec::new();
 
         if let Some(values) = app.values_of("TRIGGER") {
-            triggers.extend(values.map(|name| (name.to_owned(), Multiplicity::one())));
+            triggers.extend(values.map(Self::trigger_parse));
         }
 
         app.apply_props(solve.get_context());
