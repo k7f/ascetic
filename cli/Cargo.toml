@@ -15,8 +15,8 @@ log = "0.4"
 fern = { version = "0.5", features = ["colored"] }
 clap = { version = "2.33", features = ["yaml"] }
 glob = "0.3"
-# ascesis = { path = "../../ascesis" }
-ascesis = "0.0.4"
+ascesis = { path = "../../ascesis" }
+# ascesis = "0.0.4"
 
 [[bin]]
 

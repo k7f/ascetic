@@ -1,5 +1,5 @@
 use std::{rc::Rc, path::PathBuf, error::Error};
-use ascesis::{Context, CEStructure, AscesisFormat, YamlFormat, AcesError};
+use ascesis::{Context, CEStructure, AscesisFormat, YamlFormat};
 use super::{App, Command};
 
 pub struct Validate {
@@ -35,7 +35,6 @@ impl Command for Validate {
         let mut glob_path = PathBuf::from(&self.glob_path);
 
         if self.is_recursive {
-            println!("FIXME recursive");
             glob_path.push("**");
         }
         glob_path.push("*.ce[sx]");
@@ -77,21 +76,19 @@ impl Command for Validate {
                                         debug!("{:?}", ces);
                                     }
 
-                                    if !self.syntax_only && !ces.is_coherent() {
-                                        let err = AcesError::IncoherentStructure(
-                                            ces.get_name().unwrap_or("anonymous").to_owned(),
-                                        );
-
-                                        if self.do_abort {
-                                            warn!("Aborting on structural error");
-                                            return Err(err.into())
-                                        } else {
-                                            error!(
-                                                "Structural error in file '{}'...\n\t{}",
-                                                path.display(),
-                                                err
-                                            );
-                                            num_bad_files += 1;
+                                    if !self.syntax_only {
+                                        if let Err(err) = ces.check_coherence() {
+                                            if self.do_abort {
+                                                warn!("Aborting on structural error");
+                                                return Err(err)
+                                            } else {
+                                                error!(
+                                                    "Structural error in file '{}'...\n\t{}",
+                                                    path.display(),
+                                                    err
+                                                );
+                                                num_bad_files += 1;
+                                            }
                                         }
                                     }
                                 }

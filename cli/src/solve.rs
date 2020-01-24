@@ -125,7 +125,7 @@ impl Command for Solve {
             let ctx = self.ces.get_context();
 
             for (i, fc) in fset.as_slice().iter().enumerate() {
-                println!("{}. {}", i + 1, fc.with(ctx));
+                println!("{:4}. {}", i + 1, fc.with(ctx));
             }
         }
 

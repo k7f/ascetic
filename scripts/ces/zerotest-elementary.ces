@@ -1,0 +1,8 @@
+vis {
+    title: "Test zero without an inhibitor"
+}
+
+ces Main {
+    { entry => tested aux => zero }
+  + { entry tested => notzero }
+}

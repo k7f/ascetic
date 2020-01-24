@@ -27,7 +27,7 @@ args:
         long: go
         short: g
         takes_value: true
-        multiple: false
+        multiple: true
         global: false
     - SEMANTICS:
         help: Choose state transitions according to sequential or parallel semantics

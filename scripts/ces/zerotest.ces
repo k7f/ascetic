@@ -1,0 +1,11 @@
+vis {
+    title: "Test zero with an inhibitor"
+}
+
+inh {
+    tested -> zero
+}
+
+ces Main {
+    entry tested => zero + notzero
+}

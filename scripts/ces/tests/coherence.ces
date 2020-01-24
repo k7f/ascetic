@@ -7,4 +7,5 @@ ces Main {
     { b -> y }
     { x -> b }
     { y -> a }
+    { c <- z }
 }
