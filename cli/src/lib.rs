@@ -18,21 +18,31 @@ pub struct AppError;
 
 impl AppError {
     pub fn report(err: Box<dyn Error>) {
-        let mut message = String::new();
+        Self::report_with_header(err, "")
+    }
+
+    pub fn report_with_header<S: AsRef<str>>(err: Box<dyn Error>, header: S) {
+        let header = header.as_ref();
+        let mut message = String::from(header);
 
         for line in format!("{}", err).lines() {
             if line.starts_with("error:") {
                 if !message.is_empty() {
                     error!("{}", message);
 
-                    message.clear();
+                    if header.is_empty() {
+                        message.clear();
+                    } else {
+                        message.truncate(header.len());
+                        message.push_str("\n\t");
+                    }
                 }
                 message.push_str(line[6..].trim_start());
             } else {
                 if !message.is_empty() {
-                    message.push('\n');
+                    message.push_str("\n\t");
                 }
-                message.push_str(line);
+                message.push_str(line.trim_start());
             }
         }
 

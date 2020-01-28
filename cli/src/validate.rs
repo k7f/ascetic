@@ -1,6 +1,6 @@
 use std::{rc::Rc, path::PathBuf, error::Error};
 use ascesis::{Context, CEStructure, AscesisFormat, YamlFormat};
-use super::{App, Command};
+use super::{App, Command, AppError};
 
 pub struct Validate {
     glob_path:    String,
@@ -82,11 +82,11 @@ impl Command for Validate {
                                                 warn!("Aborting on structural error");
                                                 return Err(err)
                                             } else {
-                                                error!(
-                                                    "Structural error in file '{}'...\n\t{}",
-                                                    path.display(),
-                                                    err
+                                                let ref header = format!(
+                                                    "Structural error in file '{}'...",
+                                                    path.display()
                                                 );
+                                                AppError::report_with_header(err, header);
                                                 num_bad_files += 1;
                                             }
                                         }
@@ -97,11 +97,9 @@ impl Command for Validate {
                                         warn!("Aborting on syntax error");
                                         return Err(err)
                                     } else {
-                                        error!(
-                                            "Syntax error in file '{}'...\n\t{}",
-                                            path.display(),
-                                            err
-                                        );
+                                        let ref header =
+                                            format!("Syntax error in file '{}'...", path.display());
+                                        AppError::report_with_header(err, header);
                                         num_bad_files += 1;
                                     }
                                 }
