@@ -1,16 +1,23 @@
 #![allow(clippy::toplevel_ref_arg)]
 
-#[macro_use]
-extern crate log;
-
-use std::error::Error;
 use ascesis::Logger;
-use ascetic_cli::{App, Solve, Go, Validate};
+use ascetic_cli::{App, Solve, Go, Validate, AppError};
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() {
     let ref cli_spec_str = include_str!("ascetic.cli");
 
-    let cli_spec = clap::YamlLoader::load_from_str(cli_spec_str)?;
+    let cli_spec = match clap::YamlLoader::load_from_str(cli_spec_str) {
+        Ok(spec) => spec,
+        Err(err) => {
+            let mut logger = Logger::new("ascetic.cli").with_console(log::LevelFilter::Debug);
+            logger.apply();
+
+            AppError::report("Internal error in CLI specification..".into());
+            AppError::report(err.into());
+
+            std::process::exit(-1)
+        }
+    };
     let cli_matches = clap::App::from_yaml(&cli_spec[0]);
     let mut app = App::from_clap(cli_matches);
 
@@ -61,7 +68,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     app.check_selectors(&["SAT_ENCODING", "SAT_SEARCH", "SEMANTICS", "MAX_STEPS"]);
 
     if let Err(err) = command.run() {
-        error!("{}", err);
+        AppError::report(err);
+
         std::process::exit(-1)
     } else {
         std::process::exit(0)

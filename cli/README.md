@@ -49,9 +49,26 @@ and very likely to change (there are some, perhaps self-explanatory,
 Run the `ascesis` executable to load c-e structures from (one or more)
 `.ces` or `.cex` files and analyse them.  By default, the program will
 check link coherence and print firing components, if there are any, or
-inform about structural deadlock.  When instructed, it may run a
-simulation or validate a set of files.  To see the list of available
-subcommands and options run
+inform about structural deadlock.  When instructed, it may execute one
+step of a simulation,
+
+```bash
+$ ascesis scripts/ces/zerotest.ces -gentry -gtested
+```
+
+run a longer simulation,
+
+```bash
+$ ascesis scripts/ces/arrow.ces scripts/ces/choice-two.ces -ga:3 -x3
+```
+
+or validate a set of files,
+
+```bash
+$ ascesis validate -r scripts
+```
+
+To see the list of available subcommands and options run
 
 ```bash
 $ ascesis --help

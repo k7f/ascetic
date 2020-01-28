@@ -5,3 +5,7 @@ vis {
 bad {
     key: value,
 }
+
+sat {
+    "no good either..."
+}

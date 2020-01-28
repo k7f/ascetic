@@ -7,11 +7,38 @@ mod solve;
 mod go;
 mod validate;
 
+use std::error::Error;
 use ascesis::{ContextHandle, Semantics};
 
 pub use solve::Solve;
 pub use go::Go;
 pub use validate::Validate;
+
+pub struct AppError;
+
+impl AppError {
+    pub fn report(err: Box<dyn Error>) {
+        let mut message = String::new();
+
+        for line in format!("{}", err).lines() {
+            if line.starts_with("error:") {
+                if !message.is_empty() {
+                    error!("{}", message);
+
+                    message.clear();
+                }
+                message.push_str(line[6..].trim_start());
+            } else {
+                if !message.is_empty() {
+                    message.push('\n');
+                }
+                message.push_str(line);
+            }
+        }
+
+        error!("{}", message);
+    }
+}
 
 pub trait Command {
     fn name_of_log_file(&self) -> String;
@@ -20,7 +47,7 @@ pub trait Command {
         None
     }
 
-    fn run(&mut self) -> Result<(), Box<dyn std::error::Error>>;
+    fn run(&mut self) -> Result<(), Box<dyn Error>>;
 }
 
 pub struct App<'a> {
