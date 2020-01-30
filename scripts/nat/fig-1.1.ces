@@ -1,0 +1,7 @@
+vis {
+    title: "First example"
+}
+
+ces Main {
+    a + b c + c d => e => f g + h
+}

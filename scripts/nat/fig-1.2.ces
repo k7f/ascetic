@@ -1,0 +1,7 @@
+vis {
+    title: "Second example"
+}
+
+ces Main {
+    { a => b => c d + e } + { c => e => a + d }
+}

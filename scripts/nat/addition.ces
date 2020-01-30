@@ -1,0 +1,11 @@
+cap {
+    ω x y z
+}
+
+inh {
+    x y -> stop
+}
+    
+ces Main {
+    { start x y => stop } + { start (x + y) => a => start z }
+}

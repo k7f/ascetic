@@ -1,0 +1,11 @@
+vis {
+    title: "Test zero"
+}
+
+inh {
+    T -> z
+}
+
+ces Main {
+    i T => z + n
+}
