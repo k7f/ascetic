@@ -2,8 +2,13 @@ vis {
     title: "Test zero with an inhibitor"
 }
 
-inh {
-    tested -> zero
+cap {
+    ω tested zero notzero
+}
+
+mul {
+    ω tested -> zero,
+    0 tested -> notzero,
 }
 
 ces Main {

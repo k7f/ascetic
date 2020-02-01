@@ -22,9 +22,16 @@ args:
         possible_values: [min, all]
         multiple: false
         global: false
-    - TRIGGER:
-        help: Run a cause-effect computation
-        long: go
+    - START:
+        help: Start a cause-effect computation from a given state (set of node multiplicities)
+        long: from
+        short: f
+        takes_value: true
+        multiple: true
+        global: false
+    - GOAL:
+        help: Stop when a computation reaches a given goal (disjunction of node multiplicities)
+        long: goal
         short: g
         takes_value: true
         multiple: true

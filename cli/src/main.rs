@@ -23,7 +23,7 @@ fn main() {
 
     let mut command = match app.subcommand_name().unwrap_or("_") {
         "_" => {
-            if app.is_present("TRIGGER") {
+            if app.is_present("START") {
                 Go::new_command(&mut app)
             } else {
                 Solve::new_command(&mut app)

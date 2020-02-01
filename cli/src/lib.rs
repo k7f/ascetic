@@ -3,6 +3,7 @@
 #[macro_use]
 extern crate log;
 
+mod style;
 mod solve;
 mod go;
 mod validate;
@@ -10,6 +11,7 @@ mod validate;
 use std::error::Error;
 use ascesis::{ContextHandle, Semantics};
 
+pub use style::Styled;
 pub use solve::Solve;
 pub use go::Go;
 pub use validate::Validate;

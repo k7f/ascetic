@@ -2,12 +2,18 @@ vis {
     title: "Test zero with an inhibitor replaced"
 }
 
+cap {
+    ω entry tested zero notzero
+}
+
 mul {
-    0 aux_off <- tested aux_on
+    ω tested -> zero,
+    0 tested -> notzero,
+    0 aux_off <- tested aux_on,
 }
 
 ces Main {
-    { entry => tested aux_on zero }
+    { entry tested => notzero }
+  + { entry => tested aux_on zero }
   + { tested aux_on => aux_off }
-  + { entry tested => notzero }
 }

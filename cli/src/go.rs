@@ -1,10 +1,11 @@
 use std::error::Error;
 use ascesis::{Contextual, Runner, Multiplicity};
-use super::{App, Command, Solve};
+use super::{App, Command, Solve, Styled};
 
 pub struct Go {
-    solve:    Solve,
-    triggers: Vec<(String, Multiplicity)>,
+    solve_command:  Solve,
+    start_triggers: Vec<(String, Multiplicity)>,
+    stop_triggers:  Vec<(String, Multiplicity)>,
 }
 
 impl Go {
@@ -23,17 +24,22 @@ impl Go {
     }
 
     pub(crate) fn new(app: &mut App) -> Self {
-        let solve = Solve::new(app);
-        let mut triggers = Vec::new();
+        let solve_command = Solve::new(app);
+        let mut start_triggers = Vec::new();
+        let mut stop_triggers = Vec::new();
 
-        if let Some(values) = app.values_of("TRIGGER") {
-            triggers.extend(values.map(Self::trigger_parse));
+        if let Some(values) = app.values_of("START") {
+            start_triggers.extend(values.map(Self::trigger_parse));
         }
 
-        app.apply_props(solve.get_context());
+        if let Some(values) = app.values_of("GOAL") {
+            stop_triggers.extend(values.map(Self::trigger_parse));
+        }
+
+        app.apply_props(solve_command.get_context());
         app.accept_selectors(&["SEMANTICS", "MAX_STEPS"]);
 
-        Self { solve, triggers }
+        Self { solve_command, start_triggers, stop_triggers }
     }
 
     /// Creates a [`Go`] instance and returns it as a [`Command`]
@@ -52,52 +58,57 @@ impl Go {
 
 impl Command for Go {
     fn name_of_log_file(&self) -> String {
-        self.solve.name_of_log_file()
+        self.solve_command.name_of_log_file()
     }
 
     fn console_level(&self) -> Option<log::LevelFilter> {
-        self.solve.console_level()
+        self.solve_command.console_level()
     }
 
     fn run(&mut self) -> Result<(), Box<dyn Error>> {
-        self.solve.run()?;
+        self.solve_command.run()?;
 
-        let ces = self.solve.get_ces();
+        let ces = self.solve_command.get_ces();
 
         if let Some(fset) = ces.get_firing_set() {
             let mut runner = Runner::new(
                 ces.get_context(),
-                self.triggers.iter().map(|(name, mul)| (name, *mul)),
+                self.start_triggers.iter().map(|(name, mul)| (name, *mul)),
             );
+
+            println!("{}", "Go from".bright_green().bold());
+            println!("{} {}", "=>".bright_yellow().bold(), runner.get_initial_state());
 
             runner.go(fset)?;
 
             let fcs = runner.get_firing_sequence();
-            let num_steps = fcs.len();
             let mut state = runner.get_initial_state().clone();
-            let ctx = ces.get_context();
 
             for (i, fc) in fcs.iter(fset).enumerate() {
-                if i == 0 {
-                    println!("Go from {}", state.with(&ctx));
-                } else {
-                    println!("   =>   {}", state.with(&ctx));
+                if i > 0 {
+                    println!("{} {}", "=>".bright_yellow().bold(), state);
                 }
-
-                println!("{:4}. {}", i + 1, fc.with(ctx));
+                println!("{:4}. {}", i + 1, fc.with(ces.get_context()));
 
                 fc.fire(&mut state)?;
             }
 
+            let num_steps = fcs.len();
+
+            // FIXME first, check the target set...
+            // print!("Goal!");
             if num_steps < runner.get_max_steps() {
-                println!("   =>   {}", state.with(&ctx));
-                println!("Deadlock after {} steps.", num_steps);
+                print!("{}", "Stuck".bright_red().bold());
+            } else if num_steps == runner.get_max_steps() {
+                print!("{}", "Pause".bright_green().bold());
             } else {
-                println!("Stop at {}", state.with(&ctx));
-                println!("Done after {} steps.", num_steps);
+                unreachable!()
             }
+
+            println!(" after {} steps at", num_steps);
+            println!("{} {}", "=>".bright_yellow().bold(), state);
         } else {
-            println!("Structural deadlock.");
+            println!("{}.", "Structural deadlock".bright_red().bold());
         }
 
         Ok(())

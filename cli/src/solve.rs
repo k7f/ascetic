@@ -120,7 +120,11 @@ impl Command for Solve {
         self.ces.solve()?;
 
         if let Some(fset) = self.ces.get_firing_set() {
-            println!("Firing components:");
+            match fset.as_slice().len() {
+                0 => panic!("Found no firing components."),
+                1 => println!("Found one firing component:"),
+                n => println!("Found {} firing components:", n),
+            }
 
             let ctx = self.ces.get_context();
 
