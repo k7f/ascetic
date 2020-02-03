@@ -1,6 +1,6 @@
 use std::{str::FromStr, rc::Rc, error::Error};
 use ascesis::{Context, ContextHandle, Contextual, CEStructure, AscesisFormat, YamlFormat, sat};
-use super::{App, Command};
+use super::{App, Command, Styled};
 
 pub struct Solve {
     verbosity:          u64,
@@ -122,14 +122,14 @@ impl Command for Solve {
         if let Some(fset) = self.ces.get_firing_set() {
             match fset.as_slice().len() {
                 0 => panic!("Found no firing components."),
-                1 => println!("Found one firing component:"),
-                n => println!("Found {} firing components:", n),
+                1 => println!("{} one firing component:", "Found".bright_green().bold()),
+                n => println!("{} {} firing components:", "Found".bright_green().bold(), n),
             }
 
             let ctx = self.ces.get_context();
 
             for (i, fc) in fset.as_slice().iter().enumerate() {
-                println!("{:4}. {}", i + 1, fc.with(ctx));
+                println!("{}. {}", format!("{:4}", (i + 1)).bright_yellow().bold(), fc.with(ctx));
             }
         }
 

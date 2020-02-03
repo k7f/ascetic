@@ -74,7 +74,8 @@ impl Command for Go {
             let mut runner = Runner::new(
                 ces.get_context(),
                 self.start_triggers.iter().map(|(name, mul)| (name, *mul)),
-            );
+            )
+            .with_goal(self.stop_triggers.iter().map(|(name, mul)| (name, *mul)))?;
 
             println!("{}", "Go from".bright_green().bold());
             println!("{} {}", "=>".bright_yellow().bold(), runner.get_initial_state());
@@ -88,16 +89,20 @@ impl Command for Go {
                 if i > 0 {
                     println!("{} {}", "=>".bright_yellow().bold(), state);
                 }
-                println!("{:4}. {}", i + 1, fc.with(ces.get_context()));
+                println!(
+                    "{}. {}",
+                    format!("{:4}", (i + 1)).bright_yellow().bold(),
+                    fc.with(ces.get_context())
+                );
 
                 fc.fire(&mut state)?;
             }
 
             let num_steps = fcs.len();
 
-            // FIXME first, check the target set...
-            // print!("Goal!");
-            if num_steps < runner.get_max_steps() {
+            if runner.goal_is_reached().is_some() {
+                print!("{}", "Goal!".bright_cyan().bold());
+            } else if num_steps < runner.get_max_steps() {
                 print!("{}", "Stuck".bright_red().bold());
             } else if num_steps == runner.get_max_steps() {
                 print!("{}", "Pause".bright_green().bold());

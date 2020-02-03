@@ -30,7 +30,7 @@ args:
         multiple: true
         global: false
     - GOAL:
-        help: Stop when a computation reaches a given goal (disjunction of node multiplicities)
+        help: Stop when a computation reaches or exceeds a given goal (disjunction of node multiplicities)
         long: goal
         short: g
         takes_value: true

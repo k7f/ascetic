@@ -8,11 +8,7 @@ pub struct WithStyle<S: AsRef<str>> {
 
 impl<S: AsRef<str>> From<S> for WithStyle<S> {
     fn from(message: S) -> Self {
-        WithStyle {
-            message,
-            color: "49",
-            style: "",
-        }
+        WithStyle { message, color: "49", style: "" }
     }
 }
 
@@ -22,27 +18,34 @@ impl<S: AsRef<str>> fmt::Display for WithStyle<S> {
     }
 }
 
-pub trait Styled<S>: Into<WithStyle<S>> where S: AsRef<str> {
-    fn bright_red(self) -> WithStyle<S> {
-        let mut this = self.into();
+macro_rules! define_color_method {
+    ($name:ident,$code:expr) => (
+        fn $name(self) -> WithStyle<S> {
+            let mut this = self.into();
 
-        this.color = "49;91";
-        this
-    }
+            this.color = concat!("49;", $code);
+            this
+        });
+}
 
-    fn bright_green(self) -> WithStyle<S> {
-        let mut this = self.into();
-
-        this.color = "49;92";
-        this
-    }
-
-    fn bright_yellow(self) -> WithStyle<S> {
-        let mut this = self.into();
-
-        this.color = "49;93";
-        this
-    }
+pub trait Styled<S>: Into<WithStyle<S>>
+where
+    S: AsRef<str>,
+{
+    define_color_method!(red, 31);
+    define_color_method!(green, 32);
+    define_color_method!(yellow, 33);
+    define_color_method!(blue, 34);
+    define_color_method!(magenta, 35);
+    define_color_method!(cyan, 36);
+    define_color_method!(white, 37);
+    define_color_method!(bright_red, 91);
+    define_color_method!(bright_green, 92);
+    define_color_method!(bright_yellow, 93);
+    define_color_method!(bright_blue, 94);
+    define_color_method!(bright_magenta, 95);
+    define_color_method!(bright_cyan, 96);
+    define_color_method!(bright_white, 97);
 
     fn bold(self) -> WithStyle<S> {
         let mut this = self.into();
@@ -52,4 +55,9 @@ pub trait Styled<S>: Into<WithStyle<S>> where S: AsRef<str> {
     }
 }
 
-impl<S, T> Styled<S> for T where S: AsRef<str>, T: Into<WithStyle<S>> {}
+impl<S, T> Styled<S> for T
+where
+    S: AsRef<str>,
+    T: Into<WithStyle<S>>,
+{
+}

@@ -94,7 +94,7 @@ impl<'a> App<'a> {
     }
 
     pub fn get_bin_name(&self) -> Option<&str> {
-        self.bin_name.as_ref().map(|s| s.as_str())
+        self.bin_name.as_deref()
     }
 
     pub fn subcommand_name(&self) -> Option<&str> {
@@ -122,7 +122,7 @@ impl<'a> App<'a> {
     }
 
     pub fn get_mode(&self) -> Option<&str> {
-        self.mode.as_ref().map(|mode| mode.as_str())
+        self.mode.as_deref()
     }
 
     /// Accepts a given set of selectors, incrementally.
