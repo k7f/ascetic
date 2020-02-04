@@ -1,5 +1,5 @@
 use std::error::Error;
-use ascesis::{Contextual, Runner, Multiplicity};
+use ascesis::{Contextual, Runner, StopCondition, Multiplicity};
 use super::{App, Command, Solve, Styled};
 
 pub struct Go {
@@ -74,13 +74,17 @@ impl Command for Go {
             let mut runner = Runner::new(
                 ces.get_context(),
                 self.start_triggers.iter().map(|(name, mul)| (name, *mul)),
-            )
-            .with_goal(self.stop_triggers.iter().map(|(name, mul)| (name, *mul)))?;
+            );
+
+            if !self.stop_triggers.is_empty() {
+                runner =
+                    runner.with_goal(self.stop_triggers.iter().map(|(name, mul)| (name, *mul)))?;
+            }
 
             println!("{}", "Go from".bright_green().bold());
             println!("{} {}", "=>".bright_yellow().bold(), runner.get_initial_state());
 
-            runner.go(fset)?;
+            let stop_condition = runner.go(fset)?;
 
             let fcs = runner.get_firing_sequence();
             let mut state = runner.get_initial_state().clone();
@@ -98,20 +102,35 @@ impl Command for Go {
                 fc.fire(&mut state)?;
             }
 
-            let num_steps = fcs.len();
-
-            if runner.goal_is_reached().is_some() {
-                print!("{}", "Goal!".bright_cyan().bold());
-            } else if num_steps < runner.get_max_steps() {
-                print!("{}", "Stuck".bright_red().bold());
-            } else if num_steps == runner.get_max_steps() {
-                print!("{}", "Pause".bright_green().bold());
-            } else {
-                unreachable!()
+            if let Some(num_steps) = match stop_condition {
+                StopCondition::GoalReached(node_id, num_steps) => {
+                    print!(
+                        "{} reached (node \"{}\")",
+                        "Goal".bright_cyan().bold(),
+                        node_id.with(ces.get_context()),
+                    );
+                    Some(num_steps)
+                }
+                StopCondition::Stalemate(num_steps) => {
+                    print!("{}", "Stuck".bright_red().bold());
+                    Some(num_steps)
+                }
+                StopCondition::Pause(num_steps) => {
+                    print!("{}", "Paused".bright_green().bold());
+                    Some(num_steps)
+                }
+                StopCondition::UnimplementedFeature(feature) => {
+                    println!(
+                        "{}: {} isn't implemented yet.",
+                        "Failed".bright_red().bold(),
+                        feature
+                    );
+                    None
+                }
+            } {
+                println!(" after {} steps at", num_steps);
+                println!("{} {}", "=>".bright_yellow().bold(), state);
             }
-
-            println!(" after {} steps at", num_steps);
-            println!("{} {}", "=>".bright_yellow().bold(), state);
         } else {
             println!("{}.", "Structural deadlock".bright_red().bold());
         }
