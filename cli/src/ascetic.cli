@@ -3,7 +3,7 @@ args:
     - MAIN_PATH:
         help: Path to a script file
         required: false
-        default_value: scripts/arrow.ces
+        default_value: scripts/examples/arrow.ces
         multiple: true
         index: 1
     - SAT_ENCODING:

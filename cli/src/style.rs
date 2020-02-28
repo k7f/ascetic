@@ -19,13 +19,14 @@ impl<S: AsRef<str>> fmt::Display for WithStyle<S> {
 }
 
 macro_rules! define_color_method {
-    ($name:ident,$code:expr) => (
+    ($name:ident,$code:expr) => {
         fn $name(self) -> WithStyle<S> {
             let mut this = self.into();
 
             this.color = concat!("49;", $code);
             this
-        });
+        }
+    };
 }
 
 pub trait Styled<S>: Into<WithStyle<S>>

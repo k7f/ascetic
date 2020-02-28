@@ -1,0 +1,11 @@
+vis {
+    title: "Layout test",
+    grid: [
+        a b c d,
+        x y z,
+    ],
+}
+
+ces Main {
+    a b c d => x y z
+}

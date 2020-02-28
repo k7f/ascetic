@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pnml xmlns="http://www.pnml.org/version-2009/grammar/pnml">
+  <net id="test" type="http://www.pnml.org/version-2009/grammar/ptnet">
+  	<name>
+      <text>Test (a single arrow)</text>
+    </name>
+    <page id="page-1">
+      <place id="p-1">
+    	<name>
+    	  <text>Source</text>
+    	</name>
+        <graphics>
+          <position x="50.0" y="50.0"/>
+          <dimension x="40.0" y="40.0"/>
+          <line shape="line" color="#000000" width="1.0"/>
+          <fill color="#ffffff"/>
+        </graphics>
+    	<initialMarking>
+    	  <text>1</text>
+    	</initialMarking>
+      </place>
+      <place id="p-2">
+    	<name>
+    	  <text>Sink</text>
+    	</name>
+        <graphics>
+          <position x="250.0" y="50.0"/>
+          <dimension x="40.0" y="40.0"/>
+          <line shape="line" color="#000000" width="1.0"/>
+          <fill color="#ffffff"/>
+        </graphics>
+      </place>
+      <transition id="t-1">
+        <graphics>
+          <position x="150.0" y="50.0"/>
+          <dimension x="40.0" y="40.0"/>
+          <line shape="line" color="#000000" width="1.0"/>
+          <fill color="#ffffff"/>
+        </graphics>
+      </transition>
+      <arc id="a-1" source="p-1" target="t-1">
+        <inscription>
+          <text>oulet</text>
+        </inscription>
+      </arc>
+      <arc id="a-2" source="t-1" target="p-2">
+        <inscription>
+          <text>inlet</text>
+        </inscription>
+      </arc>
+    </page>
+  </net>
+</pnml>
