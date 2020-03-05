@@ -2,8 +2,9 @@
 
 CLI_CRATES="log clap glob"
 PET_CRATES="roxmltree cssparser"
+VIS_CRATES="piet-common png"
 
-for proj in cli pet ; do
+for proj in cli pet vis ; do
     CRATES=${proj^^}_CRATES
     for crate in ${!CRATES} ; do
         echo -n "$crate = "

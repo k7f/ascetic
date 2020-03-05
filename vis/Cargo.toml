@@ -1,0 +1,15 @@
+[package]
+
+name = "ascetic_vis"
+version = "0.0.1-pre"
+description = "Graphical rendering of c-e structures"
+authors = ["k7f"]
+edition = "2018"
+license = "MIT"
+repository = "https://github.com/k7f/ascetic"
+readme = "README.md"
+
+[dependencies]
+
+piet-common = "0.0.9"
+png = "0.16"

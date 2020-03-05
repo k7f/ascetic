@@ -718,7 +718,7 @@ impl FromNode for Arc {
         errors: &mut Vec<PNMLError>,
     ) -> Option<Self> {
         if node.validate_tag_name("arc", errors) {
-            let id = node.pick_or_make_id(errors);
+            let id = node.get_or_make_id();
 
             Some(Arc { id })
         } else {
