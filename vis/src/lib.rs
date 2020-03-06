@@ -11,22 +11,31 @@ pub use scene::Scene;
 pub use theme::Theme;
 
 use std::io;
-use piet_common::{RenderContext, kurbo::Shape};
+use piet_common::{
+    RenderContext,
+    kurbo::{Shape, TranslateScale},
+};
 
 /// Only `Shape`s may be `vis`ed, only `Scene` may be `render`ed.
 pub trait Vis<R: RenderContext>: Shape {
-    fn vis(&self, style_id: Option<StyleId>, theme: &Theme, rc: &mut R);
+    fn vis(&self, rc: &mut R, ts: TranslateScale, style_id: Option<StyleId>, theme: &Theme);
 }
 
 pub trait WriteSvg {
-    fn write_svg<W: io::Write>(&self, svg: &mut W) -> io::Result<()>;
+    fn write_svg<W: io::Write>(&self, svg: W) -> io::Result<()>;
 }
 
 pub trait WriteSvgWithName {
-    fn write_svg_with_name<W: io::Write, S: AsRef<str>>(
+    fn write_svg_with_name<W: io::Write, S: AsRef<str>>(&self, svg: W, name: S) -> io::Result<()>;
+}
+
+pub trait WriteSvgWithStyle {
+    fn write_svg_with_style<W: io::Write>(
         &self,
-        svg: &mut W,
-        name: S,
+        svg: W,
+        ts: TranslateScale,
+        style_id: Option<StyleId>,
+        theme: &Theme,
     ) -> io::Result<()>;
 }
 

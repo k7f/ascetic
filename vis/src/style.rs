@@ -5,7 +5,7 @@ use crate::{WriteSvg, WriteSvgWithName};
 impl WriteSvgWithName for Color {
     fn write_svg_with_name<W: io::Write, S: AsRef<str>>(
         &self,
-        svg: &mut W,
+        mut svg: W,
         name: S,
     ) -> io::Result<()> {
         let rgba = self.as_rgba_u32();
@@ -73,8 +73,8 @@ impl Default for Stroke {
 }
 
 impl WriteSvg for Stroke {
-    fn write_svg<W: io::Write>(&self, svg: &mut W) -> io::Result<()> {
-        self.brush.write_svg_with_name(svg, "stroke")?;
+    fn write_svg<W: io::Write>(&self, mut svg: W) -> io::Result<()> {
+        self.brush.write_svg_with_name(&mut svg, "stroke")?;
         writeln!(svg, " stroke-width=\"{}\"", self.width)
     }
 }
@@ -87,7 +87,7 @@ pub enum GradSpec {
 impl WriteSvgWithName for GradSpec {
     fn write_svg_with_name<W: io::Write, S: AsRef<str>>(
         &self,
-        svg: &mut W,
+        mut svg: W,
         name: S,
     ) -> io::Result<()> {
         write!(svg, "    <linearGradient id=\"{}\"", name.as_ref())?;
@@ -105,7 +105,7 @@ impl WriteSvgWithName for GradSpec {
 
                 for stop in stops.iter() {
                     write!(svg, "      <stop offset=\"{}\" ", stop.pos)?;
-                    stop.color.write_svg_with_name(svg, "stop-color")?;
+                    stop.color.write_svg_with_name(&mut svg, "stop-color")?;
                     writeln!(svg, " />")?;
                 }
             }
@@ -122,9 +122,9 @@ pub enum Fill {
 }
 
 impl WriteSvg for Fill {
-    fn write_svg<W: io::Write>(&self, svg: &mut W) -> io::Result<()> {
+    fn write_svg<W: io::Write>(&self, mut svg: W) -> io::Result<()> {
         match self {
-            Fill::Color(ref color) => color.write_svg_with_name(svg, "fill"),
+            Fill::Color(ref color) => color.write_svg_with_name(&mut svg, "fill"),
             Fill::Linear(ref name) => write!(svg, "fill=\"url(#{})\"", name),
         }
     }
@@ -205,14 +205,14 @@ impl Style {
 }
 
 impl WriteSvg for Style {
-    fn write_svg<W: io::Write>(&self, svg: &mut W) -> io::Result<()> {
+    fn write_svg<W: io::Write>(&self, mut svg: W) -> io::Result<()> {
         if let Some(ref stroke) = self.stroke {
-            stroke.write_svg(svg)?;
+            stroke.write_svg(&mut svg)?;
             write!(svg, " ")?;
         }
 
         if let Some(ref fill) = self.fill {
-            fill.write_svg(svg)
+            fill.write_svg(&mut svg)
         } else {
             write!(svg, "fill=\"none\"")
         }
