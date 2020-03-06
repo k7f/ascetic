@@ -1,5 +1,28 @@
-use std::fmt::{self, Write};
+use std::io;
 use piet_common::{Color, UnitPoint, GradientStop, kurbo::Rect};
+use crate::{WriteSvg, WriteSvgWithName};
+
+impl WriteSvgWithName for Color {
+    fn write_svg_with_name<W: io::Write, S: AsRef<str>>(
+        &self,
+        svg: &mut W,
+        name: S,
+    ) -> io::Result<()> {
+        let rgba = self.as_rgba_u32();
+        let name = name.as_ref();
+        let stem = name.find('-').and_then(|pos| name.get(..pos)).unwrap_or(name);
+
+        write!(
+            svg,
+            "{}=\"#{:06x}\" {}-opacity=\"{:.*}\"",
+            name,
+            rgba >> 8,
+            stem,
+            3, // FIXME precision
+            (rgba & 0x0ff) as f64 / 255.,
+        )
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct Stroke {
@@ -41,19 +64,6 @@ impl Stroke {
     pub fn get_width(&self) -> f64 {
         self.width
     }
-
-    pub fn write_svg<W: Write>(&self, svg: &mut W) -> fmt::Result {
-        let rgba = self.brush.as_rgba_u32();
-
-        // FIXME opacity
-        write!(
-            svg,
-            "stroke=\"#{:06x}\" stroke-opacity=\"{}\" stroke-width=\"{}\"",
-            rgba >> 8,
-            (rgba & 0x0ff) as f64 / 255.,
-            self.width
-        )
-    }
 }
 
 impl Default for Stroke {
@@ -62,17 +72,24 @@ impl Default for Stroke {
     }
 }
 
+impl WriteSvg for Stroke {
+    fn write_svg<W: io::Write>(&self, svg: &mut W) -> io::Result<()> {
+        self.brush.write_svg_with_name(svg, "stroke")?;
+        writeln!(svg, " stroke-width=\"{}\"", self.width)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum GradSpec {
     Linear(UnitPoint, UnitPoint, Vec<GradientStop>),
 }
 
-impl GradSpec {
-    pub fn write_svg_with_name<W: Write, S: AsRef<str>>(
+impl WriteSvgWithName for GradSpec {
+    fn write_svg_with_name<W: io::Write, S: AsRef<str>>(
         &self,
         svg: &mut W,
         name: S,
-    ) -> fmt::Result {
+    ) -> io::Result<()> {
         write!(svg, "    <linearGradient id=\"{}\"", name.as_ref())?;
 
         match self {
@@ -87,16 +104,9 @@ impl GradSpec {
                 )?;
 
                 for stop in stops.iter() {
-                    let rgba = stop.color.as_rgba_u32();
-
-                    // FIXME opacity
-                    writeln!(
-                        svg,
-                        "      <stop offset=\"{}\" stop-color=\"#{:06x}\" stop-opacity=\"{:.2}\"/>",
-                        stop.pos,
-                        rgba >> 8,
-                        (rgba & 0x0ff) as f64 / 255.
-                    )?;
+                    write!(svg, "      <stop offset=\"{}\" ", stop.pos)?;
+                    stop.color.write_svg_with_name(svg, "stop-color")?;
+                    writeln!(svg, " />")?;
                 }
             }
         }
@@ -111,20 +121,10 @@ pub enum Fill {
     Linear(String),
 }
 
-impl Fill {
-    pub fn write_svg<W: Write>(&self, svg: &mut W) -> fmt::Result {
+impl WriteSvg for Fill {
+    fn write_svg<W: io::Write>(&self, svg: &mut W) -> io::Result<()> {
         match self {
-            Fill::Color(color) => {
-                let rgba = color.as_rgba_u32();
-
-                // FIXME opacity
-                write!(
-                    svg,
-                    "fill=\"#{:06x}\" fill-opacity=\"{}\"",
-                    rgba >> 8,
-                    (rgba & 0x0ff) as f64 / 255.,
-                )
-            }
+            Fill::Color(ref color) => color.write_svg_with_name(svg, "fill"),
             Fill::Linear(ref name) => write!(svg, "fill=\"url(#{})\"", name),
         }
     }
@@ -202,8 +202,10 @@ impl Style {
             _ => None,
         }
     }
+}
 
-    pub fn write_svg<W: Write>(&self, svg: &mut W) -> fmt::Result {
+impl WriteSvg for Style {
+    fn write_svg<W: io::Write>(&self, svg: &mut W) -> io::Result<()> {
         if let Some(ref stroke) = self.stroke {
             stroke.write_svg(svg)?;
             write!(svg, " ")?;

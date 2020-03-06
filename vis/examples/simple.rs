@@ -148,12 +148,12 @@ impl App {
 fn main() -> Result<(), Box<dyn Error>> {
     let app = App::new()?;
 
-    let gradient_h_stops = vec![Color::WHITE, Color::BLACK];
-    let gradient_v_stops = vec![Color::rgba8(0, 0xff, 0, 64), Color::rgba8(0xff, 0, 0xff, 64)];
+    let gradient_v_stops = vec![Color::WHITE, Color::BLACK];
+    let gradient_h_stops = vec![Color::rgba8(0, 0xff, 0, 64), Color::rgba8(0xff, 0, 0xff, 64)];
 
     let gradients = vec![
-        ("gradient-h", UnitPoint::TOP, UnitPoint::BOTTOM, gradient_h_stops.as_slice()),
-        ("gradient-v", UnitPoint::LEFT, UnitPoint::RIGHT, gradient_v_stops.as_slice()),
+        ("gradient-v", UnitPoint::TOP, UnitPoint::BOTTOM, gradient_v_stops.as_slice()),
+        ("gradient-h", UnitPoint::LEFT, UnitPoint::RIGHT, gradient_h_stops.as_slice()),
     ];
 
     let styles = vec![
@@ -168,11 +168,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             Style::new()
                 .with_stroke(Stroke::new().with_brush(Color::rgb8(0x80, 0x80, 0)).with_width(0.5)),
         ),
-        ("rect-1", Style::new().with_fill(Fill::Linear("gradient-h".into()))),
+        ("rect-1", Style::new().with_fill(Fill::Linear("gradient-v".into()))),
         (
             "rect-2",
             Style::new()
-                .with_fill(Fill::Linear("gradient-v".into()))
+                .with_fill(Fill::Linear("gradient-h".into()))
                 .with_stroke(Stroke::new().with_brush(Color::BLACK).with_width(1.)),
         ),
     ];

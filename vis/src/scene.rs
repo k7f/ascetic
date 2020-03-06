@@ -1,9 +1,9 @@
-use std::{slice, fmt::Write, error::Error};
+use std::{slice, io::Write, error::Error};
 use piet_common::{
     RenderContext,
     kurbo::{Shape, Line, Rect, RoundedRect, TranslateScale, Size},
 };
-use crate::{Vis, Prim, PrimId, Group, GroupId, StyleId, Theme};
+use crate::{Vis, Prim, PrimId, Group, GroupId, StyleId, Theme, WriteSvg, WriteSvgWithName};
 
 #[derive(Clone, Default, Debug)]
 pub struct Scene {
@@ -144,7 +144,7 @@ impl Scene {
         let root_ts =
             TranslateScale::translate(out_margin.to_vec2()) * TranslateScale::scale(out_scale);
 
-        let mut svg = String::new();
+        let mut svg = Vec::new();
 
         writeln!(&mut svg, "<!DOCTYPE html>")?;
         writeln!(&mut svg, "<html>")?;
@@ -161,13 +161,22 @@ impl Scene {
         }
         writeln!(&mut svg, "  </defs>")?;
 
+        let bg_color = theme.get_bg_color();
+        writeln!(&mut svg, "  <rect width=\"100%\" height=\"100%\" ")?;
+        bg_color.write_svg_with_name(&mut svg, "fill")?;
+        writeln!(&mut svg, " />")?;
+
         for (prim_id, style_id, ts) in self.all_prims(root_ts) {
             if let Some(prim) = self.prims.get(prim_id.0) {
+                // FIXME prim.write_to(&mut svg)?;
                 match *prim {
                     Prim::Line(line) => {
-                        let path = (ts * line).into_bez_path(1e-3).to_svg();
+                        // FIXME use `<line>`
+                        let path = (ts * line).into_bez_path(1e-3);
 
-                        write!(&mut svg, "  <path d=\"{}\" ", path)?;
+                        write!(&mut svg, "  <path d=\"")?;
+                        path.write_to(&mut svg)?;
+                        write!(&mut svg, "\" ")?;
 
                         if let Some(stroke) =
                             theme.get_stroke(style_id).or_else(|| theme.get_default_stroke())
@@ -178,9 +187,12 @@ impl Scene {
                         writeln!(&mut svg, "/>")?;
                     }
                     Prim::Rect(rect) => {
-                        let path = (ts * rect).into_bez_path(1e-3).to_svg();
+                        // FIXME use `<rect>`
+                        let path = (ts * rect).into_bez_path(1e-3);
 
-                        write!(&mut svg, "  <path d=\"{}\" ", path)?;
+                        write!(&mut svg, "  <path d=\"")?;
+                        path.write_to(&mut svg)?;
+                        write!(&mut svg, "\" ")?;
 
                         if let Some(style) = theme.get_style(style_id) {
                             style.write_svg(&mut svg)?;
@@ -189,9 +201,12 @@ impl Scene {
                         writeln!(&mut svg, "/>")?;
                     }
                     Prim::RoundedRect(rect) => {
-                        let path = (ts * rect).into_bez_path(1e-3).to_svg();
+                        // FIXME use `<rect rx>`
+                        let path = (ts * rect).into_bez_path(1e-3);
 
-                        write!(&mut svg, "  <path d=\"{}\" ", path)?;
+                        write!(&mut svg, "  <path d=\"")?;
+                        path.write_to(&mut svg)?;
+                        write!(&mut svg, "\" ")?;
 
                         if let Some(style) = theme.get_style(style_id) {
                             style.write_svg(&mut svg)?;
@@ -209,6 +224,8 @@ impl Scene {
         writeln!(&mut svg, "</svg>")?;
         writeln!(&mut svg, "</body>")?;
         writeln!(&mut svg, "</html>")?;
+
+        let svg = String::from_utf8(svg)?;
 
         Ok(svg)
     }
