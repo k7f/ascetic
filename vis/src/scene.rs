@@ -1,9 +1,9 @@
 use std::{slice, io::Write, error::Error};
 use piet_common::{
     RenderContext,
-    kurbo::{Line, Rect, RoundedRect, TranslateScale, Size},
+    kurbo::{Line, Rect, RoundedRect, Circle, TranslateScale, Size},
 };
-use crate::{Prim, PrimId, Group, GroupId, StyleId, Theme, WriteSvgWithName, WriteSvgWithStyle};
+use crate::{Vis, Prim, PrimId, Group, GroupId, StyleId, Theme, WriteSvgWithName};
 
 #[derive(Clone, Default, Debug)]
 pub struct Scene {
@@ -38,6 +38,14 @@ impl Scene {
         let id = self.prims.len();
 
         self.prims.push(Prim::RoundedRect(rect));
+
+        PrimId(id)
+    }
+
+    pub fn add_circle(&mut self, circ: Circle) -> PrimId {
+        let id = self.prims.len();
+
+        self.prims.push(Prim::Circle(circ));
 
         PrimId(id)
     }
@@ -158,7 +166,7 @@ impl Scene {
         writeln!(&mut svg, "  </defs>")?;
 
         let bg_color = theme.get_bg_color();
-        writeln!(&mut svg, "  <rect width=\"100%\" height=\"100%\" ")?;
+        write!(&mut svg, "  <rect width=\"100%\" height=\"100%\" ")?;
         bg_color.write_svg_with_name(&mut svg, "fill")?;
         writeln!(&mut svg, " />")?;
 

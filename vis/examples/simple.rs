@@ -7,7 +7,7 @@ use std::{
 };
 use piet_common::{
     Device, BitmapTarget, ImageFormat, Color, UnitPoint,
-    kurbo::{Line, Rect, RoundedRect, TranslateScale},
+    kurbo::{Line, Rect, RoundedRect, Circle, TranslateScale},
 };
 use ascetic_vis::{Scene, Group, Style, Stroke, Fill, Theme};
 
@@ -69,7 +69,9 @@ impl App {
         let png_path = png_path.unwrap_or_else(|| {
             let mut path = temp_dir();
             path.push(Self::DEFAULT_PNG_PATH);
-            eprintln!("[WARN] Unspecified PNG output path; using \"{}\".", path.display());
+            if verbosity > 0 {
+                eprintln!("[WARN] Unspecified PNG output path; using \"{}\".", path.display());
+            }
             path
         });
 
@@ -92,7 +94,9 @@ impl App {
 
     fn render_to_svg(&self, scene: &Scene, theme: &Theme) -> Result<Option<&Path>, Box<dyn Error>> {
         if let Some(ref svg_path) = self.svg_path {
-            eprint!("Saving scene to \"{}\"...", svg_path.display());
+            if self.verbosity > 0 {
+                eprint!("Saving scene to \"{}\"...", svg_path.display());
+            }
 
             let svg = scene.to_svg(theme, self.out_size, self.out_margin)?;
             let mut svg_file = File::create(svg_path)?;
@@ -114,13 +118,17 @@ impl App {
 
         scene.render(theme, self.out_size, self.out_margin, &mut rc)?;
 
-        eprintln!("Finished rendering.");
+        if self.verbosity > 0 {
+            eprintln!("Finished rendering.");
+        }
 
         self.save_bitmap_image(bitmap)
     }
 
     fn save_bitmap_image(&self, bitmap: BitmapTarget) -> Result<&Path, Box<dyn Error>> {
-        eprint!("Writing image data to \"{}\"...", self.png_path.display());
+        if self.verbosity > 0 {
+            eprint!("Writing image data to \"{}\"...", self.png_path.display());
+        }
 
         if self.png_color_type != png::ColorType::RGBA || self.png_bit_depth != png::BitDepth::Eight
         {
@@ -150,11 +158,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let gradient_v_stops = vec![Color::WHITE, Color::BLACK];
     let gradient_h_stops = vec![Color::rgba8(0, 0xff, 0, 64), Color::rgba8(0xff, 0, 0xff, 64)];
+    let gradient_r_stops = vec![Color::rgb8(0xff, 0xff, 0xff), Color::rgb8(0xff, 0, 0)];
 
-    let gradients = vec![
+    let linear_gradients = vec![
         ("gradient-v", UnitPoint::TOP, UnitPoint::BOTTOM, gradient_v_stops.as_slice()),
         ("gradient-h", UnitPoint::LEFT, UnitPoint::RIGHT, gradient_h_stops.as_slice()),
     ];
+
+    let radial_gradients = vec![("gradient-r", 1., gradient_r_stops.as_slice())];
 
     let styles = vec![
         ("border", Style::new().with_stroke(Stroke::new())),
@@ -175,9 +186,16 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .with_fill(Fill::Linear("gradient-h".into()))
                 .with_stroke(Stroke::new().with_brush(Color::BLACK).with_width(1.)),
         ),
+        (
+            "circ-1",
+            Style::new()
+                .with_fill(Fill::Radial("gradient-r".into()))
+                .with_stroke(Stroke::new().with_brush(Color::rgb(0xff, 0, 0)).with_width(5.)),
+        ),
     ];
 
-    let theme = Theme::new().with_named_gradients(gradients).with_named_styles(styles);
+    let theme =
+        Theme::new().with_gradients(linear_gradients, radial_gradients).with_named_styles(styles);
 
     let mut scene = Scene::new((1000., 1000.));
 
@@ -195,7 +213,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         (button, theme.get("rect-2")),
     ]));
 
-    let left_group = scene.add_group(Group::from_groups(vec![lines, rects]));
+    let circle = scene.add_circle(Circle::new((133., 500.), 112.));
+
+    let left_group = scene
+        .add_group(Group::from_groups(vec![lines, rects]).with_prim(circle, theme.get("circ-1")));
 
     scene.add_root(
         Group::from_prims(vec![(border, theme.get("border"))])
@@ -209,21 +230,30 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     match app.render_to_svg(&scene, &theme) {
         Ok(None) => {}
-        Ok(_) => eprintln!(" Done."),
-        Err(err) => eprintln!(" Failed: {}.", err),
+        Ok(_) => {
+            if app.verbosity > 0 {
+                eprintln!(" Done.")
+            }
+        }
+        Err(err) => {
+            if app.verbosity > 0 {
+                eprintln!(" Failed: {}.", err)
+            }
+        }
     }
 
     match app.render_to_png(&scene, &theme) {
         Ok(path) => {
-            eprintln!(" Done.");
-
+            if app.verbosity > 0 {
+                eprintln!(" Done.");
+            }
             println!("{}", path.display());
-
             Ok(())
         }
         Err(err) => {
-            eprintln!(" Failed: {}.", err);
-
+            if app.verbosity > 0 {
+                eprintln!(" Failed: {}.", err);
+            }
             Err(err)
         }
     }

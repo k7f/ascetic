@@ -75,13 +75,14 @@ impl Default for Stroke {
 impl WriteSvg for Stroke {
     fn write_svg<W: io::Write>(&self, mut svg: W) -> io::Result<()> {
         self.brush.write_svg_with_name(&mut svg, "stroke")?;
-        writeln!(svg, " stroke-width=\"{}\"", self.width)
+        write!(svg, " stroke-width=\"{}\"", self.width)
     }
 }
 
 #[derive(Clone, Debug)]
 pub enum GradSpec {
     Linear(UnitPoint, UnitPoint, Vec<GradientStop>),
+    Radial(f64, Vec<GradientStop>),
 }
 
 impl WriteSvgWithName for GradSpec {
@@ -90,8 +91,6 @@ impl WriteSvgWithName for GradSpec {
         mut svg: W,
         name: S,
     ) -> io::Result<()> {
-        write!(svg, "    <linearGradient id=\"{}\"", name.as_ref())?;
-
         match self {
             GradSpec::Linear(start, end, stops) => {
                 let start = start.resolve(Rect::new(0., 0., 100., 100.));
@@ -99,19 +98,39 @@ impl WriteSvgWithName for GradSpec {
 
                 writeln!(
                     svg,
-                    " x1=\"{}%\" y1=\"{}%\" x2=\"{}%\" y2=\"{}%\">",
-                    start.x, start.y, end.x, end.y
+                    "    <linearGradient id=\"{}\" x1=\"{}%\" y1=\"{}%\" x2=\"{}%\" y2=\"{}%\">",
+                    name.as_ref(),
+                    start.x,
+                    start.y,
+                    end.x,
+                    end.y
                 )?;
 
                 for stop in stops.iter() {
                     write!(svg, "      <stop offset=\"{}\" ", stop.pos)?;
                     stop.color.write_svg_with_name(&mut svg, "stop-color")?;
-                    writeln!(svg, " />")?;
+                    writeln!(svg, "/>")?;
                 }
+
+                writeln!(svg, "    </linearGradient>")
+            }
+            GradSpec::Radial(radius, stops) => {
+                writeln!(
+                    svg,
+                    "    <radialGradient id=\"{}\" r=\"{}%\">",
+                    name.as_ref(),
+                    radius * 100.
+                )?;
+
+                for stop in stops.iter() {
+                    write!(svg, "      <stop offset=\"{}\" ", stop.pos)?;
+                    stop.color.write_svg_with_name(&mut svg, "stop-color")?;
+                    writeln!(svg, "/>")?;
+                }
+
+                writeln!(svg, "    </radialGradient>")
             }
         }
-
-        writeln!(svg, "    </linearGradient>")
     }
 }
 
@@ -119,6 +138,7 @@ impl WriteSvgWithName for GradSpec {
 pub enum Fill {
     Color(Color),
     Linear(String),
+    Radial(String),
 }
 
 impl WriteSvg for Fill {
@@ -126,6 +146,7 @@ impl WriteSvg for Fill {
         match self {
             Fill::Color(ref color) => color.write_svg_with_name(&mut svg, "fill"),
             Fill::Linear(ref name) => write!(svg, "fill=\"url(#{})\"", name),
+            Fill::Radial(ref name) => write!(svg, "fill=\"url(#{})\"", name),
         }
     }
 }
@@ -198,7 +219,7 @@ impl Style {
     #[inline]
     pub fn get_fill_gradient_name(&self) -> Option<&str> {
         match self.fill {
-            Some(Fill::Linear(ref name)) => Some(name.as_str()),
+            Some(Fill::Linear(ref name)) | Some(Fill::Radial(ref name)) => Some(name.as_str()),
             _ => None,
         }
     }

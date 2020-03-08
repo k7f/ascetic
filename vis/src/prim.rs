@@ -1,21 +1,31 @@
 use std::io;
 use piet_common::{
     RenderContext,
-    kurbo::{Line, Rect, RoundedRect, TranslateScale},
+    kurbo::{Shape, Line, Rect, RoundedRect, Circle, TranslateScale},
 };
-use crate::{Vis, Theme, StyleId, WriteSvg, WriteSvgWithStyle};
+use crate::{Vis, Theme, StyleId, WriteSvg};
 
 #[derive(Clone, Debug)]
 pub enum Prim {
     Line(Line),
     Rect(Rect),
     RoundedRect(RoundedRect),
+    Circle(Circle),
 }
 
-impl Prim {
+impl Vis for Prim {
+    fn bbox(&self, ts: TranslateScale) -> Rect {
+        match *self {
+            Prim::Line(line) => line.bbox(ts),
+            Prim::Rect(rect) => rect.bbox(ts),
+            Prim::RoundedRect(rr) => rr.bbox(ts),
+            Prim::Circle(circ) => circ.bbox(ts),
+        }
+    }
+
     /// In order to implement `Shape` for `Prim`, associated type
     /// `BezPathIter` would have to be generic...
-    pub fn vis<R: RenderContext>(
+    fn vis<R: RenderContext>(
         &self,
         rc: &mut R,
         ts: TranslateScale,
@@ -25,12 +35,11 @@ impl Prim {
         match *self {
             Prim::Line(line) => line.vis(rc, ts, style_id, theme),
             Prim::Rect(rect) => rect.vis(rc, ts, style_id, theme),
-            Prim::RoundedRect(rect) => rect.vis(rc, ts, style_id, theme),
+            Prim::RoundedRect(rr) => rr.vis(rc, ts, style_id, theme),
+            Prim::Circle(circ) => circ.vis(rc, ts, style_id, theme),
         }
     }
-}
 
-impl WriteSvgWithStyle for Prim {
     fn write_svg_with_style<W: io::Write>(
         &self,
         mut svg: W,
@@ -38,23 +47,33 @@ impl WriteSvgWithStyle for Prim {
         style_id: Option<StyleId>,
         theme: &Theme,
     ) -> io::Result<()> {
-        match *self {
+        match self {
             Prim::Line(line) => line.write_svg_with_style(&mut svg, ts, style_id, theme),
             Prim::Rect(rect) => rect.write_svg_with_style(&mut svg, ts, style_id, theme),
-            Prim::RoundedRect(rect) => rect.write_svg_with_style(&mut svg, ts, style_id, theme),
+            Prim::RoundedRect(rr) => rr.write_svg_with_style(&mut svg, ts, style_id, theme),
+            Prim::Circle(circ) => circ.write_svg_with_style(&mut svg, ts, style_id, theme),
         }
     }
 }
 
-impl<R: RenderContext> Vis<R> for Line {
-    fn vis(&self, rc: &mut R, ts: TranslateScale, style_id: Option<StyleId>, theme: &Theme) {
+impl Vis for Line {
+    #[inline]
+    fn bbox(&self, ts: TranslateScale) -> Rect {
+        (ts * *self).bounding_box()
+    }
+
+    fn vis<R: RenderContext>(
+        &self,
+        rc: &mut R,
+        ts: TranslateScale,
+        style_id: Option<StyleId>,
+        theme: &Theme,
+    ) {
         if let Some(stroke) = theme.get_stroke(style_id).or_else(|| theme.get_default_stroke()) {
             rc.stroke(ts * *self, stroke.get_brush(), stroke.get_width());
         }
     }
-}
 
-impl WriteSvgWithStyle for Line {
     fn write_svg_with_style<W: io::Write>(
         &self,
         mut svg: W,
@@ -75,15 +94,28 @@ impl WriteSvgWithStyle for Line {
     }
 }
 
-impl<R: RenderContext> Vis<R> for Rect {
-    fn vis(&self, rc: &mut R, ts: TranslateScale, style_id: Option<StyleId>, theme: &Theme) {
+impl Vis for Rect {
+    #[inline]
+    fn bbox(&self, ts: TranslateScale) -> Rect {
+        (ts * *self).bounding_box()
+    }
+
+    fn vis<R: RenderContext>(
+        &self,
+        rc: &mut R,
+        ts: TranslateScale,
+        style_id: Option<StyleId>,
+        theme: &Theme,
+    ) {
         if let Some(style) = theme.get_style(style_id).or_else(|| theme.get_default_style()) {
             let rect = ts * *self;
 
             if let Some(brush) = style.get_fill_color() {
                 rc.fill(rect, brush);
             } else if let Some(name) = style.get_fill_gradient_name() {
-                if let Some(gradient) = theme.get_gradient(name) {
+                if let Some(gradient) = theme.get_linear_gradient(name) {
+                    rc.fill(rect, gradient);
+                } else if let Some(gradient) = theme.get_radial_gradient(name) {
                     rc.fill(rect, gradient);
                 }
             }
@@ -93,9 +125,7 @@ impl<R: RenderContext> Vis<R> for Rect {
             }
         }
     }
-}
 
-impl WriteSvgWithStyle for Rect {
     fn write_svg_with_style<W: io::Write>(
         &self,
         mut svg: W,
@@ -122,27 +152,38 @@ impl WriteSvgWithStyle for Rect {
     }
 }
 
-impl<R: RenderContext> Vis<R> for RoundedRect {
-    fn vis(&self, rc: &mut R, ts: TranslateScale, style_id: Option<StyleId>, theme: &Theme) {
+impl Vis for RoundedRect {
+    #[inline]
+    fn bbox(&self, ts: TranslateScale) -> Rect {
+        (ts * *self).bounding_box()
+    }
+
+    fn vis<R: RenderContext>(
+        &self,
+        rc: &mut R,
+        ts: TranslateScale,
+        style_id: Option<StyleId>,
+        theme: &Theme,
+    ) {
         if let Some(style) = theme.get_style(style_id).or_else(|| theme.get_default_style()) {
-            let rect = ts * *self;
+            let rr = ts * *self;
 
             if let Some(brush) = style.get_fill_color() {
-                rc.fill(rect, brush);
+                rc.fill(rr, brush);
             } else if let Some(name) = style.get_fill_gradient_name() {
-                if let Some(gradient) = theme.get_gradient(name) {
-                    rc.fill(rect, gradient);
+                if let Some(gradient) = theme.get_linear_gradient(name) {
+                    rc.fill(rr, gradient);
+                } else if let Some(gradient) = theme.get_radial_gradient(name) {
+                    rc.fill(rr, gradient);
                 }
             }
 
             if let Some(border) = style.get_stroke() {
-                rc.stroke(rect, border.get_brush(), border.get_width());
+                rc.stroke(rr, border.get_brush(), border.get_width());
             }
         }
     }
-}
 
-impl WriteSvgWithStyle for RoundedRect {
     fn write_svg_with_style<W: io::Write>(
         &self,
         mut svg: W,
@@ -162,6 +203,58 @@ impl WriteSvgWithStyle for RoundedRect {
             rect.height(),
             rr.radius()
         )?;
+
+        if let Some(style) = theme.get_style(style_id) {
+            style.write_svg(&mut svg)?;
+        }
+
+        writeln!(svg, "/>")
+    }
+}
+
+impl Vis for Circle {
+    #[inline]
+    fn bbox(&self, ts: TranslateScale) -> Rect {
+        (ts * *self).bounding_box()
+    }
+
+    fn vis<R: RenderContext>(
+        &self,
+        rc: &mut R,
+        ts: TranslateScale,
+        style_id: Option<StyleId>,
+        theme: &Theme,
+    ) {
+        if let Some(style) = theme.get_style(style_id).or_else(|| theme.get_default_style()) {
+            let circ = ts * *self;
+
+            if let Some(brush) = style.get_fill_color() {
+                rc.fill(circ, brush);
+            } else if let Some(name) = style.get_fill_gradient_name() {
+                if let Some(gradient) = theme.get_linear_gradient(name) {
+                    rc.fill(circ, gradient);
+                } else if let Some(gradient) = theme.get_radial_gradient(name) {
+                    rc.fill(circ, gradient);
+                }
+            }
+
+            if let Some(border) = style.get_stroke() {
+                rc.stroke(circ, border.get_brush(), border.get_width());
+            }
+        }
+    }
+
+    fn write_svg_with_style<W: io::Write>(
+        &self,
+        mut svg: W,
+        ts: TranslateScale,
+        style_id: Option<StyleId>,
+        theme: &Theme,
+    ) -> io::Result<()> {
+        let center = ts * self.center;
+        let radius = ts.as_tuple().1 * self.radius;
+
+        write!(svg, "  <circle cx=\"{}\" cy=\"{}\" r=\"{}\" ", center.x, center.y, radius)?;
 
         if let Some(style) = theme.get_style(style_id) {
             style.write_svg(&mut svg)?;

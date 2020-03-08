@@ -1,15 +1,16 @@
 use std::collections::{HashMap, hash_map};
-use piet_common::{Color, LinearGradient, UnitPoint, GradientStops};
+use piet_common::{Color, LinearGradient, RadialGradient, UnitPoint, GradientStops};
 use crate::{Style, StyleId, Stroke, GradSpec};
 
 #[derive(Default, Debug)]
 pub struct Theme {
-    default_style:   Style,
-    scene_style:     Style,
-    named_styles:    HashMap<String, StyleId>,
-    named_gradients: HashMap<String, LinearGradient>,
-    named_gradspecs: HashMap<String, GradSpec>,
-    styles:          Vec<Style>,
+    default_style:    Style,
+    scene_style:      Style,
+    named_styles:     HashMap<String, StyleId>,
+    styles:           Vec<Style>,
+    named_gradspecs:  HashMap<String, GradSpec>,
+    linear_gradients: HashMap<String, LinearGradient>,
+    radial_gradients: HashMap<String, RadialGradient>,
 }
 
 impl Theme {
@@ -42,18 +43,27 @@ impl Theme {
         self
     }
 
-    pub fn with_named_gradients<S, G, I>(mut self, gradients: I) -> Self
+    pub fn with_gradients<S, G, I, J>(mut self, linear_gradients: I, radial_gradients: J) -> Self
     where
         S: AsRef<str>,
         G: GradientStops,
         I: IntoIterator<Item = (S, UnitPoint, UnitPoint, G)>,
+        J: IntoIterator<Item = (S, f64, G)>,
     {
-        for (name, start, end, stops) in gradients.into_iter() {
+        for (name, start, end, stops) in linear_gradients.into_iter() {
             let stops = stops.to_vec();
             let gradient = LinearGradient::new(start, end, stops.clone());
 
-            self.named_gradients.insert(name.as_ref().into(), gradient);
             self.named_gradspecs.insert(name.as_ref().into(), GradSpec::Linear(start, end, stops));
+            self.linear_gradients.insert(name.as_ref().into(), gradient);
+        }
+
+        for (name, radius, stops) in radial_gradients.into_iter() {
+            let stops = stops.to_vec();
+            let gradient = RadialGradient::new(radius, stops.clone());
+
+            self.named_gradspecs.insert(name.as_ref().into(), GradSpec::Radial(radius, stops));
+            self.radial_gradients.insert(name.as_ref().into(), gradient);
         }
 
         self
@@ -85,8 +95,13 @@ impl Theme {
     }
 
     #[inline]
-    pub fn get_gradient<S: AsRef<str>>(&self, name: S) -> Option<&LinearGradient> {
-        self.named_gradients.get(name.as_ref())
+    pub fn get_linear_gradient<S: AsRef<str>>(&self, name: S) -> Option<&LinearGradient> {
+        self.linear_gradients.get(name.as_ref())
+    }
+
+    #[inline]
+    pub fn get_radial_gradient<S: AsRef<str>>(&self, name: S) -> Option<&RadialGradient> {
+        self.radial_gradients.get(name.as_ref())
     }
 
     #[inline]
@@ -100,8 +115,13 @@ impl Theme {
     }
 
     #[inline]
-    pub fn get_named_gradients(&self) -> hash_map::Iter<String, LinearGradient> {
-        self.named_gradients.iter()
+    pub fn get_linear_gradients(&self) -> hash_map::Iter<String, LinearGradient> {
+        self.linear_gradients.iter()
+    }
+
+    #[inline]
+    pub fn get_radial_gradients(&self) -> hash_map::Iter<String, RadialGradient> {
+        self.radial_gradients.iter()
     }
 
     #[inline]

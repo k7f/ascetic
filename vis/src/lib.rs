@@ -13,12 +13,28 @@ pub use theme::Theme;
 use std::io;
 use piet_common::{
     RenderContext,
-    kurbo::{Shape, TranslateScale},
+    kurbo::{TranslateScale, Rect},
 };
 
 /// Only `Shape`s may be `vis`ed, only `Scene` may be `render`ed.
-pub trait Vis<R: RenderContext>: Shape {
-    fn vis(&self, rc: &mut R, ts: TranslateScale, style_id: Option<StyleId>, theme: &Theme);
+pub trait Vis {
+    fn bbox(&self, ts: TranslateScale) -> Rect;
+
+    fn vis<R: RenderContext>(
+        &self,
+        rc: &mut R,
+        ts: TranslateScale,
+        style_id: Option<StyleId>,
+        theme: &Theme,
+    );
+
+    fn write_svg_with_style<W: io::Write>(
+        &self,
+        svg: W,
+        ts: TranslateScale,
+        style_id: Option<StyleId>,
+        theme: &Theme,
+    ) -> io::Result<()>;
 }
 
 pub trait WriteSvg {
@@ -27,16 +43,6 @@ pub trait WriteSvg {
 
 pub trait WriteSvgWithName {
     fn write_svg_with_name<W: io::Write, S: AsRef<str>>(&self, svg: W, name: S) -> io::Result<()>;
-}
-
-pub trait WriteSvgWithStyle {
-    fn write_svg_with_style<W: io::Write>(
-        &self,
-        svg: W,
-        ts: TranslateScale,
-        style_id: Option<StyleId>,
-        theme: &Theme,
-    ) -> io::Result<()>;
 }
 
 #[derive(Clone, Copy, Debug)]
