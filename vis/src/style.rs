@@ -1,6 +1,10 @@
 use std::io;
-use piet_common::{Color, UnitPoint, GradientStop, kurbo::Rect};
+use piet::{Color, UnitPoint, GradientStop};
+use kurbo::Rect;
 use crate::{WriteSvg, WriteSvgWithName};
+
+#[derive(Clone, Copy, Debug)]
+pub struct StyleId(pub usize);
 
 impl WriteSvgWithName for Color {
     fn write_svg_with_name<W: io::Write, S: AsRef<str>>(

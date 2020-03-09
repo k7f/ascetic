@@ -1,30 +1,32 @@
 use std::io;
-use piet_common::{
-    RenderContext,
-    kurbo::{Shape, Line, Rect, RoundedRect, Circle, TranslateScale},
-};
-use crate::{Vis, Theme, StyleId, WriteSvg};
+use piet::RenderContext;
+use kurbo::{Shape, Line, Rect, RoundedRect, Circle, TranslateScale};
+use crate::{Vis, WriteSvgWithStyle, Theme, StyleId, WriteSvg};
+
+#[derive(Clone, Copy, Debug)]
+pub struct CrumbId(pub usize);
+
+#[derive(Clone, Copy, Debug)]
+pub struct CrumbItem(pub CrumbId, pub TranslateScale, pub Option<StyleId>);
 
 #[derive(Clone, Debug)]
-pub enum Prim {
+pub enum Crumb {
     Line(Line),
     Rect(Rect),
     RoundedRect(RoundedRect),
     Circle(Circle),
 }
 
-impl Vis for Prim {
+impl Vis for Crumb {
     fn bbox(&self, ts: TranslateScale) -> Rect {
         match *self {
-            Prim::Line(line) => line.bbox(ts),
-            Prim::Rect(rect) => rect.bbox(ts),
-            Prim::RoundedRect(rr) => rr.bbox(ts),
-            Prim::Circle(circ) => circ.bbox(ts),
+            Crumb::Line(line) => line.bbox(ts),
+            Crumb::Rect(rect) => rect.bbox(ts),
+            Crumb::RoundedRect(rr) => rr.bbox(ts),
+            Crumb::Circle(circ) => circ.bbox(ts),
         }
     }
 
-    /// In order to implement `Shape` for `Prim`, associated type
-    /// `BezPathIter` would have to be generic...
     fn vis<R: RenderContext>(
         &self,
         rc: &mut R,
@@ -33,13 +35,15 @@ impl Vis for Prim {
         theme: &Theme,
     ) {
         match *self {
-            Prim::Line(line) => line.vis(rc, ts, style_id, theme),
-            Prim::Rect(rect) => rect.vis(rc, ts, style_id, theme),
-            Prim::RoundedRect(rr) => rr.vis(rc, ts, style_id, theme),
-            Prim::Circle(circ) => circ.vis(rc, ts, style_id, theme),
+            Crumb::Line(line) => line.vis(rc, ts, style_id, theme),
+            Crumb::Rect(rect) => rect.vis(rc, ts, style_id, theme),
+            Crumb::RoundedRect(rr) => rr.vis(rc, ts, style_id, theme),
+            Crumb::Circle(circ) => circ.vis(rc, ts, style_id, theme),
         }
     }
+}
 
+impl WriteSvgWithStyle for Crumb {
     fn write_svg_with_style<W: io::Write>(
         &self,
         mut svg: W,
@@ -48,10 +52,10 @@ impl Vis for Prim {
         theme: &Theme,
     ) -> io::Result<()> {
         match self {
-            Prim::Line(line) => line.write_svg_with_style(&mut svg, ts, style_id, theme),
-            Prim::Rect(rect) => rect.write_svg_with_style(&mut svg, ts, style_id, theme),
-            Prim::RoundedRect(rr) => rr.write_svg_with_style(&mut svg, ts, style_id, theme),
-            Prim::Circle(circ) => circ.write_svg_with_style(&mut svg, ts, style_id, theme),
+            Crumb::Line(line) => line.write_svg_with_style(&mut svg, ts, style_id, theme),
+            Crumb::Rect(rect) => rect.write_svg_with_style(&mut svg, ts, style_id, theme),
+            Crumb::RoundedRect(rr) => rr.write_svg_with_style(&mut svg, ts, style_id, theme),
+            Crumb::Circle(circ) => circ.write_svg_with_style(&mut svg, ts, style_id, theme),
         }
     }
 }
@@ -73,7 +77,9 @@ impl Vis for Line {
             rc.stroke(ts * *self, stroke.get_brush(), stroke.get_width());
         }
     }
+}
 
+impl WriteSvgWithStyle for Line {
     fn write_svg_with_style<W: io::Write>(
         &self,
         mut svg: W,
@@ -125,7 +131,9 @@ impl Vis for Rect {
             }
         }
     }
+}
 
+impl WriteSvgWithStyle for Rect {
     fn write_svg_with_style<W: io::Write>(
         &self,
         mut svg: W,
@@ -183,7 +191,9 @@ impl Vis for RoundedRect {
             }
         }
     }
+}
 
+impl WriteSvgWithStyle for RoundedRect {
     fn write_svg_with_style<W: io::Write>(
         &self,
         mut svg: W,
@@ -243,7 +253,9 @@ impl Vis for Circle {
             }
         }
     }
+}
 
+impl WriteSvgWithStyle for Circle {
     fn write_svg_with_style<W: io::Write>(
         &self,
         mut svg: W,
@@ -263,8 +275,3 @@ impl Vis for Circle {
         writeln!(svg, "/>")
     }
 }
-
-// let path_iter = self.to_bez_path(1e-3);
-// write!(svg, "  <path d=\"")?;
-// path.write_to(&mut svg)?;
-// write!(svg, "\" ")?;

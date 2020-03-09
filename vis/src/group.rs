@@ -1,119 +1,118 @@
-use piet_common::kurbo::TranslateScale;
-use crate::{PrimId, GroupId, StyleId};
+use kurbo::TranslateScale;
+use crate::{CrumbId, CrumbItem, StyleId};
 
 const IDENTITY: TranslateScale = TranslateScale::scale(1.0);
 
-/// `Groups` are plain containers with neither drawing nor
-/// transformation capabilities.
+#[derive(Clone, Copy, Debug)]
+pub struct GroupId(pub usize);
+
+#[derive(Clone, Copy, Debug)]
+pub struct GroupItem(pub GroupId, pub TranslateScale);
+
 #[derive(Clone, Debug)]
 pub struct Group {
-    prims:  Vec<(PrimId, Option<StyleId>, TranslateScale)>,
-    groups: Vec<(GroupId, TranslateScale)>,
+    crumbs: Vec<CrumbItem>,
+    groups: Vec<GroupItem>,
 }
 
 impl Group {
-    pub fn from_prims_ts<I>(prims: I) -> Self
+    pub fn from_crumb_items<I>(crumbs: I) -> Self
     where
-        I: IntoIterator<Item = (PrimId, Option<StyleId>, TranslateScale)>,
+        I: IntoIterator<Item = CrumbItem>,
     {
-        let prims = prims.into_iter().collect();
+        let crumbs = crumbs.into_iter().collect();
         let groups = Vec::new();
 
-        Group { prims, groups }
+        Group { crumbs, groups }
     }
 
-    pub fn from_groups_ts<I>(groups: I) -> Self
+    pub fn from_group_items<I>(groups: I) -> Self
     where
-        I: IntoIterator<Item = (GroupId, TranslateScale)>,
+        I: IntoIterator<Item = GroupItem>,
     {
-        let prims = Vec::new();
+        let crumbs = Vec::new();
         let groups = groups.into_iter().collect();
 
-        Group { prims, groups }
+        Group { crumbs, groups }
     }
 
-    pub fn from_prims<I>(prims: I) -> Self
+    pub fn from_crumb_ids<I>(crumbs: I) -> Self
     where
-        I: IntoIterator<Item = (PrimId, Option<StyleId>)>,
+        I: IntoIterator<Item = (CrumbId, Option<StyleId>)>,
     {
-        let prims = prims.into_iter().map(|(p, s)| (p, s, IDENTITY)).collect();
+        let crumbs = crumbs.into_iter().map(|(p, s)| CrumbItem(p, IDENTITY, s)).collect();
         let groups = Vec::new();
 
-        Group { prims, groups }
+        Group { crumbs, groups }
     }
 
-    pub fn from_groups<I>(groups: I) -> Self
+    pub fn from_group_ids<I>(groups: I) -> Self
     where
         I: IntoIterator<Item = GroupId>,
     {
-        let prims = Vec::new();
-        let groups = groups.into_iter().map(|g| (g, IDENTITY)).collect();
+        let crumbs = Vec::new();
+        let groups = groups.into_iter().map(|g| GroupItem(g, IDENTITY)).collect();
 
-        Group { prims, groups }
+        Group { crumbs, groups }
     }
 
-    pub fn with_prim_ts(
-        mut self,
-        prim_id: PrimId,
-        style_id: Option<StyleId>,
-        ts: TranslateScale,
-    ) -> Self {
-        self.prims.push((prim_id, style_id, ts));
+    pub fn with_crumb_item(mut self, crumb: CrumbItem) -> Self {
+        self.crumbs.push(crumb);
         self
     }
 
-    pub fn with_group_ts(mut self, group_id: GroupId, ts: TranslateScale) -> Self {
-        self.groups.push((group_id, ts));
+    pub fn with_group_item(mut self, group: GroupItem) -> Self {
+        self.groups.push(group);
         self
     }
 
-    pub fn with_prim(mut self, prim_id: PrimId, style_id: Option<StyleId>) -> Self {
-        self.prims.push((prim_id, style_id, IDENTITY));
+    pub fn with_crumb_id(mut self, crumb_id: CrumbId, style_id: Option<StyleId>) -> Self {
+        self.crumbs.push(CrumbItem(crumb_id, IDENTITY, style_id));
         self
     }
 
-    pub fn with_group(mut self, group_id: GroupId) -> Self {
-        self.groups.push((group_id, IDENTITY));
+    pub fn with_group_id(mut self, group_id: GroupId) -> Self {
+        self.groups.push(GroupItem(group_id, IDENTITY));
         self
     }
 
-    pub fn with_prims_ts<I>(mut self, prims: I) -> Self
+    pub fn with_crumb_items<I>(mut self, crumbs: I) -> Self
     where
-        I: IntoIterator<Item = (PrimId, Option<StyleId>, TranslateScale)>,
+        I: IntoIterator<Item = CrumbItem>,
     {
-        self.prims.extend(prims.into_iter());
+        self.crumbs.extend(crumbs.into_iter());
         self
     }
 
-    pub fn with_groups_ts<I>(mut self, groups: I) -> Self
+    pub fn with_group_items<I>(mut self, groups: I) -> Self
     where
-        I: IntoIterator<Item = (GroupId, TranslateScale)>,
+        I: IntoIterator<Item = GroupItem>,
     {
         self.groups.extend(groups.into_iter());
         self
     }
 
-    pub fn with_prims<I>(mut self, prims: I) -> Self
+    pub fn with_crumb_ids<I>(mut self, crumbs: I) -> Self
     where
-        I: IntoIterator<Item = (PrimId, Option<StyleId>)>,
+        I: IntoIterator<Item = (CrumbId, Option<StyleId>)>,
     {
-        self.prims.extend(prims.into_iter().map(|(p, s)| (p, s, IDENTITY)));
+        self.crumbs.extend(crumbs.into_iter().map(|(p, s)| CrumbItem(p, IDENTITY, s)));
         self
     }
 
-    pub fn with_groups<I>(mut self, groups: I) -> Self
+    pub fn with_group_ids<I>(mut self, groups: I) -> Self
     where
         I: IntoIterator<Item = GroupId>,
     {
-        self.groups.extend(groups.into_iter().map(|g| (g, IDENTITY)));
+        self.groups.extend(groups.into_iter().map(|g| GroupItem(g, IDENTITY)));
         self
     }
 
-    pub fn get_prims(&self) -> &[(PrimId, Option<StyleId>, TranslateScale)] {
-        self.prims.as_slice()
+    pub fn get_crumb_items(&self) -> &[CrumbItem] {
+        self.crumbs.as_slice()
     }
 
-    pub fn get_groups(&self) -> &[(GroupId, TranslateScale)] {
+    pub fn get_group_items(&self) -> &[GroupItem] {
         self.groups.as_slice()
     }
 }

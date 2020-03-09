@@ -1,14 +1,15 @@
 use std::{slice, io::Write, error::Error};
-use piet_common::{
-    RenderContext,
-    kurbo::{Line, Rect, RoundedRect, Circle, TranslateScale, Size},
+use piet::RenderContext;
+use kurbo::{Line, Rect, RoundedRect, Circle, TranslateScale, Size};
+use crate::{
+    Vis, WriteSvgWithStyle, WriteSvgWithName, Crumb, CrumbId, CrumbItem, Group, GroupId, GroupItem,
+    StyleId, Theme,
 };
-use crate::{Vis, Prim, PrimId, Group, GroupId, StyleId, Theme, WriteSvgWithName};
 
 #[derive(Clone, Default, Debug)]
 pub struct Scene {
     size:   Size,
-    prims:  Vec<Prim>,
+    crumbs: Vec<Crumb>,
     groups: Vec<Group>,
     roots:  Vec<GroupId>,
 }
@@ -18,44 +19,44 @@ impl Scene {
         Scene { size: size.into(), ..Default::default() }
     }
 
-    pub fn add_line(&mut self, line: Line) -> PrimId {
-        let id = self.prims.len();
+    pub fn add_line(&mut self, line: Line) -> CrumbId {
+        let id = self.crumbs.len();
 
-        self.prims.push(Prim::Line(line));
+        self.crumbs.push(Crumb::Line(line));
 
-        PrimId(id)
+        CrumbId(id)
     }
 
-    pub fn add_rect(&mut self, rect: Rect) -> PrimId {
-        let id = self.prims.len();
+    pub fn add_rect(&mut self, rect: Rect) -> CrumbId {
+        let id = self.crumbs.len();
 
-        self.prims.push(Prim::Rect(rect));
+        self.crumbs.push(Crumb::Rect(rect));
 
-        PrimId(id)
+        CrumbId(id)
     }
 
-    pub fn add_rounded_rect(&mut self, rect: RoundedRect) -> PrimId {
-        let id = self.prims.len();
+    pub fn add_rounded_rect(&mut self, rect: RoundedRect) -> CrumbId {
+        let id = self.crumbs.len();
 
-        self.prims.push(Prim::RoundedRect(rect));
+        self.crumbs.push(Crumb::RoundedRect(rect));
 
-        PrimId(id)
+        CrumbId(id)
     }
 
-    pub fn add_circle(&mut self, circ: Circle) -> PrimId {
-        let id = self.prims.len();
+    pub fn add_circle(&mut self, circ: Circle) -> CrumbId {
+        let id = self.crumbs.len();
 
-        self.prims.push(Prim::Circle(circ));
+        self.crumbs.push(Crumb::Circle(circ));
 
-        PrimId(id)
+        CrumbId(id)
     }
 
-    pub fn add_prim(&mut self, prim: Prim) -> PrimId {
-        let id = self.prims.len();
+    pub fn add_crumb(&mut self, crumb: Crumb) -> CrumbId {
+        let id = self.crumbs.len();
 
-        self.prims.push(prim);
+        self.crumbs.push(crumb);
 
-        PrimId(id)
+        CrumbId(id)
     }
 
     pub fn add_group(&mut self, group: Group) -> GroupId {
@@ -66,12 +67,12 @@ impl Scene {
         GroupId(id)
     }
 
-    pub fn add_grouped_prims<I>(&mut self, prims: I) -> GroupId
+    pub fn add_grouped_crumbs<I>(&mut self, crumbs: I) -> GroupId
     where
-        I: IntoIterator<Item = (Prim, Option<StyleId>)>,
+        I: IntoIterator<Item = (Crumb, Option<StyleId>)>,
     {
-        let prims = prims.into_iter().map(|(p, s)| (self.add_prim(p), s));
-        let group = Group::from_prims(prims);
+        let crumbs = crumbs.into_iter().map(|(p, s)| (self.add_crumb(p), s));
+        let group = Group::from_crumb_ids(crumbs);
 
         self.add_group(group)
     }
@@ -80,8 +81,8 @@ impl Scene {
     where
         I: IntoIterator<Item = (Line, Option<StyleId>)>,
     {
-        let prims = lines.into_iter().map(|(l, s)| (self.add_line(l), s));
-        let group = Group::from_prims(prims);
+        let crumbs = lines.into_iter().map(|(l, s)| (self.add_line(l), s));
+        let group = Group::from_crumb_ids(crumbs);
 
         self.add_group(group)
     }
@@ -117,9 +118,9 @@ impl Scene {
 
         rc.clear(theme.get_bg_color());
 
-        for (prim_id, style_id, ts) in self.all_prims(root_ts) {
-            if let Some(prim) = self.prims.get(prim_id.0) {
-                prim.vis(rc, ts, style_id, theme);
+        for CrumbItem(crumb_id, ts, style_id) in self.all_crumbs(root_ts) {
+            if let Some(crumb) = self.crumbs.get(crumb_id.0) {
+                crumb.vis(rc, ts, style_id, theme);
             } else {
                 // FIXME
                 panic!()
@@ -170,9 +171,9 @@ impl Scene {
         bg_color.write_svg_with_name(&mut svg, "fill")?;
         writeln!(&mut svg, " />")?;
 
-        for (prim_id, style_id, ts) in self.all_prims(root_ts) {
-            if let Some(prim) = self.prims.get(prim_id.0) {
-                prim.write_svg_with_style(&mut svg, ts, style_id, theme)?;
+        for CrumbItem(crumb_id, ts, style_id) in self.all_crumbs(root_ts) {
+            if let Some(crumb) = self.crumbs.get(crumb_id.0) {
+                crumb.write_svg_with_style(&mut svg, ts, style_id, theme)?;
             } else {
                 // FIXME
                 panic!()
@@ -188,17 +189,17 @@ impl Scene {
         Ok(svg)
     }
 
-    fn push_prims_of_a_group<'a>(
+    fn push_crumbs_of_a_group<'a>(
         &'a self,
         group: &'a Group,
         ts: TranslateScale,
-        prim_chain: &mut Vec<(PrimList<'a>, TranslateScale)>,
+        crumb_chain: &mut Vec<(CrumbList<'a>, TranslateScale)>,
     ) {
-        prim_chain.push((group.get_prims().iter(), ts));
+        crumb_chain.push((group.get_crumb_items().iter(), ts));
 
-        for (group_id, group_ts) in group.get_groups().iter() {
+        for GroupItem(group_id, group_ts) in group.get_group_items().iter() {
             if let Some(group) = self.groups.get(group_id.0) {
-                self.push_prims_of_a_group(group, ts * *group_ts, prim_chain);
+                self.push_crumbs_of_a_group(group, ts * *group_ts, crumb_chain);
             } else {
                 // FIXME
                 panic!()
@@ -206,39 +207,42 @@ impl Scene {
         }
     }
 
-    /// Deep traversal with transformations applied.
-    pub fn all_prims(&self, root_ts: TranslateScale) -> PrimChainIter {
-        let mut prim_chain = Vec::new();
+    /// Collects all crumbs of a scene.
+    ///
+    /// Returns an iterator listing [`CrumbItem`]s containing their
+    /// effective transformations computed in the depth-first
+    /// traversal of the scene tree.
+    pub fn all_crumbs(&self, root_ts: TranslateScale) -> CrumbChainIter {
+        let mut crumb_chain = Vec::new();
 
         for group_id in self.roots.iter() {
             if let Some(group) = self.groups.get(group_id.0) {
-                self.push_prims_of_a_group(group, root_ts, &mut prim_chain);
+                self.push_crumbs_of_a_group(group, root_ts, &mut crumb_chain);
             } else {
                 // FIXME
                 panic!()
             }
         }
 
-        PrimChainIter { prim_chain }
+        CrumbChainIter { crumb_chain }
     }
 }
 
-type PrimItem = (PrimId, Option<StyleId>, TranslateScale);
-type PrimList<'a> = slice::Iter<'a, PrimItem>;
+type CrumbList<'a> = slice::Iter<'a, CrumbItem>;
 
-pub struct PrimChainIter<'a> {
-    prim_chain: Vec<(PrimList<'a>, TranslateScale)>,
+pub struct CrumbChainIter<'a> {
+    crumb_chain: Vec<(CrumbList<'a>, TranslateScale)>,
 }
 
-impl<'a> Iterator for PrimChainIter<'a> {
-    type Item = PrimItem;
+impl<'a> Iterator for CrumbChainIter<'a> {
+    type Item = CrumbItem;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some((mut prim_list, ts)) = self.prim_chain.pop() {
-            if let Some(item) = prim_list.next() {
-                self.prim_chain.push((prim_list, ts));
+        while let Some((mut crumb_list, ts)) = self.crumb_chain.pop() {
+            if let Some(item) = crumb_list.next() {
+                self.crumb_chain.push((crumb_list, ts));
 
-                return Some((item.0, item.1, item.2 * ts))
+                return Some(CrumbItem(item.0, item.1 * ts, item.2))
             }
         }
 

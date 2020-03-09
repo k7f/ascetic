@@ -5,11 +5,9 @@ use std::{
     io::{Write, BufWriter},
     error::Error,
 };
-use piet_common::{
-    Device, BitmapTarget, ImageFormat, Color, UnitPoint,
-    kurbo::{Line, Rect, RoundedRect, Circle, TranslateScale},
-};
-use ascetic_vis::{Scene, Group, Style, Stroke, Fill, Theme};
+use piet::{Color, UnitPoint, ImageFormat};
+use kurbo::{Line, Rect, RoundedRect, Circle, TranslateScale};
+use ascetic_vis::{Scene, Group, GroupItem, Style, Stroke, Fill, Theme, CairoBitmapDevice};
 
 struct App {
     png_path:        PathBuf,
@@ -112,9 +110,8 @@ impl App {
     fn render_to_png(&self, scene: &Scene, theme: &Theme) -> Result<&Path, Box<dyn Error>> {
         let out_width = self.out_size.0.round() as usize;
         let out_height = self.out_size.1.round() as usize;
-        let mut device = Device::new()?;
-        let mut bitmap = device.bitmap_target(out_width, out_height, 1.)?;
-        let mut rc = bitmap.render_context();
+        let mut device = CairoBitmapDevice::new(out_width, out_height, 1.)?;
+        let mut rc = device.render_context();
 
         scene.render(theme, self.out_size, self.out_margin, &mut rc)?;
 
@@ -122,10 +119,10 @@ impl App {
             eprintln!("Finished rendering.");
         }
 
-        self.save_bitmap_image(bitmap)
+        self.save_bitmap_image(device)
     }
 
-    fn save_bitmap_image(&self, bitmap: BitmapTarget) -> Result<&Path, Box<dyn Error>> {
+    fn save_bitmap_image(&self, device: CairoBitmapDevice) -> Result<&Path, Box<dyn Error>> {
         if self.verbosity > 0 {
             eprint!("Writing image data to \"{}\"...", self.png_path.display());
         }
@@ -135,7 +132,7 @@ impl App {
             unimplemented!()
         }
 
-        let pixels = bitmap.into_raw_pixels(ImageFormat::RgbaPremul)?;
+        let pixels = device.into_raw_pixels(ImageFormat::RgbaPremul)?;
         let png_file = File::create(&self.png_path)?;
         let mut buf_writer = BufWriter::new(png_file);
 
@@ -208,20 +205,33 @@ fn main() -> Result<(), Box<dyn Error>> {
         (Line::new((250., 1000.), (250., 0.)), theme.get("line-2")),
     ]);
 
-    let rects = scene.add_group(Group::from_prims(vec![
+    let rects = scene.add_group(Group::from_crumb_ids(vec![
         (button, theme.get("rect-1")),
         (button, theme.get("rect-2")),
     ]));
 
-    let circle = scene.add_circle(Circle::new((133., 500.), 112.));
+    let circle = scene.add_circle(Circle::new((133., 500.), 110.));
 
-    let left_group = scene
-        .add_group(Group::from_groups(vec![lines, rects]).with_prim(circle, theme.get("circ-1")));
+    let mixed_group = scene.add_group(
+        Group::from_group_ids(vec![lines, rects]).with_crumb_id(circle, theme.get("circ-1")),
+    );
+
+    let triple_group = scene.add_group(
+        Group::from_group_ids(vec![mixed_group])
+            .with_group_item(GroupItem(
+                mixed_group,
+                0.5 * TranslateScale::translate((750., 0.).into()),
+            ))
+            .with_group_item(GroupItem(
+                mixed_group,
+                0.5 * TranslateScale::translate((750., 1000.).into()),
+            )),
+    );
 
     scene.add_root(
-        Group::from_prims(vec![(border, theme.get("border"))])
-            .with_group(left_group)
-            .with_group_ts(left_group, TranslateScale::translate((450., 0.).into())),
+        Group::from_crumb_ids(vec![(border, theme.get("border"))])
+            .with_group_id(triple_group)
+            .with_group_item(GroupItem(triple_group, TranslateScale::translate((500., 0.).into()))),
     );
 
     if app.verbosity > 1 {

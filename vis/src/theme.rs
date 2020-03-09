@@ -1,5 +1,5 @@
 use std::collections::{HashMap, hash_map};
-use piet_common::{Color, LinearGradient, RadialGradient, UnitPoint, GradientStops};
+use piet::{Color, LinearGradient, RadialGradient, UnitPoint, GradientStops};
 use crate::{Style, StyleId, Stroke, GradSpec};
 
 #[derive(Default, Debug)]

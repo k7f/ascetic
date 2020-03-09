@@ -1,22 +1,21 @@
-mod prim;
+mod crumb;
 mod group;
 mod style;
 mod theme;
 mod scene;
+mod backend;
 
-pub use prim::Prim;
-pub use group::Group;
-pub use style::{Style, Stroke, Fill, GradSpec};
+pub use crumb::{Crumb, CrumbId, CrumbItem};
+pub use group::{Group, GroupId, GroupItem};
+pub use style::{Style, StyleId, Stroke, Fill, GradSpec};
 pub use scene::Scene;
 pub use theme::Theme;
+pub use backend::cairo::BitmapDevice as CairoBitmapDevice;
 
 use std::io;
-use piet_common::{
-    RenderContext,
-    kurbo::{TranslateScale, Rect},
-};
+use piet::RenderContext;
+use kurbo::{TranslateScale, Rect};
 
-/// Only `Shape`s may be `vis`ed, only `Scene` may be `render`ed.
 pub trait Vis {
     fn bbox(&self, ts: TranslateScale) -> Rect;
 
@@ -27,7 +26,9 @@ pub trait Vis {
         style_id: Option<StyleId>,
         theme: &Theme,
     );
+}
 
+pub trait WriteSvgWithStyle {
     fn write_svg_with_style<W: io::Write>(
         &self,
         svg: W,
@@ -44,12 +45,3 @@ pub trait WriteSvg {
 pub trait WriteSvgWithName {
     fn write_svg_with_name<W: io::Write, S: AsRef<str>>(&self, svg: W, name: S) -> io::Result<()>;
 }
-
-#[derive(Clone, Copy, Debug)]
-pub struct PrimId(pub usize);
-
-#[derive(Clone, Copy, Debug)]
-pub struct GroupId(pub usize);
-
-#[derive(Clone, Copy, Debug)]
-pub struct StyleId(pub usize);
