@@ -5,9 +5,8 @@ use std::{
     io::{Write, BufWriter},
     error::Error,
 };
-use piet::{Color, UnitPoint, ImageFormat};
-use kurbo::{Line, Rect, RoundedRect, Circle, TranslateScale};
-use ascetic_vis::{Scene, Group, GroupItem, Style, Stroke, Fill, Theme, CairoBitmapDevice};
+use piet::ImageFormat;
+use ascetic_vis::{Scene, Theme, CairoBitmapDevice};
 
 struct App {
     png_path:        PathBuf,
@@ -18,6 +17,7 @@ struct App {
     png_bit_depth:   png::BitDepth,
     png_compression: png::Compression,
     png_filter:      png::FilterType,
+    theme_variation: Option<String>,
     #[allow(dead_code)]
     verbosity:       u32,
 }
@@ -41,6 +41,7 @@ impl App {
         let png_bit_depth = Self::DEFAULT_PNG_BIT_DEPTH;
         let png_compression = Self::DEFAULT_PNG_COMPRESSION;
         let png_filter = Self::DEFAULT_PNG_FILTER;
+        let mut theme_variation = None;
         let mut verbosity = 0;
 
         for (prev_arg, next_arg) in std::env::args().zip(std::env::args().skip(1)) {
@@ -48,7 +49,7 @@ impl App {
                 "-v" => verbosity += 1,
                 "-vv" => verbosity += 2,
                 "--with-svg" => with_svg = true,
-                "-w" | "-h" | "--svg" => {}
+                "-w" | "-h" | "--svg" | "--theme" => {}
                 arg => {
                     if arg.starts_with('-') {
                         panic!("ERROR: Invalid CLI option \"{}\"", arg)
@@ -57,6 +58,7 @@ impl App {
                             "-w" => out_size.0 = next_arg.parse()?,
                             "-h" => out_size.1 = next_arg.parse()?,
                             "--svg" => svg_path = Some(PathBuf::from(arg)),
+                            "--theme" => theme_variation = Some(arg.into()),
                             _ => png_path = Some(PathBuf::from(arg)),
                         }
                     }
@@ -86,6 +88,7 @@ impl App {
             png_bit_depth,
             png_compression,
             png_filter,
+            theme_variation,
             verbosity,
         })
     }
@@ -152,90 +155,15 @@ impl App {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let app = App::new()?;
-
-    let gradient_v_stops = vec![Color::WHITE, Color::BLACK];
-    let gradient_h_stops = vec![Color::rgba8(0, 0xff, 0, 64), Color::rgba8(0xff, 0, 0xff, 64)];
-    let gradient_r_stops = vec![Color::rgb8(0xff, 0xff, 0xff), Color::rgb8(0xff, 0, 0)];
-
-    let linear_gradients = vec![
-        ("gradient-v", UnitPoint::TOP, UnitPoint::BOTTOM, gradient_v_stops.as_slice()),
-        ("gradient-h", UnitPoint::LEFT, UnitPoint::RIGHT, gradient_h_stops.as_slice()),
-    ];
-
-    let radial_gradients = vec![("gradient-r", 1., gradient_r_stops.as_slice())];
-
-    let styles = vec![
-        ("border", Style::new().with_stroke(Stroke::new())),
-        (
-            "line-1",
-            Style::new()
-                .with_stroke(Stroke::new().with_brush(Color::rgb8(0, 0x80, 0x80)).with_width(3.)),
-        ),
-        (
-            "line-2",
-            Style::new()
-                .with_stroke(Stroke::new().with_brush(Color::rgb8(0x80, 0x80, 0)).with_width(0.5)),
-        ),
-        ("rect-1", Style::new().with_fill(Fill::Linear("gradient-v".into()))),
-        (
-            "rect-2",
-            Style::new()
-                .with_fill(Fill::Linear("gradient-h".into()))
-                .with_stroke(Stroke::new().with_brush(Color::BLACK).with_width(1.)),
-        ),
-        (
-            "circ-1",
-            Style::new()
-                .with_fill(Fill::Radial("gradient-r".into()))
-                .with_stroke(Stroke::new().with_brush(Color::rgb(0xff, 0, 0)).with_width(5.)),
-        ),
-    ];
-
-    let theme =
-        Theme::new().with_gradients(linear_gradients, radial_gradients).with_named_styles(styles);
-
-    let mut scene = Scene::new((1000., 1000.));
-
-    let border = scene.add_rect(Rect::new(0., 0., 1000., 1000.));
-    let button = scene.add_rounded_rect(RoundedRect::new(250., 400., 450., 600., 10.));
-
-    let lines = scene.add_grouped_lines(vec![
-        (Line::new((0., 500.), (250., 0.)), theme.get("line-1")),
-        (Line::new((0., 500.), (250., 1000.)), theme.get("line-1")),
-        (Line::new((250., 1000.), (250., 0.)), theme.get("line-2")),
-    ]);
-
-    let rects = scene.add_group(Group::from_crumb_ids(vec![
-        (button, theme.get("rect-1")),
-        (button, theme.get("rect-2")),
-    ]));
-
-    let circle = scene.add_circle(Circle::new((133., 500.), 110.));
-
-    let mixed_group = scene.add_group(
-        Group::from_group_ids(vec![lines, rects]).with_crumb_id(circle, theme.get("circ-1")),
-    );
-
-    let triple_group = scene.add_group(
-        Group::from_group_ids(vec![mixed_group])
-            .with_group_item(GroupItem(
-                mixed_group,
-                0.5 * TranslateScale::translate((750., 0.).into()),
-            ))
-            .with_group_item(GroupItem(
-                mixed_group,
-                0.5 * TranslateScale::translate((750., 1000.).into()),
-            )),
-    );
-
-    scene.add_root(
-        Group::from_crumb_ids(vec![(border, theme.get("border"))])
-            .with_group_id(triple_group)
-            .with_group_item(GroupItem(triple_group, TranslateScale::translate((500., 0.).into()))),
-    );
+    let mut theme = Theme::simple_demo();
+    let scene = Scene::simple_demo(&theme);
 
     if app.verbosity > 1 {
         eprintln!("{:?}", scene);
+    }
+
+    if let Some(ref variation) = app.theme_variation {
+        theme.use_variation(Some(variation));
     }
 
     match app.render_to_svg(&scene, &theme) {

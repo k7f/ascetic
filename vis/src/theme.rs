@@ -1,13 +1,125 @@
 use std::collections::{HashMap, hash_map};
 use piet::{Color, LinearGradient, RadialGradient, UnitPoint, GradientStops};
-use crate::{Style, StyleId, Stroke, GradSpec};
+use crate::{Style, StyleId, Stroke, Fill, GradSpec};
+
+#[derive(Default, Debug)]
+pub struct Variation {
+    strokes:    HashMap<String, Stroke>,
+    fills:      HashMap<String, Fill>,
+    variations: HashMap<String, Variation>,
+}
+
+impl Variation {
+    pub fn new() -> Self {
+        Variation::default()
+    }
+
+    pub fn with_strokes<S, I>(mut self, strokes: I) -> Self
+    where
+        S: AsRef<str>,
+        I: IntoIterator<Item = (S, Stroke)>,
+    {
+        self.add_strokes(strokes);
+
+        self
+    }
+
+    pub fn with_fills<S, I>(mut self, fills: I) -> Self
+    where
+        S: AsRef<str>,
+        I: IntoIterator<Item = (S, Fill)>,
+    {
+        self.add_fills(fills);
+
+        self
+    }
+
+    pub fn add_strokes<S, I>(&mut self, strokes: I)
+    where
+        S: AsRef<str>,
+        I: IntoIterator<Item = (S, Stroke)>,
+    {
+        for (name, stroke) in strokes.into_iter() {
+            self.strokes.insert(name.as_ref().into(), stroke);
+        }
+    }
+
+    pub fn add_fills<S, I>(&mut self, fills: I)
+    where
+        S: AsRef<str>,
+        I: IntoIterator<Item = (S, Fill)>,
+    {
+        for (name, fill) in fills.into_iter() {
+            self.fills.insert(name.as_ref().into(), fill);
+        }
+    }
+
+    #[inline]
+    pub fn get_stroke_by_name<S: AsRef<str>>(&self, name: S) -> Option<&Stroke> {
+        self.strokes.get(name.as_ref())
+    }
+
+    #[inline]
+    pub fn get_fill_by_name<S: AsRef<str>>(&self, name: S) -> Option<&Fill> {
+        self.fills.get(name.as_ref())
+    }
+
+    pub fn get_stroke_by_path<V, I, S>(&self, path: I, name: S) -> Option<&Stroke>
+    where
+        V: AsRef<str>,
+        I: IntoIterator<Item = V>,
+        S: AsRef<str>,
+    {
+        let name = name.as_ref();
+        let mut result = self.get_stroke_by_name(name);
+        let mut variation = self;
+
+        for nv in path.into_iter() {
+            if let Some(v) = variation.variations.get(nv.as_ref()) {
+                if let Some(s) = v.get_stroke_by_name(name) {
+                    result = Some(s);
+                }
+                variation = v;
+            } else {
+                break
+            }
+        }
+
+        result
+    }
+
+    pub fn get_fill_by_path<V, I, S>(&self, path: I, name: S) -> Option<&Fill>
+    where
+        V: AsRef<str>,
+        I: IntoIterator<Item = V>,
+        S: AsRef<str>,
+    {
+        let name = name.as_ref();
+        let mut result = self.get_fill_by_name(name);
+        let mut variation = self;
+
+        for nv in path.into_iter() {
+            if let Some(v) = variation.variations.get(nv.as_ref()) {
+                if let Some(s) = v.get_fill_by_name(name) {
+                    result = Some(s);
+                }
+                variation = v;
+            } else {
+                break
+            }
+        }
+
+        result
+    }
+}
 
 #[derive(Default, Debug)]
 pub struct Theme {
+    original:         Variation,
     default_style:    Style,
     scene_style:      Style,
-    named_styles:     HashMap<String, StyleId>,
     styles:           Vec<Style>,
+    named_styles:     HashMap<String, StyleId>,
     named_gradspecs:  HashMap<String, GradSpec>,
     linear_gradients: HashMap<String, LinearGradient>,
     radial_gradients: HashMap<String, RadialGradient>,
@@ -18,27 +130,62 @@ impl Theme {
         Theme::default()
     }
 
-    pub fn with_default_style(mut self, default_style: Style) -> Self {
+    pub fn with_default_style(mut self, mut default_style: Style) -> Self {
+        default_style.resolve_initially(&self.original);
         self.default_style = default_style;
         self
     }
 
-    pub fn with_scene_style(mut self, scene_style: Style) -> Self {
+    pub fn with_scene_style(mut self, mut scene_style: Style) -> Self {
+        scene_style.resolve_initially(&self.original);
         self.scene_style = scene_style;
         self
     }
 
-    pub fn with_named_styles<S, I>(mut self, styles: I) -> Self
+    pub fn with_styles<S, I>(mut self, styles: I) -> Self
     where
         S: AsRef<str>,
         I: IntoIterator<Item = (S, Style)>,
     {
-        for (name, style) in styles.into_iter() {
+        for (name, mut style) in styles.into_iter() {
             let id = self.styles.len();
 
+            style.resolve_initially(&self.original);
             self.styles.push(style);
             self.named_styles.insert(name.as_ref().into(), StyleId(id));
         }
+
+        self
+    }
+
+    pub fn with_variations<S, I>(mut self, variations: I) -> Self
+    where
+        S: AsRef<str>,
+        I: IntoIterator<Item = (S, Variation)>,
+    {
+        for (name, variation) in variations.into_iter() {
+            self.original.variations.insert(name.as_ref().into(), variation);
+        }
+
+        self
+    }
+
+    pub fn with_strokes<S, I>(mut self, strokes: I) -> Self
+    where
+        S: AsRef<str>,
+        I: IntoIterator<Item = (S, Stroke)>,
+    {
+        self.original.add_strokes(strokes);
+
+        self
+    }
+
+    pub fn with_fills<S, I>(mut self, fills: I) -> Self
+    where
+        S: AsRef<str>,
+        I: IntoIterator<Item = (S, Fill)>,
+    {
+        self.original.add_fills(fills);
 
         self
     }
@@ -69,6 +216,16 @@ impl Theme {
         self
     }
 
+    pub fn use_variation<V, I>(&mut self, path: I)
+    where
+        V: AsRef<str>,
+        I: IntoIterator<Item = V> + Clone,
+    {
+        for style in self.styles.iter_mut() {
+            style.resolve(&self.original, path.clone())
+        }
+    }
+
     #[inline]
     pub fn get<S: AsRef<str>>(&self, name: S) -> Option<StyleId> {
         self.named_styles.get(name.as_ref()).copied()
@@ -92,6 +249,41 @@ impl Theme {
     #[inline]
     pub fn get_stroke(&self, style_id: Option<StyleId>) -> Option<&Stroke> {
         self.get_style(style_id).and_then(|s| s.get_stroke())
+    }
+
+    #[inline]
+    pub fn get_stroke_by_name<S: AsRef<str>>(&self, name: S) -> Option<&Stroke> {
+        self.original.get_stroke_by_name(name)
+    }
+
+    #[inline]
+    pub fn get_stroke_by_path<V, I, S>(&self, path: I, name: S) -> Option<&Stroke>
+    where
+        V: AsRef<str>,
+        I: IntoIterator<Item = V>,
+        S: AsRef<str>,
+    {
+        self.original.get_stroke_by_path(path, name)
+    }
+
+    #[inline]
+    pub fn get_fill(&self, style_id: Option<StyleId>) -> Option<&Fill> {
+        self.get_style(style_id).and_then(|s| s.get_fill())
+    }
+
+    #[inline]
+    pub fn get_fill_by_name<S: AsRef<str>>(&self, name: S) -> Option<&Fill> {
+        self.original.get_fill_by_name(name)
+    }
+
+    #[inline]
+    pub fn get_fill_by_path<V, I, S>(&self, path: I, name: S) -> Option<&Fill>
+    where
+        V: AsRef<str>,
+        I: IntoIterator<Item = V>,
+        S: AsRef<str>,
+    {
+        self.original.get_fill_by_path(path, name)
     }
 
     #[inline]
@@ -127,5 +319,59 @@ impl Theme {
     #[inline]
     pub fn get_named_gradspecs(&self) -> hash_map::Iter<String, GradSpec> {
         self.named_gradspecs.iter()
+    }
+
+    pub fn simple_demo() -> Self {
+        let gradient_v_stops = vec![Color::WHITE, Color::BLACK];
+        let gradient_h_stops = vec![Color::rgba8(0, 0xff, 0, 64), Color::rgba8(0xff, 0, 0xff, 64)];
+        let gradient_r_stops = vec![Color::WHITE, Color::rgb8(0xff, 0, 0)];
+        let dark_gradient_r_stops = vec![Color::BLACK, Color::rgb8(0xff, 0, 0xff)];
+
+        let linear_gradients = vec![
+            ("gradient-v", UnitPoint::TOP, UnitPoint::BOTTOM, gradient_v_stops.as_slice()),
+            ("gradient-h", UnitPoint::LEFT, UnitPoint::RIGHT, gradient_h_stops.as_slice()),
+        ];
+
+        let radial_gradients = vec![
+            ("gradient-r", 1., gradient_r_stops.as_slice()),
+            ("dark-gradient-r", 1., dark_gradient_r_stops.as_slice()),
+        ];
+
+        let strokes = vec![
+            ("line-1", Stroke::new().with_brush(Color::rgb8(0, 0x80, 0x80)).with_width(3.)),
+            ("line-2", Stroke::new().with_brush(Color::rgb8(0x80, 0x80, 0)).with_width(0.5)),
+            ("rect-2", Stroke::new().with_brush(Color::BLACK).with_width(1.)),
+            ("circ-1", Stroke::new().with_brush(Color::rgb8(0xff, 0, 0)).with_width(5.)),
+        ];
+
+        let fills = vec![
+            ("rect-1", Fill::Linear("gradient-v".into())),
+            ("rect-2", Fill::Linear("gradient-h".into())),
+            ("circ-1", Fill::Radial("gradient-r".into())),
+        ];
+
+        let dark_strokes =
+            vec![("circ-1", Stroke::new().with_brush(Color::rgb8(0xa0, 0, 0xff)).with_width(5.))];
+
+        let dark_fills = vec![("circ-1", Fill::Radial("dark-gradient-r".into()))];
+
+        let variations =
+            vec![("dark", Variation::new().with_strokes(dark_strokes).with_fills(dark_fills))];
+
+        let styles = vec![
+            ("border", Style::new().with_stroke(Stroke::new())),
+            ("line-1", Style::new().with_named_stroke("line-1")),
+            ("line-2", Style::new().with_named_stroke("line-2")),
+            ("rect-1", Style::new().with_named_fill("rect-1")),
+            ("rect-2", Style::new().with_named_fill("rect-2").with_named_stroke("rect-2")),
+            ("circ-1", Style::new().with_named_fill("circ-1").with_named_stroke("circ-1")),
+        ];
+
+        Theme::new()
+            .with_gradients(linear_gradients, radial_gradients)
+            .with_strokes(strokes)
+            .with_fills(fills)
+            .with_variations(variations)
+            .with_styles(styles)
     }
 }

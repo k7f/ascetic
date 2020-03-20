@@ -1,7 +1,7 @@
 use std::io;
 use piet::{Color, UnitPoint, GradientStop};
 use kurbo::Rect;
-use crate::{WriteSvg, WriteSvgWithName};
+use crate::{Variation, WriteSvg, WriteSvgWithName};
 
 #[derive(Clone, Copy, Debug)]
 pub struct StyleId(pub usize);
@@ -163,13 +163,15 @@ impl Default for Fill {
 
 #[derive(Clone, Default, Debug)]
 pub struct Style {
-    stroke: Option<Stroke>,
-    fill:   Option<Fill>,
+    stroke_name: Option<String>,
+    fill_name:   Option<String>,
+    stroke:      Option<Stroke>,
+    fill:        Option<Fill>,
 }
 
 impl Style {
     pub const fn new() -> Self {
-        Style { stroke: None, fill: None }
+        Style { stroke_name: None, fill_name: None, stroke: None, fill: None }
     }
 
     pub fn with_stroke(mut self, stroke: Stroke) -> Self {
@@ -177,9 +179,49 @@ impl Style {
         self
     }
 
+    pub fn with_named_stroke<S: AsRef<str>>(mut self, name: S) -> Self {
+        self.stroke_name = Some(name.as_ref().into());
+        self
+    }
+
     pub fn with_fill(mut self, fill: Fill) -> Self {
         self.set_fill(fill);
         self
+    }
+
+    pub fn with_named_fill<S: AsRef<str>>(mut self, name: S) -> Self {
+        self.fill_name = Some(name.as_ref().into());
+        self
+    }
+
+    pub fn resolve_initially(&mut self, variation: &Variation) {
+        if let Some(stroke) =
+            self.stroke_name.as_ref().and_then(|n| variation.get_stroke_by_name(n))
+        {
+            self.stroke = Some(stroke.clone());
+        }
+
+        if let Some(fill) = self.fill_name.as_ref().and_then(|n| variation.get_fill_by_name(n)) {
+            self.fill = Some(fill.clone());
+        }
+    }
+
+    pub fn resolve<V, I>(&mut self, variation: &Variation, path: I)
+    where
+        V: AsRef<str>,
+        I: IntoIterator<Item = V> + Clone,
+    {
+        if let Some(stroke) =
+            self.stroke_name.as_ref().and_then(|n| variation.get_stroke_by_path(path.clone(), n))
+        {
+            self.stroke = Some(stroke.clone());
+        }
+
+        if let Some(fill) =
+            self.fill_name.as_ref().and_then(|n| variation.get_fill_by_path(path, n))
+        {
+            self.fill = Some(fill.clone());
+        }
     }
 
     #[inline]

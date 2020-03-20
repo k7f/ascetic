@@ -226,10 +226,62 @@ impl Scene {
 
         CrumbChainIter { crumb_chain }
     }
+
+    pub fn simple_demo(theme: &Theme) -> Self {
+        let mut scene = Scene::new((1000., 1000.));
+
+        let border = scene.add_rect(Rect::new(0., 0., 1000., 1000.));
+        let button = scene.add_rounded_rect(RoundedRect::new(250., 400., 450., 600., 10.));
+
+        let lines = scene.add_grouped_lines(vec![
+            (Line::new((0., 500.), (250., 0.)), theme.get("line-1")),
+            (Line::new((0., 500.), (250., 1000.)), theme.get("line-1")),
+            (Line::new((250., 1000.), (250., 0.)), theme.get("line-2")),
+        ]);
+
+        let rects = scene.add_group(Group::from_crumb_ids(vec![
+            (button, theme.get("rect-1")),
+            (button, theme.get("rect-2")),
+        ]));
+
+        let circle = scene.add_circle(Circle::new((133., 500.), 110.));
+
+        let mixed_group = scene.add_group(
+            Group::from_group_ids(vec![lines, rects]).with_crumb_id(circle, theme.get("circ-1")),
+        );
+
+        let triple_group = scene.add_group(
+            Group::from_group_ids(vec![mixed_group])
+                .with_group_item(GroupItem(
+                    mixed_group,
+                    0.5 * TranslateScale::translate((750., 0.).into()),
+                ))
+                .with_group_item(GroupItem(
+                    mixed_group,
+                    0.5 * TranslateScale::translate((750., 1000.).into()),
+                )),
+        );
+
+        scene.add_root(
+            Group::from_crumb_ids(vec![(border, theme.get("border"))])
+                .with_group_id(triple_group)
+                .with_group_item(GroupItem(
+                    triple_group,
+                    TranslateScale::translate((500., 0.).into()),
+                )),
+        );
+
+        scene
+    }
 }
 
 type CrumbList<'a> = slice::Iter<'a, CrumbItem>;
 
+/// An iterator traversing all [`CrumbItem`]s of a [`Scene`].
+///
+/// Note: the effective [`TranslateScale`] transform of each
+/// [`CrumbItem`] is composed on-the-fly, in the iterator's [`next()`]
+/// method.
 pub struct CrumbChainIter<'a> {
     crumb_chain: Vec<(CrumbList<'a>, TranslateScale)>,
 }

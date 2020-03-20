@@ -1,3 +1,5 @@
+#![feature(iter_map_while)]
+
 mod crumb;
 mod group;
 mod style;
@@ -9,12 +11,14 @@ pub use crumb::{Crumb, CrumbId, CrumbItem};
 pub use group::{Group, GroupId, GroupItem};
 pub use style::{Style, StyleId, Stroke, Fill, GradSpec};
 pub use scene::Scene;
-pub use theme::Theme;
+pub use theme::{Theme, Variation};
 pub use backend::cairo::BitmapDevice as CairoBitmapDevice;
 
 use std::io;
 use piet::RenderContext;
-use kurbo::{TranslateScale, Rect};
+
+pub use piet::{self, Color, UnitPoint, ImageFormat};
+pub use kurbo::{self, Line, Rect, RoundedRect, Circle, TranslateScale, Vec2};
 
 pub trait Vis {
     fn bbox(&self, ts: TranslateScale) -> Rect;
