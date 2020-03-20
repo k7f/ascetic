@@ -1,12 +1,34 @@
-use std::collections::{HashMap, hash_map};
+use std::{
+    collections::{HashMap, hash_map},
+    iter::FromIterator,
+};
 use piet::{Color, LinearGradient, RadialGradient, UnitPoint, GradientStops};
 use crate::{Style, StyleId, Stroke, Fill, GradSpec};
 
-#[derive(Default, Debug)]
+const DEFAULT_NAME: &str = "default";
+const SCENE_NAME: &str = "scene";
+
+#[derive(Debug)]
 pub struct Variation {
     strokes:    HashMap<String, Stroke>,
     fills:      HashMap<String, Fill>,
     variations: HashMap<String, Variation>,
+}
+
+impl Default for Variation {
+    fn default() -> Self {
+        let strokes = HashMap::from_iter(vec![
+            (DEFAULT_NAME.into(), Stroke::default()),
+            (SCENE_NAME.into(), Stroke::default()),
+        ]);
+        let fills = HashMap::from_iter(vec![
+            (DEFAULT_NAME.into(), Fill::default()),
+            (SCENE_NAME.into(), Fill::default()),
+        ]);
+        let variations = HashMap::default();
+
+        Variation { strokes, fills, variations }
+    }
 }
 
 impl Variation {
@@ -113,11 +135,9 @@ impl Variation {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct Theme {
     original:         Variation,
-    default_style:    Style,
-    scene_style:      Style,
     styles:           Vec<Style>,
     named_styles:     HashMap<String, StyleId>,
     named_gradspecs:  HashMap<String, GradSpec>,
@@ -125,21 +145,38 @@ pub struct Theme {
     radial_gradients: HashMap<String, RadialGradient>,
 }
 
+impl Default for Theme {
+    fn default() -> Self {
+        let original = Variation::default();
+        let styles = vec![
+            Style::default().with_named_stroke(DEFAULT_NAME).with_named_fill(DEFAULT_NAME),
+            Style::default().with_named_stroke(SCENE_NAME).with_named_fill(SCENE_NAME),
+        ];
+        let named_styles = HashMap::from_iter(vec![
+            (DEFAULT_NAME.into(), Self::DEFAULT_STYLE_ID),
+            (SCENE_NAME.into(), Self::SCENE_STYLE_ID),
+        ]);
+        let named_gradspecs = HashMap::default();
+        let linear_gradients = HashMap::default();
+        let radial_gradients = HashMap::default();
+
+        Theme {
+            original,
+            styles,
+            named_styles,
+            named_gradspecs,
+            linear_gradients,
+            radial_gradients,
+        }
+    }
+}
+
 impl Theme {
+    const DEFAULT_STYLE_ID: StyleId = StyleId(0);
+    const SCENE_STYLE_ID: StyleId = StyleId(1);
+
     pub fn new() -> Self {
         Theme::default()
-    }
-
-    pub fn with_default_style(mut self, mut default_style: Style) -> Self {
-        default_style.resolve_initially(&self.original);
-        self.default_style = default_style;
-        self
-    }
-
-    pub fn with_scene_style(mut self, mut scene_style: Style) -> Self {
-        scene_style.resolve_initially(&self.original);
-        self.scene_style = scene_style;
-        self
     }
 
     pub fn with_styles<S, I>(mut self, styles: I) -> Self
@@ -148,11 +185,19 @@ impl Theme {
         I: IntoIterator<Item = (S, Style)>,
     {
         for (name, mut style) in styles.into_iter() {
-            let id = self.styles.len();
-
             style.resolve_initially(&self.original);
-            self.styles.push(style);
-            self.named_styles.insert(name.as_ref().into(), StyleId(id));
+
+            match self.named_styles.entry(name.as_ref().into()) {
+                hash_map::Entry::Occupied(entry) => {
+                    self.styles[entry.get().0] = style;
+                }
+                hash_map::Entry::Vacant(entry) => {
+                    let id = self.styles.len();
+
+                    entry.insert(StyleId(id));
+                    self.styles.push(style);
+                }
+            }
         }
 
         self
@@ -232,13 +277,13 @@ impl Theme {
     }
 
     #[inline]
-    pub fn get_default_style(&self) -> Option<&Style> {
-        Some(&self.default_style)
+    pub fn get_default_style(&self) -> &Style {
+        &self.styles[Self::DEFAULT_STYLE_ID.0]
     }
 
     #[inline]
-    pub fn get_default_stroke(&self) -> Option<&Stroke> {
-        self.default_style.get_stroke()
+    pub fn get_scene_style(&self) -> &Style {
+        &self.styles[Self::SCENE_STYLE_ID.0]
     }
 
     #[inline]
@@ -303,7 +348,7 @@ impl Theme {
 
     #[inline]
     pub fn get_bg_color(&self) -> Color {
-        self.scene_style.get_fill_color().cloned().unwrap_or(Color::WHITE)
+        self.get_scene_style().get_fill_color().cloned().unwrap_or(Color::WHITE)
     }
 
     #[inline]
@@ -353,7 +398,10 @@ impl Theme {
         let dark_strokes =
             vec![("circ-1", Stroke::new().with_brush(Color::rgb8(0xa0, 0, 0xff)).with_width(5.))];
 
-        let dark_fills = vec![("circ-1", Fill::Radial("dark-gradient-r".into()))];
+        let dark_fills = vec![
+            (SCENE_NAME, Fill::Color(Color::BLACK)),
+            ("circ-1", Fill::Radial("dark-gradient-r".into())),
+        ];
 
         let variations =
             vec![("dark", Variation::new().with_strokes(dark_strokes).with_fills(dark_fills))];

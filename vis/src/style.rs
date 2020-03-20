@@ -34,6 +34,12 @@ pub struct Stroke {
     width: f64,
 }
 
+impl Default for Stroke {
+    fn default() -> Self {
+        Stroke { brush: Color::BLACK, width: 1.0 }
+    }
+}
+
 impl Stroke {
     pub const fn new() -> Self {
         Stroke { brush: Color::BLACK, width: 1.0 }
@@ -67,12 +73,6 @@ impl Stroke {
     #[inline]
     pub fn get_width(&self) -> f64 {
         self.width
-    }
-}
-
-impl Default for Stroke {
-    fn default() -> Self {
-        Stroke { brush: Color::BLACK, width: 1.0 }
     }
 }
 
@@ -145,6 +145,12 @@ pub enum Fill {
     Radial(String),
 }
 
+impl Default for Fill {
+    fn default() -> Self {
+        Fill::Color(Color::WHITE)
+    }
+}
+
 impl WriteSvg for Fill {
     fn write_svg<W: io::Write>(&self, mut svg: W) -> io::Result<()> {
         match self {
@@ -152,12 +158,6 @@ impl WriteSvg for Fill {
             Fill::Linear(ref name) => write!(svg, "fill=\"url(#{})\"", name),
             Fill::Radial(ref name) => write!(svg, "fill=\"url(#{})\"", name),
         }
-    }
-}
-
-impl Default for Fill {
-    fn default() -> Self {
-        Fill::Color(Color::WHITE)
     }
 }
 

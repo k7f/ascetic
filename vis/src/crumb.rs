@@ -73,7 +73,9 @@ impl Vis for Line {
         style_id: Option<StyleId>,
         theme: &Theme,
     ) {
-        if let Some(stroke) = theme.get_stroke(style_id).or_else(|| theme.get_default_stroke()) {
+        if let Some(stroke) =
+            theme.get_stroke(style_id).or_else(|| theme.get_default_style().get_stroke())
+        {
             rc.stroke(ts * *self, stroke.get_brush(), stroke.get_width());
         }
     }
@@ -92,7 +94,9 @@ impl WriteSvgWithStyle for Line {
 
         write!(svg, "  <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" ", p0.x, p0.y, p1.x, p1.y)?;
 
-        if let Some(stroke) = theme.get_stroke(style_id).or_else(|| theme.get_default_stroke()) {
+        if let Some(stroke) =
+            theme.get_stroke(style_id).or_else(|| theme.get_default_style().get_stroke())
+        {
             stroke.write_svg(&mut svg)?;
         }
 
@@ -113,22 +117,21 @@ impl Vis for Rect {
         style_id: Option<StyleId>,
         theme: &Theme,
     ) {
-        if let Some(style) = theme.get_style(style_id).or_else(|| theme.get_default_style()) {
-            let rect = ts * *self;
+        let style = theme.get_style(style_id).unwrap_or_else(|| theme.get_default_style());
+        let rect = ts * *self;
 
-            if let Some(brush) = style.get_fill_color() {
-                rc.fill(rect, brush);
-            } else if let Some(name) = style.get_fill_gradient_name() {
-                if let Some(gradient) = theme.get_linear_gradient(name) {
-                    rc.fill(rect, gradient);
-                } else if let Some(gradient) = theme.get_radial_gradient(name) {
-                    rc.fill(rect, gradient);
-                }
+        if let Some(brush) = style.get_fill_color() {
+            rc.fill(rect, brush);
+        } else if let Some(name) = style.get_fill_gradient_name() {
+            if let Some(gradient) = theme.get_linear_gradient(name) {
+                rc.fill(rect, gradient);
+            } else if let Some(gradient) = theme.get_radial_gradient(name) {
+                rc.fill(rect, gradient);
             }
+        }
 
-            if let Some(border) = style.get_stroke() {
-                rc.stroke(rect, border.get_brush(), border.get_width());
-            }
+        if let Some(border) = style.get_stroke() {
+            rc.stroke(rect, border.get_brush(), border.get_width());
         }
     }
 }
@@ -173,22 +176,21 @@ impl Vis for RoundedRect {
         style_id: Option<StyleId>,
         theme: &Theme,
     ) {
-        if let Some(style) = theme.get_style(style_id).or_else(|| theme.get_default_style()) {
-            let rr = ts * *self;
+        let style = theme.get_style(style_id).unwrap_or_else(|| theme.get_default_style());
+        let rr = ts * *self;
 
-            if let Some(brush) = style.get_fill_color() {
-                rc.fill(rr, brush);
-            } else if let Some(name) = style.get_fill_gradient_name() {
-                if let Some(gradient) = theme.get_linear_gradient(name) {
-                    rc.fill(rr, gradient);
-                } else if let Some(gradient) = theme.get_radial_gradient(name) {
-                    rc.fill(rr, gradient);
-                }
+        if let Some(brush) = style.get_fill_color() {
+            rc.fill(rr, brush);
+        } else if let Some(name) = style.get_fill_gradient_name() {
+            if let Some(gradient) = theme.get_linear_gradient(name) {
+                rc.fill(rr, gradient);
+            } else if let Some(gradient) = theme.get_radial_gradient(name) {
+                rc.fill(rr, gradient);
             }
+        }
 
-            if let Some(border) = style.get_stroke() {
-                rc.stroke(rr, border.get_brush(), border.get_width());
-            }
+        if let Some(border) = style.get_stroke() {
+            rc.stroke(rr, border.get_brush(), border.get_width());
         }
     }
 }
@@ -235,22 +237,21 @@ impl Vis for Circle {
         style_id: Option<StyleId>,
         theme: &Theme,
     ) {
-        if let Some(style) = theme.get_style(style_id).or_else(|| theme.get_default_style()) {
-            let circ = ts * *self;
+        let style = theme.get_style(style_id).unwrap_or_else(|| theme.get_default_style());
+        let circ = ts * *self;
 
-            if let Some(brush) = style.get_fill_color() {
-                rc.fill(circ, brush);
-            } else if let Some(name) = style.get_fill_gradient_name() {
-                if let Some(gradient) = theme.get_linear_gradient(name) {
-                    rc.fill(circ, gradient);
-                } else if let Some(gradient) = theme.get_radial_gradient(name) {
-                    rc.fill(circ, gradient);
-                }
+        if let Some(brush) = style.get_fill_color() {
+            rc.fill(circ, brush);
+        } else if let Some(name) = style.get_fill_gradient_name() {
+            if let Some(gradient) = theme.get_linear_gradient(name) {
+                rc.fill(circ, gradient);
+            } else if let Some(gradient) = theme.get_radial_gradient(name) {
+                rc.fill(circ, gradient);
             }
+        }
 
-            if let Some(border) = style.get_stroke() {
-                rc.stroke(circ, border.get_brush(), border.get_width());
-            }
+        if let Some(border) = style.get_stroke() {
+            rc.stroke(circ, border.get_brush(), border.get_width());
         }
     }
 }
