@@ -71,6 +71,11 @@ impl Stroke {
     }
 
     #[inline]
+    pub fn get_brush_mut(&mut self) -> &mut Color {
+        &mut self.brush
+    }
+
+    #[inline]
     pub fn get_width(&self) -> f64 {
         self.width
     }
@@ -223,6 +228,9 @@ impl Style {
             self.fill = Some(fill.clone());
         }
     }
+
+    // FIXME
+    // pub fn resolve_between<V, I>(&mut self, variation: &Variation, path: I, pos: f64)
 
     #[inline]
     pub fn set_stroke(&mut self, stroke: Stroke) {

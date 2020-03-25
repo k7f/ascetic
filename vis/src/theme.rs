@@ -267,7 +267,7 @@ impl Theme {
         I: IntoIterator<Item = V> + Clone,
     {
         for style in self.styles.iter_mut() {
-            style.resolve(&self.original, path.clone())
+            style.resolve(&self.original, path.clone());
         }
     }
 
