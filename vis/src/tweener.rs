@@ -1,7 +1,8 @@
+use std::fmt;
 use piet::Color;
 use crate::{Stroke, Fill};
 
-pub trait Steppable {
+pub trait Steppable: fmt::Debug {
     /// Note: `amount` is interpreted in tween space; the caller is
     /// assumed to constrain `amount` to the open unit interval.
     fn step(&mut self, target: &Self, amount: f64);
@@ -29,7 +30,8 @@ pub trait Tweenable: Steppable + Sized {
 }
 
 // FIXME clone only in the ctor
-pub struct Tweener<T: Tweenable> {
+#[derive(Clone, Debug)]
+pub struct Tweener<T: Tweenable + Clone> {
     start:    T,
     targets:  Vec<T>,
     total:    f64,
@@ -39,6 +41,8 @@ pub struct Tweener<T: Tweenable> {
 
 impl<T: Tweenable + Clone> Tweener<T> {
     pub fn new(start: T, stop: T, max_subdivision: usize) -> Self {
+        // eprintln!("Tweener {:?} -> {:?}", start, stop);
+
         let mut targets = start.breakdown(&stop, max_subdivision);
         targets.push(stop);
 
@@ -49,21 +53,21 @@ impl<T: Tweenable + Clone> Tweener<T> {
         Tweener { start, targets, total, position, value }
     }
 
-    pub fn rewind(&mut self) {
+    pub fn restart(&mut self) {
         self.position = 0.0;
         self.value = self.start.clone();
     }
 
     /// The `amount` is expected to be a strictly positive number such
     /// that the total amount accumulated across any sequence of calls
-    /// to `tween_on()` until a call to `rewind()` is less than 1.
+    /// to `tween_on()` until a call to `restart()` is less than 1.
     pub fn tween_on(&mut self, amount: f64) -> &T {
         if amount > 0.0 {
             let position = self.position + amount;
 
             if position < 1.0 {
                 let findex = (position * self.total).trunc();
-                let ref target = self.targets[findex as usize];
+                let target = &self.targets[findex as usize];
                 let target_position = (findex + 1.0) / self.total;
                 // FIXME if possible, set self.value to pre-target and
                 // increase self.position accordingly.
@@ -92,16 +96,17 @@ pub trait Easing {
     /// [`Theme`].
     fn ease(&mut self, time: f64) -> f64;
 
-    fn rewind(&mut self);
+    fn restart(&mut self);
 }
 
+#[derive(Default)]
 pub struct LinearEasing {
     position: f64,
 }
 
 impl LinearEasing {
     pub fn new() -> Self {
-        LinearEasing { position: 0.0 }
+        LinearEasing::default()
     }
 }
 
@@ -122,7 +127,7 @@ impl Easing for LinearEasing {
         }
     }
 
-    fn rewind(&mut self) {
+    fn restart(&mut self) {
         self.position = 0.0;
     }
 }
@@ -146,7 +151,7 @@ impl Steppable for Color {
 
         #[inline]
         fn lerp(v0: u32, v1: u32, amount: f64) -> u8 {
-            let v = (v0 as f64 + (v1 - v0) as f64 * amount).round() as i32;
+            let v = (v0 as f64 + (v1 as f64 - v0 as f64) * amount).round() as i32;
             let v = if v < 0 {
                 0
             } else if v > 255 {
@@ -184,7 +189,7 @@ impl Tweenable for Color {
 
 impl Steppable for Stroke {
     fn step(&mut self, target: &Self, amount: f64) {
-        let brush = self.get_brush_mut();
+        let brush = self.get_mut_brush();
         brush.step(target.get_brush(), amount);
 
         let width = self.get_width();
@@ -218,11 +223,27 @@ impl Tweenable for Stroke {
 impl Steppable for Fill {
     fn step(&mut self, target: &Self, amount: f64) {
         match self {
-            Fill::Color(ref mut c0) => match target {
+            Fill::Color(c0) => match target {
                 Fill::Color(c1) => c0.step(c1, amount),
-                _ => {} // FIXME
+                Fill::Linear(name) => {} // FIXME
+                Fill::Radial(name) => {} // FIXME
             },
-            _ => {} // FIXME
+            Fill::Linear(name) => {} // FIXME
+            Fill::Radial(name) => {} // FIXME
+        }
+    }
+}
+
+impl Tweenable for Fill {
+    fn breakdown(&self, other: &Self, max_subdivision: usize) -> Vec<Self> {
+        match self {
+            Fill::Color(c0) => match other {
+                Fill::Color(c1) => {
+                    c0.breakdown(c1, max_subdivision).into_iter().map(Fill::Color).collect()
+                }
+                _ => Vec::new(), // FIXME
+            },
+            _ => Vec::new(), // FIXME
         }
     }
 }

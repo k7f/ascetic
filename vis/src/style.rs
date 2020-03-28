@@ -1,7 +1,7 @@
 use std::io;
 use piet::{Color, UnitPoint, GradientStop};
 use kurbo::Rect;
-use crate::{Variation, WriteSvg, WriteSvgWithName};
+use crate::{Variation, Tweener, WriteSvg, WriteSvgWithName};
 
 #[derive(Clone, Copy, Debug)]
 pub struct StyleId(pub usize);
@@ -71,7 +71,7 @@ impl Stroke {
     }
 
     #[inline]
-    pub fn get_brush_mut(&mut self) -> &mut Color {
+    pub fn get_mut_brush(&mut self) -> &mut Color {
         &mut self.brush
     }
 
@@ -168,15 +168,24 @@ impl WriteSvg for Fill {
 
 #[derive(Clone, Default, Debug)]
 pub struct Style {
-    stroke_name: Option<String>,
-    fill_name:   Option<String>,
-    stroke:      Option<Stroke>,
-    fill:        Option<Fill>,
+    stroke_name:    Option<String>,
+    fill_name:      Option<String>,
+    stroke:         Option<Stroke>,
+    fill:           Option<Fill>,
+    stroke_tweener: Option<Tweener<Stroke>>,
+    fill_tweener:   Option<Tweener<Fill>>,
 }
 
 impl Style {
     pub const fn new() -> Self {
-        Style { stroke_name: None, fill_name: None, stroke: None, fill: None }
+        Style {
+            stroke_name:    None,
+            fill_name:      None,
+            stroke:         None,
+            fill:           None,
+            stroke_tweener: None,
+            fill_tweener:   None,
+        }
     }
 
     pub fn with_stroke(mut self, stroke: Stroke) -> Self {
@@ -229,8 +238,42 @@ impl Style {
         }
     }
 
-    // FIXME
-    // pub fn resolve_between<V, I>(&mut self, variation: &Variation, path: I, pos: f64)
+    pub fn start_resolution<V, I>(&mut self, variation: &Variation, path: I)
+    where
+        V: AsRef<str>,
+        I: IntoIterator<Item = V> + Clone,
+    {
+        self.stroke_tweener = None;
+        self.fill_tweener = None;
+
+        if let Some(stroke_to) =
+            self.stroke_name.as_ref().and_then(|n| variation.get_stroke_by_path(path.clone(), n))
+        {
+            if let Some(ref stroke_from) = self.stroke {
+                self.stroke_tweener = Some(Tweener::new(stroke_from.clone(), stroke_to.clone(), 1));
+            }
+        }
+
+        if let Some(fill_to) =
+            self.fill_name.as_ref().and_then(|n| variation.get_fill_by_path(path.clone(), n))
+        {
+            if let Some(ref fill_from) = self.fill {
+                self.fill_tweener = Some(Tweener::new(fill_from.clone(), fill_to.clone(), 1));
+            }
+        }
+    }
+
+    pub fn step_resolution(&mut self, amount: f64) {
+        if let Some(ref mut stroke_tweener) = self.stroke_tweener {
+            let stroke = stroke_tweener.tween_on(amount);
+            self.stroke = Some(stroke.clone());
+        }
+
+        if let Some(ref mut fill_tweener) = self.fill_tweener {
+            let fill = fill_tweener.tween_on(amount);
+            self.fill = Some(fill.clone());
+        }
+    }
 
     #[inline]
     pub fn set_stroke(&mut self, stroke: Stroke) {
@@ -258,8 +301,18 @@ impl Style {
     }
 
     #[inline]
+    pub fn get_mut_stroke(&mut self) -> Option<&mut Stroke> {
+        self.stroke.as_mut()
+    }
+
+    #[inline]
     pub fn get_fill(&self) -> Option<&Fill> {
         self.fill.as_ref()
+    }
+
+    #[inline]
+    pub fn get_mut_fill(&mut self) -> Option<&mut Fill> {
+        self.fill.as_mut()
     }
 
     #[inline]

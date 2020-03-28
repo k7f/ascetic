@@ -179,6 +179,8 @@ impl Theme {
         Theme::default()
     }
 
+    /// Note: calling this is the only way of adding styles to a
+    /// theme.
     pub fn with_styles<S, I>(mut self, styles: I) -> Self
     where
         S: AsRef<str>,
@@ -222,6 +224,10 @@ impl Theme {
     {
         self.original.add_strokes(strokes);
 
+        for style in self.styles.iter_mut() {
+            style.resolve_initially(&self.original);
+        }
+
         self
     }
 
@@ -231,6 +237,10 @@ impl Theme {
         I: IntoIterator<Item = (S, Fill)>,
     {
         self.original.add_fills(fills);
+
+        for style in self.styles.iter_mut() {
+            style.resolve_initially(&self.original);
+        }
 
         self
     }
@@ -258,6 +268,10 @@ impl Theme {
             self.radial_gradients.insert(name.as_ref().into(), gradient);
         }
 
+        for style in self.styles.iter_mut() {
+            style.resolve_initially(&self.original);
+        }
+
         self
     }
 
@@ -268,6 +282,22 @@ impl Theme {
     {
         for style in self.styles.iter_mut() {
             style.resolve(&self.original, path.clone());
+        }
+    }
+
+    pub fn start_variation<V, I>(&mut self, path: I)
+    where
+        V: AsRef<str>,
+        I: IntoIterator<Item = V> + Clone,
+    {
+        for style in self.styles.iter_mut() {
+            style.start_resolution(&self.original, path.clone());
+        }
+    }
+
+    pub fn step_variation(&mut self, amount: f64) {
+        for style in self.styles.iter_mut() {
+            style.step_resolution(amount);
         }
     }
 

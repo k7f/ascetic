@@ -8,18 +8,20 @@ use std::{
 use piet::ImageFormat;
 use ascetic_vis::{Scene, Theme, CairoBitmapDevice};
 
+#[derive(Debug)]
 struct App {
-    png_path:        PathBuf,
-    svg_path:        Option<PathBuf>,
-    out_size:        (f64, f64),
-    out_margin:      (f64, f64),
-    png_color_type:  png::ColorType,
-    png_bit_depth:   png::BitDepth,
-    png_compression: png::Compression,
-    png_filter:      png::FilterType,
-    theme_variation: Option<String>,
+    png_path:         PathBuf,
+    svg_path:         Option<PathBuf>,
+    out_size:         (f64, f64),
+    out_margin:       (f64, f64),
+    png_color_type:   png::ColorType,
+    png_bit_depth:    png::BitDepth,
+    png_compression:  png::Compression,
+    png_filter:       png::FilterType,
+    theme_variation:  Option<String>,
+    variation_amount: Option<f64>,
     #[allow(dead_code)]
-    verbosity:       u32,
+    verbosity:        u32,
 }
 
 impl App {
@@ -42,23 +44,26 @@ impl App {
         let png_compression = Self::DEFAULT_PNG_COMPRESSION;
         let png_filter = Self::DEFAULT_PNG_FILTER;
         let mut theme_variation = None;
+        let mut variation_amount = None;
         let mut verbosity = 0;
 
         for (prev_arg, next_arg) in std::env::args().zip(std::env::args().skip(1)) {
             match next_arg.as_str() {
                 "-v" => verbosity += 1,
                 "-vv" => verbosity += 2,
+                "-vvv" => verbosity += 3,
                 "--with-svg" => with_svg = true,
-                "-w" | "-h" | "--svg" | "--theme" => {}
+                "-w" | "-h" | "--svg" | "--theme" | "--amount" => {}
                 arg => {
                     if arg.starts_with('-') {
                         panic!("ERROR: Invalid CLI option \"{}\"", arg)
                     } else {
                         match prev_arg.as_str() {
-                            "-w" => out_size.0 = next_arg.parse()?,
-                            "-h" => out_size.1 = next_arg.parse()?,
+                            "-w" => out_size.0 = arg.parse()?,
+                            "-h" => out_size.1 = arg.parse()?,
                             "--svg" => svg_path = Some(PathBuf::from(arg)),
-                            "--theme" => theme_variation = Some(arg.into()),
+                            "--theme" => theme_variation = Some(next_arg),
+                            "--amount" => variation_amount = Some(arg.parse()?),
                             _ => png_path = Some(PathBuf::from(arg)),
                         }
                     }
@@ -89,6 +94,7 @@ impl App {
             png_compression,
             png_filter,
             theme_variation,
+            variation_amount,
             verbosity,
         })
     }
@@ -159,11 +165,23 @@ fn main() -> Result<(), Box<dyn Error>> {
     let scene = Scene::simple_demo(&theme);
 
     if app.verbosity > 1 {
+        if app.verbosity > 2 {
+            eprintln!("{:?}\n", app);
+        }
         eprintln!("{:?}", scene);
     }
 
     if let Some(ref variation) = app.theme_variation {
-        theme.use_variation(Some(variation));
+        if let Some(amount) = app.variation_amount {
+            theme.start_variation(Some(variation));
+            theme.step_variation(amount);
+        } else {
+            theme.use_variation(Some(variation));
+        }
+    }
+
+    if app.verbosity > 2 {
+        eprintln!("\n{:?}", theme);
     }
 
     match app.render_to_svg(&scene, &theme) {
