@@ -12,5 +12,5 @@ readme = "README.md"
 [dependencies]
 
 log = "0.4"
-roxmltree = "0.9"
+roxmltree = "0.10"
 cssparser = "0.27"

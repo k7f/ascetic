@@ -1,7 +1,4 @@
-use std::{
-    str::FromStr, ops::Range, io::Read, fs::File, path::Path, fmt, num::ParseFloatError,
-    error::Error,
-};
+use std::{str::FromStr, ops::Range, fs, path::Path, fmt, num::ParseFloatError, error::Error};
 use roxmltree as xml;
 use cssparser as css;
 
@@ -653,11 +650,23 @@ impl FromNode for Label {
 }
 
 #[derive(Debug)]
-struct Place {
+pub struct Place {
     id:              String,
     name:            Option<Label>,
     graphics:        Option<Graphics>,
     initial_marking: Option<Label>,
+}
+
+impl Place {
+    #[inline]
+    pub fn get_id(&self) -> &str {
+        self.id.as_str()
+    }
+
+    #[inline]
+    pub fn get_name_as_text(&self) -> Option<&str> {
+        self.name.as_ref().and_then(|label| label.text.as_ref()).map(|s| s.as_str())
+    }
 }
 
 impl FromNode for Place {
@@ -688,8 +697,15 @@ impl FromNode for Place {
 }
 
 #[derive(Debug)]
-struct Transition {
+pub struct Transition {
     id: String,
+}
+
+impl Transition {
+    #[inline]
+    pub fn get_id(&self) -> &str {
+        self.id.as_str()
+    }
 }
 
 impl FromNode for Transition {
@@ -708,8 +724,15 @@ impl FromNode for Transition {
 }
 
 #[derive(Debug)]
-struct Arc {
+pub struct Arc {
     id: String,
+}
+
+impl Arc {
+    #[inline]
+    pub fn get_id(&self) -> &str {
+        self.id.as_str()
+    }
 }
 
 impl FromNode for Arc {
@@ -728,11 +751,33 @@ impl FromNode for Arc {
 }
 
 #[derive(Debug)]
-struct Page {
+pub struct Page {
     id:          String,
     places:      Vec<Place>,
     transitions: Vec<Transition>,
     arcs:        Vec<Arc>,
+}
+
+impl Page {
+    #[inline]
+    pub fn get_id(&self) -> &str {
+        self.id.as_str()
+    }
+
+    #[inline]
+    pub fn get_places(&self) -> &[Place] {
+        self.places.as_slice()
+    }
+
+    #[inline]
+    pub fn get_transitions(&self) -> &[Transition] {
+        self.transitions.as_slice()
+    }
+
+    #[inline]
+    pub fn get_arcs(&self) -> &[Arc] {
+        self.arcs.as_slice()
+    }
 }
 
 impl FromNode for Page {
@@ -777,6 +822,18 @@ pub struct Net {
     pages: Vec<Page>,
 }
 
+impl Net {
+    #[inline]
+    pub fn get_id(&self) -> &str {
+        self.id.as_str()
+    }
+
+    #[inline]
+    pub fn get_pages(&self) -> &[Page] {
+        self.pages.as_slice()
+    }
+}
+
 impl FromNode for Net {
     fn from_node<'a, 'input>(
         node: xml::Node<'a, 'input>,
@@ -812,9 +869,7 @@ pub struct PNML {
 
 impl PNML {
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<dyn Error>> {
-        let mut fp = File::open(path.as_ref())?;
-        let mut spec = String::new();
-        fp.read_to_string(&mut spec)?;
+        let spec = fs::read_to_string(path)?;
 
         spec.parse().map_err(Into::into)
     }
