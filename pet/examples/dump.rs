@@ -1,39 +1,12 @@
 #[macro_use]
 extern crate log;
 
-use std::{path::PathBuf, fmt, error::Error};
-use ascetic_pet::{PNML, Net, Page};
-
-#[derive(Debug)]
-enum DumpError {
-    PlaceNotFound(String, String),
-    TransitionNotFound(String, String),
-    PageNotFound(String, String),
-    NetNotFound(String, String),
-}
-
-impl fmt::Display for DumpError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use DumpError::*;
-
-        match self {
-            PlaceNotFound(place_id, page_id) => {
-                write!(f, "Place \"{}\" not found on page \"{}\".", place_id, page_id)
-            }
-            TransitionNotFound(transition_id, page_id) => {
-                write!(f, "Transition \"{}\" not found on page \"{}\".", transition_id, page_id)
-            }
-            PageNotFound(page_id, net_id) => {
-                write!(f, "Page \"{}\" not found in net \"{}\".", page_id, net_id)
-            }
-            NetNotFound(net_id, path) => {
-                write!(f, "Net \"{}\" not found in PNML file \"{}\".", net_id, path)
-            }
-        }
-    }
-}
-
-impl Error for DumpError {}
+use std::{
+    collections::{HashSet, HashMap},
+    path::PathBuf,
+    error::Error,
+};
+use ascetic_pet::{PNML, Net, Page, PetItemKind, PetError};
 
 struct AppLogger(log::Level);
 
@@ -55,12 +28,10 @@ static mut APP_LOGGER: AppLogger = AppLogger(log::Level::Warn);
 
 #[derive(Debug)]
 struct App {
-    path:          PathBuf,
-    net_id:        Option<String>,
-    page_id:       Option<String>,
-    place_id:      Option<String>,
-    transition_id: Option<String>,
-    verbosity:     u32,
+    path:           PathBuf,
+    item_selectors: HashMap<PetItemKind, String>,
+    items_to_list:  HashSet<PetItemKind>,
+    verbosity:      u32,
 }
 
 impl App {
@@ -68,10 +39,8 @@ impl App {
 
     fn new() -> Result<Self, Box<dyn Error>> {
         let mut path = None;
-        let mut net_id = None;
-        let mut page_id = None;
-        let mut place_id = None;
-        let mut transition_id = None;
+        let mut item_selectors = HashMap::new();
+        let mut items_to_list = HashSet::new();
         let mut verbosity = 0;
 
         for (prev_arg, next_arg) in std::env::args().zip(std::env::args().skip(1)) {
@@ -79,16 +48,39 @@ impl App {
                 "-v" => verbosity += 1,
                 "-vv" => verbosity += 2,
                 "-vvv" => verbosity += 3,
+                "--list-nets" => {
+                    items_to_list.insert(PetItemKind::Net);
+                }
+                "--list-pages" => {
+                    items_to_list.insert(PetItemKind::Page);
+                }
+                "--list-places" => {
+                    items_to_list.insert(PetItemKind::Place);
+                }
+                "--list-transitions" => {
+                    items_to_list.insert(PetItemKind::Transition);
+                }
+                "--list-arcs" => {
+                    items_to_list.insert(PetItemKind::Arc);
+                }
                 "--net" | "--page" | "--place" | "--transition" => {}
                 arg => {
                     if arg.starts_with('-') {
                         panic!("ERROR: Invalid CLI option \"{}\"", arg)
                     } else {
                         match prev_arg.as_str() {
-                            "--net" => net_id = Some(next_arg),
-                            "--page" => page_id = Some(next_arg),
-                            "--place" => place_id = Some(next_arg),
-                            "--transition" => transition_id = Some(next_arg),
+                            "--net" => {
+                                item_selectors.insert(PetItemKind::Net, next_arg);
+                            }
+                            "--page" => {
+                                item_selectors.insert(PetItemKind::Page, next_arg);
+                            }
+                            "--place" => {
+                                item_selectors.insert(PetItemKind::Place, next_arg);
+                            }
+                            "--transition" => {
+                                item_selectors.insert(PetItemKind::Transition, next_arg);
+                            }
                             _ => path = Some(PathBuf::from(arg)),
                         }
                     }
@@ -114,77 +106,56 @@ impl App {
 
         log::set_max_level(log_level.to_level_filter());
 
-        Ok(App { path, net_id, page_id, place_id, transition_id, verbosity })
+        Ok(App { path, item_selectors, items_to_list, verbosity })
     }
 
-    fn dump_page(&self, page: &Page) -> Result<(), DumpError> {
-        let places = page.get_places();
-        let mut place = None;
+    fn dump_page(&self, page: &Page) -> Result<(), PetError> {
+        let mut nothing_found = true;
 
-        if let Some(ref place_id) = self.place_id {
-            if let Some(found_place) = places.iter().find(|p| p.get_id() == place_id) {
-                info!("Found place \"{}\".", place_id);
+        if let Some(place_id) = self.item_selectors.get(&PetItemKind::Place) {
+            let place = page.get_place_by_id(place_id)?;
 
-                place = Some(found_place);
-            } else {
-                return Err(DumpError::PlaceNotFound(place_id.into(), page.get_id().into()))
-            }
-        } else if places.is_empty() {
+            info!("Found place \"{}\".", place_id);
+            println!("{:#?}", place);
+
+            nothing_found = false;
+        } else if page.get_places().is_empty() {
             warn!("No places on page \"{}\".", page.get_id());
         }
 
-        let transitions = page.get_transitions();
-        let mut transition = None;
+        if let Some(transition_id) = self.item_selectors.get(&PetItemKind::Transition) {
+            let transition = page.get_transition_by_id(transition_id)?;
 
-        if let Some(ref transition_id) = self.transition_id {
-            if let Some(found_transition) = transitions.iter().find(|p| p.get_id() == transition_id)
-            {
-                info!("Found transition \"{}\".", transition_id);
+            info!("Found transition \"{}\".", transition_id);
+            println!("{:#?}", transition);
 
-                transition = Some(found_transition);
-            } else {
-                return Err(DumpError::TransitionNotFound(
-                    transition_id.into(),
-                    page.get_id().into(),
-                ))
-            }
-        } else if transitions.is_empty() {
+            nothing_found = false;
+        } else if page.get_transitions().is_empty() {
             warn!("No transitions on page \"{}\".", page.get_id());
         }
 
-        if let Some(place) = place {
-            println!("{:#?}", place);
-        }
-
-        if let Some(transition) = transition {
-            println!("{:#?}", transition);
-        }
-
-        if place.is_none() && transition.is_none() {
+        if nothing_found {
             println!("{:#?}", page);
         }
 
         Ok(())
     }
 
-    fn dump_net(&self, net: &Net) -> Result<(), DumpError> {
-        let pages = net.get_pages();
-        let page;
+    fn dump_net(&self, net: &Net) -> Result<(), PetError> {
+        let mut page = None;
 
-        if let Some(ref page_id) = self.page_id {
-            if let Some(found_page) = net.get_pages().iter().find(|p| p.get_id() == page_id) {
-                info!("Found page \"{}\".", page_id);
-                page = Some(found_page);
-            } else {
-                return Err(DumpError::PageNotFound(page_id.into(), net.get_id().into()))
-            }
-        } else if pages.is_empty() {
-            warn!("No pages in net \"{}\".", net.get_id());
-            page = None;
-        } else if pages.len() == 1 {
-            page = pages.first();
+        if let Some(page_id) = self.item_selectors.get(&PetItemKind::Page) {
+            page = Some(net.get_page_by_id(page_id)?);
+
+            info!("Found page \"{}\".", page_id);
         } else {
-            page = None;
+            let pages = net.get_pages();
+
+            if pages.is_empty() {
+                warn!("No pages in net \"{}\".", net.get_id());
+            } else if pages.len() == 1 {
+                page = pages.first();
+            }
         }
 
         if let Some(page) = page {
@@ -195,31 +166,103 @@ impl App {
         }
     }
 
-    fn dump_nets(&self, nets: &[Net]) -> Result<(), DumpError> {
-        let net;
+    fn dump_items(&self, pnml: &PNML) -> Result<(), PetError> {
+        let mut net = None;
 
-        if let Some(ref net_id) = self.net_id {
-            if let Some(found_net) = nets.iter().find(|n| n.get_id() == net_id) {
-                info!("Found net \"{}\".", net_id);
-                net = Some(found_net);
-            } else {
-                return Err(DumpError::NetNotFound(net_id.into(), self.path.display().to_string()))
-            }
-        } else if nets.is_empty() {
-            warn!("No nets in PNML file \"{}\".", self.path.display());
-            net = None;
-        } else if nets.len() == 1 {
-            net = nets.first();
+        if let Some(net_id) = self.item_selectors.get(&PetItemKind::Net) {
+            net = Some(pnml.get_net_by_id(net_id)?);
+
+            info!("Found net \"{}\".", net_id);
         } else {
-            net = None;
+            let nets = pnml.get_nets();
+
+            if nets.is_empty() {
+                warn!("No nets in PNML file \"{}\".", self.path.display());
+            } else if nets.len() == 1 {
+                net = nets.first();
+            }
         }
 
         if let Some(net) = net {
             self.dump_net(net)
         } else {
-            println!("{:#?}", nets);
+            println!("{:#?}", pnml.get_nets());
             Ok(())
         }
+    }
+
+    fn list_page_items(
+        &self,
+        page: &Page,
+        stats: &mut HashMap<PetItemKind, usize>,
+    ) -> Result<(), PetError> {
+        if self.items_to_list.contains(&PetItemKind::Place) {
+            let mut num_listed = stats.get(&PetItemKind::Place).copied().unwrap_or(0);
+
+            for place in page.get_places() {
+                num_listed += 1;
+                println!("Place {}: {}", num_listed, place.get_id());
+            }
+
+            stats.insert(PetItemKind::Place, num_listed);
+        }
+
+        if self.items_to_list.contains(&PetItemKind::Transition) {
+            let mut num_listed = stats.get(&PetItemKind::Transition).copied().unwrap_or(0);
+
+            for transition in page.get_transitions() {
+                num_listed += 1;
+                println!("Transition {}: {}", num_listed, transition.get_id());
+            }
+
+            stats.insert(PetItemKind::Transition, num_listed);
+        }
+
+        Ok(())
+    }
+
+    fn list_net_items(
+        &self,
+        net: &Net,
+        stats: &mut HashMap<PetItemKind, usize>,
+    ) -> Result<(), PetError> {
+        if self.items_to_list.contains(&PetItemKind::Page) {
+            let mut num_listed = stats.get(&PetItemKind::Page).copied().unwrap_or(0);
+
+            for page in net.get_pages() {
+                num_listed += 1;
+                println!("Page {}: {}", num_listed, page.get_id());
+            }
+
+            stats.insert(PetItemKind::Page, num_listed);
+        }
+
+        for page in net.get_pages() {
+            self.list_page_items(page, stats)?;
+        }
+
+        Ok(())
+    }
+
+    fn list_items(&self, pnml: &PNML) -> Result<HashMap<PetItemKind, usize>, PetError> {
+        let mut stats = HashMap::new();
+
+        if self.items_to_list.contains(&PetItemKind::Net) {
+            let mut num_listed = 0;
+
+            for net in pnml.get_nets() {
+                num_listed += 1;
+                println!("Net {}: {}", num_listed, net.get_id());
+            }
+
+            stats.insert(PetItemKind::Net, num_listed);
+        }
+
+        for net in pnml.get_nets() {
+            self.list_net_items(net, &mut stats)?;
+        }
+
+        Ok(stats)
     }
 }
 
@@ -238,7 +281,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         info!("{:?}", pnml);
     }
 
-    app.dump_nets(pnml.get_nets())?;
+    if app.items_to_list.is_empty() {
+        app.dump_items(&pnml)?;
+    } else {
+        let stats = app.list_items(&pnml)?;
+        info!("{:?}", stats);
+    }
 
     Ok(())
 }

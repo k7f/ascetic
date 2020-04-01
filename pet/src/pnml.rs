@@ -1,6 +1,15 @@
-use std::{str::FromStr, ops::Range, fs, path::Path, fmt, num::ParseFloatError, error::Error};
+use std::{
+    str::FromStr,
+    ops::Range,
+    fs,
+    path::{Path, PathBuf},
+    fmt,
+    num::ParseFloatError,
+    error::Error,
+};
 use roxmltree as xml;
 use cssparser as css;
+use crate::{PetItemKind, PetError};
 
 #[derive(Debug)]
 pub struct Scope {
@@ -778,6 +787,25 @@ impl Page {
     pub fn get_arcs(&self) -> &[Arc] {
         self.arcs.as_slice()
     }
+
+    pub fn get_place_by_id<S: AsRef<str>>(&self, place_id: S) -> Result<&Place, PetError> {
+        let place_id = place_id.as_ref();
+
+        self.places.iter().find(|p| p.get_id() == place_id).ok_or_else(|| {
+            PetError::ItemNotFound(PetItemKind::Place, place_id.into(), self.id.clone())
+        })
+    }
+
+    pub fn get_transition_by_id<S: AsRef<str>>(
+        &self,
+        transition_id: S,
+    ) -> Result<&Transition, PetError> {
+        let transition_id = transition_id.as_ref();
+
+        self.transitions.iter().find(|p| p.get_id() == transition_id).ok_or_else(|| {
+            PetError::ItemNotFound(PetItemKind::Transition, transition_id.into(), self.id.clone())
+        })
+    }
 }
 
 impl FromNode for Page {
@@ -832,6 +860,14 @@ impl Net {
     pub fn get_pages(&self) -> &[Page] {
         self.pages.as_slice()
     }
+
+    pub fn get_page_by_id<S: AsRef<str>>(&self, page_id: S) -> Result<&Page, PetError> {
+        let page_id = page_id.as_ref();
+
+        self.pages.iter().find(|p| p.get_id() == page_id).ok_or_else(|| {
+            PetError::ItemNotFound(PetItemKind::Page, page_id.into(), self.id.clone())
+        })
+    }
 }
 
 impl FromNode for Net {
@@ -862,20 +898,39 @@ impl FromNode for Net {
 
 #[derive(Debug)]
 pub struct PNML {
+    path:      Option<PathBuf>,
     namespace: Option<String>,
     nets:      Vec<Net>,
     errors:    Vec<PNMLError>,
 }
 
 impl PNML {
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<dyn Error>> {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, PetError> {
+        let path_buf = path.as_ref().into();
         let spec = fs::read_to_string(path)?;
+        let mut pnml: Result<Self, PetError> = spec.parse().map_err(Into::into);
 
-        spec.parse().map_err(Into::into)
+        if let Ok(ref mut pnml) = pnml {
+            pnml.path = Some(path_buf);
+        }
+
+        pnml
     }
 
     pub fn get_nets(&self) -> &[Net] {
         self.nets.as_slice()
+    }
+
+    pub fn get_net_by_id<S: AsRef<str>>(&self, net_id: S) -> Result<&Net, PetError> {
+        let net_id = net_id.as_ref();
+
+        self.nets.iter().find(|n| n.get_id() == net_id).ok_or_else(|| {
+            PetError::ItemNotFound(
+                PetItemKind::Net,
+                net_id.into(),
+                self.path.as_ref().map_or_else(String::new, |p| p.display().to_string()),
+            )
+        })
     }
 
     pub fn get_errors(&self) -> &[PNMLError] {
@@ -887,6 +942,7 @@ impl FromStr for PNML {
     type Err = PNMLError;
 
     fn from_str(spec: &str) -> Result<Self, Self::Err> {
+        let path = None;
         let document = xml::Document::parse(spec)?;
         let root_elt = document.root_element();
         let mut errors = Vec::new();
@@ -899,7 +955,7 @@ impl FromStr for PNML {
                 nets.extend(Net::from_node(net_elt, &mut errors));
             }
 
-            Ok(PNML { namespace, nets, errors })
+            Ok(PNML { path, namespace, nets, errors })
         } else if let Some(err) = errors.pop() {
             Err(err)
         } else {
