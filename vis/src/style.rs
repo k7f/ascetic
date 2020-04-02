@@ -238,7 +238,28 @@ impl Style {
         }
     }
 
-    pub fn start_resolution<V, I>(&mut self, variation: &Variation, path: I)
+    pub fn start_original_resolution(&mut self, variation: &Variation, max_subdivision: usize) {
+        self.stroke_tweener = None;
+        self.fill_tweener = None;
+
+        if let Some(stroke_to) =
+            self.stroke_name.as_ref().and_then(|n| variation.get_stroke_by_name(n))
+        {
+            if let Some(ref stroke_from) = self.stroke {
+                self.stroke_tweener =
+                    Some(Tweener::new(stroke_from.clone(), stroke_to.clone(), max_subdivision));
+            }
+        }
+
+        if let Some(fill_to) = self.fill_name.as_ref().and_then(|n| variation.get_fill_by_name(n)) {
+            if let Some(ref fill_from) = self.fill {
+                self.fill_tweener =
+                    Some(Tweener::new(fill_from.clone(), fill_to.clone(), max_subdivision));
+            }
+        }
+    }
+
+    pub fn start_resolution<V, I>(&mut self, variation: &Variation, path: I, max_subdivision: usize)
     where
         V: AsRef<str>,
         I: IntoIterator<Item = V> + Clone,
@@ -250,7 +271,8 @@ impl Style {
             self.stroke_name.as_ref().and_then(|n| variation.get_stroke_by_path(path.clone(), n))
         {
             if let Some(ref stroke_from) = self.stroke {
-                self.stroke_tweener = Some(Tweener::new(stroke_from.clone(), stroke_to.clone(), 1));
+                self.stroke_tweener =
+                    Some(Tweener::new(stroke_from.clone(), stroke_to.clone(), max_subdivision));
             }
         }
 
@@ -258,20 +280,29 @@ impl Style {
             self.fill_name.as_ref().and_then(|n| variation.get_fill_by_path(path.clone(), n))
         {
             if let Some(ref fill_from) = self.fill {
-                self.fill_tweener = Some(Tweener::new(fill_from.clone(), fill_to.clone(), 1));
+                self.fill_tweener =
+                    Some(Tweener::new(fill_from.clone(), fill_to.clone(), max_subdivision));
             }
         }
     }
 
     pub fn step_resolution(&mut self, amount: f64) {
-        if let Some(ref mut stroke_tweener) = self.stroke_tweener {
-            let stroke = stroke_tweener.tween_on(amount);
-            self.stroke = Some(stroke.clone());
+        if let Some(ref mut tweener) = self.stroke_tweener {
+            if let Some(stroke) = tweener.tween_on(amount) {
+                match &mut self.stroke {
+                    Some(dest) => dest.clone_from(stroke),
+                    dest => *dest = Some(stroke.clone()),
+                }
+            }
         }
 
-        if let Some(ref mut fill_tweener) = self.fill_tweener {
-            let fill = fill_tweener.tween_on(amount);
-            self.fill = Some(fill.clone());
+        if let Some(ref mut tweener) = self.fill_tweener {
+            if let Some(fill) = tweener.tween_on(amount) {
+                match &mut self.fill {
+                    Some(dest) => dest.clone_from(fill),
+                    dest => *dest = Some(fill.clone()),
+                }
+            }
         }
     }
 

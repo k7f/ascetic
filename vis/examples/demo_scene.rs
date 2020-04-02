@@ -173,7 +173,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     if let Some(ref variation) = app.theme_variation {
         if let Some(amount) = app.variation_amount {
-            theme.start_variation(Some(variation));
+            theme.start_variation(Some(variation), 1);
             theme.step_variation(amount);
         } else {
             theme.use_variation(Some(variation));

@@ -275,6 +275,12 @@ impl Theme {
         self
     }
 
+    pub fn use_original_variation(&mut self) {
+        for style in self.styles.iter_mut() {
+            style.resolve_initially(&self.original);
+        }
+    }
+
     pub fn use_variation<V, I>(&mut self, path: I)
     where
         V: AsRef<str>,
@@ -285,13 +291,19 @@ impl Theme {
         }
     }
 
-    pub fn start_variation<V, I>(&mut self, path: I)
+    pub fn start_original_variation(&mut self, max_subdivision: usize) {
+        for style in self.styles.iter_mut() {
+            style.start_original_resolution(&self.original, max_subdivision);
+        }
+    }
+
+    pub fn start_variation<V, I>(&mut self, path: I, max_subdivision: usize)
     where
         V: AsRef<str>,
         I: IntoIterator<Item = V> + Clone,
     {
         for style in self.styles.iter_mut() {
-            style.start_resolution(&self.original, path.clone());
+            style.start_resolution(&self.original, path.clone(), max_subdivision);
         }
     }
 
