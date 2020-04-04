@@ -1,4 +1,4 @@
-#![feature(iter_map_while)]
+#![feature(clamp)]
 
 mod crumb;
 mod group;

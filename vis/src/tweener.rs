@@ -21,7 +21,7 @@ pub trait Tweenable: Steppable + Sized {
     ///
     /// Default implementation returns a two-element `Vec` containing
     /// just the two extremes.  Reimplement, if there is a need for
-    /// expensive high quality interpolation (e.g. hsv-based color
+    /// expensive high quality interpolation (e.g. HSV-based color
     /// interpolation) that shouldn't be performed within each call to
     /// `Steppable::step()`.
     #[allow(unused_variables)]
@@ -124,6 +124,8 @@ pub trait Easing {
     ///
     /// Note: this is meant to be calculated globally for entire
     /// [`Theme`].
+    ///
+    /// [`Theme`]: crate::Theme
     fn ease(&mut self, time: f64) -> f64;
 
     fn restart(&mut self);
@@ -163,8 +165,23 @@ impl Easing for LinearEasing {
 }
 
 trait AsRgba {
+    /// Returns four components, red, green, blue, and alpha, all in
+    /// the range [0..255].
     fn as_rgba(&self) -> (u32, u32, u32, u32);
+
+    /// Returns four components, red, green, blue, and alpha, all in
+    /// the range [0..255].
     fn as_rgba_f64(&self) -> (f64, f64, f64, f64);
+}
+
+trait AsHsva {
+    /// _Hue_ should be `None` iff _saturation_ is zero (for any
+    /// _value_ of gray).
+    fn as_hsva(&self) -> (Option<f64>, f64, f64, f64);
+}
+
+trait FromHsva {
+    fn from_hsva(hue: f64, saturation: f64, value: f64, alpha: f64) -> Self;
 }
 
 impl AsRgba for Color {
@@ -183,6 +200,120 @@ impl AsRgba for Color {
             ((rgba >> 8) & 255) as f64,
             (rgba & 255) as f64,
         )
+    }
+}
+
+impl AsHsva for Color {
+    fn as_hsva(&self) -> (Option<f64>, f64, f64, f64) {
+        let (red, green, blue, alpha) = self.as_rgba_f64();
+        let gb = green - blue;
+        let br = blue - red;
+        let rg = red - green;
+
+        if gb > 0.0 {
+            if rg > 0.0 {
+                // r > g > b
+                // chroma = red - blue
+                (Some(gb / -br), -br / red, red, alpha)
+            } else if br > 0.0 {
+                // g > b > r
+                // chroma = green - red
+                (Some(br / -rg + 2.0), -rg / green, green, alpha)
+            } else {
+                // r <= g > b <= r
+                // chroma = green - blue
+                (Some(br / gb + 2.0), gb / green, green, alpha)
+            }
+        } else if br > 0.0 {
+            if rg > 0.0 {
+                // b > r > g
+                // chroma = blue - green
+                (Some(rg / -gb + 4.0), -gb / blue, blue, alpha)
+            } else {
+                // g <= b > r <= g
+                // chroma = blue - red
+                (Some(rg / br + 4.0), br / blue, blue, alpha)
+            }
+        } else if rg > 0.0 {
+            // b <= r > g <= b
+            // chroma = red - green
+            (Some(gb / rg + 6.0), rg / red, red, alpha)
+        } else {
+            // r = g = b
+            (None, 0.0, red, alpha)
+        }
+    }
+}
+
+impl FromHsva for Color {
+    fn from_hsva(hue: f64, saturation: f64, value: f64, alpha: f64) -> Self {
+        let hue = if hue < 0.0 {
+            hue + 6.0
+        } else if hue >= 6.0 {
+            hue - 6.0
+        } else {
+            hue
+        };
+        let chroma = value * saturation;
+        let hue_trunc = hue.trunc();
+        let fract = (hue - hue_trunc) * chroma;
+        let bottom = value - chroma;
+        let red;
+        let green;
+        let blue;
+
+        if hue_trunc < 1.0 {
+            red = value;
+            blue = bottom;
+            green = bottom + fract;
+        } else if hue_trunc < 2.0 {
+            green = value;
+            blue = bottom;
+            red = value - fract;
+        } else if hue_trunc < 3.0 {
+            green = value;
+            red = bottom;
+            blue = bottom + fract;
+        } else if hue_trunc < 4.0 {
+            blue = value;
+            red = bottom;
+            green = value - fract;
+        } else if hue_trunc < 5.0 {
+            blue = value;
+            green = bottom;
+            red = bottom + fract;
+        } else {
+            red = value;
+            green = bottom;
+            blue = value - fract;
+        }
+
+        Color::rgba8(
+            red.trunc() as u8,
+            green.trunc() as u8,
+            blue.trunc() as u8,
+            alpha.trunc() as u8,
+        )
+    }
+}
+
+impl Steppable for (f64, f64) {
+    fn step(&mut self, target: &Self, amount: f64) {
+        *self = (
+            (self.0 + (target.0 - self.0) * amount).clamp(0.0, 255.0),
+            (self.1 + (target.1 - self.1) * amount).clamp(0.0, 255.0),
+        );
+    }
+}
+
+impl Steppable for (f64, f64, f64, f64) {
+    fn step(&mut self, target: &Self, amount: f64) {
+        *self = (
+            (self.0 + (target.0 - self.0) * amount).clamp(-6.0, 12.0),
+            (self.1 + (target.1 - self.1) * amount).clamp(0.0, 1.0),
+            (self.2 + (target.2 - self.2) * amount).clamp(0.0, 255.0),
+            (self.3 + (target.3 - self.3) * amount).clamp(0.0, 255.0),
+        );
     }
 }
 
@@ -220,12 +351,37 @@ impl Tweenable for Color {
             let mut breakpoints = vec![self.clone()];
             let num_segments = (max_inner + 1) as f64;
 
-            for i in 0..max_inner {
-                let mut inner = self.clone();
+            let (opt_h0, s0, v0, a0) = self.as_hsva();
+            let (opt_h1, s1, v1, a1) = other.as_hsva();
 
-                // FIXME use hsv
-                inner.step(&other, (i + 1) as f64 / num_segments);
-                breakpoints.push(inner);
+            let (h0, h1) = if let Some(h0) = opt_h0 {
+                if let Some(h1) = opt_h1 {
+                    (h0, h1)
+                } else {
+                    (h0, h0)
+                }
+            } else if let Some(h1) = opt_h1 {
+                (h1, h1)
+            } else {
+                let mut inner = (v0, a0);
+                let target = (v1, a1);
+
+                for i in 0..max_inner {
+                    inner.step(&target, (i + 1) as f64 / num_segments);
+                    breakpoints.push(Color::from_hsva(0.0, 0.0, inner.0, inner.1));
+                }
+
+                breakpoints.push(other);
+
+                return breakpoints
+            };
+
+            let mut inner = (h0, s0, v0, a0);
+            let target = (h1, s1, v1, a1);
+
+            for i in 0..max_inner {
+                inner.step(&target, (i + 1) as f64 / num_segments);
+                breakpoints.push(Color::from_hsva(inner.0, inner.1, inner.2, inner.3));
             }
 
             breakpoints.push(other);
@@ -261,7 +417,9 @@ impl Tweenable for Stroke {
                 .into_iter()
                 .enumerate()
                 .map(|(i, b)| {
-                    Stroke::new().with_brush(b).with_width(w0 + (w1 - w0) * (i as f64 / num_segments))
+                    Stroke::new()
+                        .with_brush(b)
+                        .with_width(w0 + (w1 - w0) * (i as f64 / num_segments))
                 })
                 .collect()
         } else {

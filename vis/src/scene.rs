@@ -280,7 +280,7 @@ type CrumbList<'a> = slice::Iter<'a, CrumbItem>;
 /// An iterator traversing all [`CrumbItem`]s of a [`Scene`].
 ///
 /// Note: the effective [`TranslateScale`] transform of each
-/// [`CrumbItem`] is composed on-the-fly, in the iterator's [`next()`]
+/// [`CrumbItem`] is composed on-the-fly, in the iterator's `next()`
 /// method.
 pub struct CrumbChainIter<'a> {
     crumb_chain: Vec<(CrumbList<'a>, TranslateScale)>,
