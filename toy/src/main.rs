@@ -1,6 +1,9 @@
+#[macro_use]
+extern crate log;
+
 use std::{path::PathBuf, error::Error};
 use ascetic_vis::{Scene, Theme};
-use ascetic_toy::{Gui, ToyError};
+use ascetic_toy::{Gui, ToyError, ToyLogger};
 
 #[derive(Debug)]
 struct App {
@@ -41,11 +44,17 @@ impl App {
             }
         }
 
+        ToyLogger::init(match verbosity {
+            0 => log::Level::Warn,
+            1 => log::Level::Info,
+            _ => log::Level::Debug,
+        });
+
         let script_path = script_path.unwrap_or_else(|| {
             let mut path = PathBuf::from(".");
             path.push(Self::DEFAULT_SCRIPT_PATH);
             if verbosity > 0 {
-                eprintln!("[WARN] Unspecified input script path; using \"{}\".", path.display());
+                warn!("Unspecified input script path; using \"{}\".", path.display());
             }
             path
         });
@@ -64,7 +73,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     loop {
         if let Err(err) = app.gui.update(&mut scene, &mut theme) {
             match err {
-                ToyError::Fatal(err) => return Err(err),
+                ToyError::Fatal(err) => {
+                    error!("{}", err);
+                    return Err(err)
+                }
+                ToyError::PietFailure(err) => error!("{}", err),
+                ToyError::MinifbFailure(err) => error!("{}", err),
             }
         } else if app.gui.exit_confirmed() {
             return Ok(())

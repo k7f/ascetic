@@ -23,7 +23,7 @@ impl Gui {
     const DEFAULT_RENDER_MARGIN: (f64, f64) = (10., 10.);
     const DEFAULT_UPDATE_WINDOW_PERIOD: Duration = Duration::from_millis(20);
 
-    pub fn new(win_width: usize, win_height: usize) -> Result<Self, Box<dyn Error>> {
+    pub fn new(win_width: usize, win_height: usize) -> Result<Self, ToyError> {
         let window_options = WindowOptions {
             borderless: false,
             resize: true,

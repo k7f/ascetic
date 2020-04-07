@@ -9,7 +9,13 @@ license = "MIT"
 repository = "https://github.com/k7f/ascetic"
 readme = "README.md"
 
+[dependencies.minifb]
+
+version = "0.16"
+default-features = false
+features = ["x11"]
+
 [dependencies]
 
-minifb = "0.15"
+log = "0.4"
 ascetic_vis = { path = "../vis" }

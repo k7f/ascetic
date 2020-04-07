@@ -7,6 +7,7 @@ mod pan;
 mod keyboard;
 mod mouse;
 mod error;
+mod logger;
 
 pub use gui::Gui;
 pub use scheduler::{Action, Scheduler};
@@ -17,3 +18,4 @@ pub use pan::Pan;
 pub use keyboard::Keyboard;
 pub use mouse::Mouse;
 pub use error::ToyError;
+pub use logger::ToyLogger;
