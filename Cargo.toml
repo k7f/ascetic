@@ -1,7 +1,7 @@
 [workspace]
 
 members = [
-#    "cli",
+    "cli",
     "pet",
     "vis",
     "toy",

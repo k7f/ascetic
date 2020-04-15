@@ -5,11 +5,23 @@ PET_CRATES="roxmltree cssparser"
 VIS_CRATES="piet kurbo piet-cairo cairo-rs png"
 TOY_CRATES="minifb"
 
+print_requested_version() {
+    proj=${1}
+    crate=${2}
+
+    version=$(grep -m 1 "$crate = " ${proj}/Cargo.toml | cut -d\" -f2)
+    if [ -z ${version} ] ; then
+        version=$(grep -m 1 -A 5 -e "\[\(.\+-\)\?dependencies\.${crate}\]" ${proj}/Cargo.toml | grep -m 1 "version" | cut -d\" -f2)
+    fi
+
+    echo -n \"${version}\"
+}
+
 for proj in cli pet vis toy ; do
     CRATES=${proj^^}_CRATES
     for crate in ${!CRATES} ; do
         echo -n "$crate = "
-        grep -m 1 "$crate = " ${proj}/Cargo.toml | cut -z -d\" -f2
+        print_requested_version ${proj} ${crate}
         echo -n " -> "
         cargo search --limit 1 $crate | head -1 | awk '{print $3}'
     done

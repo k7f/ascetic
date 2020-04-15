@@ -80,13 +80,13 @@ impl Command for Validate {
                                         if let Err(err) = ces.check_coherence() {
                                             if self.do_abort {
                                                 warn!("Aborting on structural error");
-                                                return Err(err)
+                                                return Err(err.into())
                                             } else {
                                                 let ref header = format!(
                                                     "Structural error in file '{}'...",
                                                     path.display()
                                                 );
-                                                AppError::report_with_header(err, header);
+                                                AppError::report_with_header(err.into(), header);
                                                 num_bad_files += 1;
                                             }
                                         }
