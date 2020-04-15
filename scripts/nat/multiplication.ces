@@ -1,8 +1,12 @@
-cap {
-    ω x y yprime z
+vis {
+    title: "Multiplication"
 }
 
-inh {
+unbounded {
+    x y yprime z
+}
+
+inhibit {
     x -> stop,
     y -> h,
     yprime -> hprime,

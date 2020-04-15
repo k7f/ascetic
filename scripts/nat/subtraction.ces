@@ -1,8 +1,12 @@
-cap {
-    ω x y z
+vis {
+    title: "Subtraction"
 }
 
-inh {
+unbounded {
+    x y z
+}
+
+inhibit {
     x -> stop,
     y -> z,
 }

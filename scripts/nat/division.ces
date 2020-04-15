@@ -1,8 +1,12 @@
-cap {
-    ω x xprime y yprime z
+vis {
+    title: "Division"
 }
 
-inh {
+unbounded {
+    x xprime y yprime z
+}
+
+inhibit {
     x -> stop,
     x -> h,
     x -> iprime,

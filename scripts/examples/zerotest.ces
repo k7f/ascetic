@@ -2,14 +2,9 @@ vis {
     title: "Test zero with an inhibitor"
 }
 
-cap {
-    ω tested
-}
-
-mul {
-    ω tested -> zero,
-    0 tested -> notzero,
-}
+unbounded { tested }
+inhibit   { tested -> zero }
+hold      { tested -> notzero }
 
 ces Main {
     entry tested => zero + notzero

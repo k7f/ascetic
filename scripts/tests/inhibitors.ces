@@ -2,12 +2,12 @@ vis {
     title: "Join of three lanes with node capacities and fork inhibitors"
 }
 
-cap {
+caps {
     2 a b,
     3 c,
 }
 
-inh {
+inhibit {
     a c -> z,
 }
 

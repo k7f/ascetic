@@ -1,0 +1,40 @@
+vis {
+    title: "Modulo operation"
+}
+
+unbounded {
+    x xprime y yprime r
+}
+
+inhibit {
+    y yprime -> stop,
+    x -> s,
+    xprime -> sprime,
+    xprime yprime -> i,
+    x y -> iprime,
+    yprime -> x,
+    y -> xprime,
+}
+
+hold {
+    s -> r,
+    sprime -> r,
+    y -> s,
+    yprime -> sprime,
+}
+
+ces Main {
+    { start -> i + iprime }
+    { stop <- s yprime + sprime y }
+    { i x y -> s -> r + stop }
+    { iprime xprime yprime -> sprime -> r + stop }
+    { a + iprime xprime yprime + start xprime -> i -> a + iprime + s }
+    { aprime + i x y + start -> iprime -> aprime + i + sprime }
+    { x y i -> a -> i }
+    { xprime yprime iprime -> aprime -> iprime }
+    { xprime yprime -> x -> a + xprime + iprime + s }
+    { x y -> xprime -> aprime + x + i + sprime }
+    { yprime -> y -> iprime + a yprime + s + xprime + r + stop }
+    { y -> yprime -> i + aprime y + sprime + x + r + stop }
+    { r <- y sprime + yprime s }
+}

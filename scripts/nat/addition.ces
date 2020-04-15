@@ -1,10 +1,9 @@
-cap {
-    ω x y z
+vis {
+    title: "Addition"
 }
 
-inh {
-    x y -> stop
-}
+unbounded { x y z }
+inhibit { x y -> stop }
     
 ces Main {
     { start x y => stop } + { start (x + y) => a => start z }

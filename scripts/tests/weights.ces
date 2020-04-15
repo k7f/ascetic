@@ -2,12 +2,12 @@ vis {
     title: "Two arrows in sequence with node capacities and hyperarc weights"
 }
 
-cap {
+caps {
     2 a b,
     3 c,
 }
 
-mul {
+weights {
     ω a -> b,
     2 b <- a,
     2 b -> c,

@@ -2,7 +2,7 @@ vis {
     title: "Test zero"
 }
 
-inh {
+inhibit {
     T -> z
 }
 
