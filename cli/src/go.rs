@@ -69,6 +69,7 @@ impl Command for Go {
         self.solve_command.run()?;
 
         let ces = self.solve_command.get_ces();
+        let pp = self.solve_command.plain_printout();
 
         if let Some(fset) = ces.get_firing_set() {
             let mut runner = Runner::new(
@@ -81,8 +82,8 @@ impl Command for Go {
                     runner.with_goal(self.stop_triggers.iter().map(|(name, mul)| (name, *mul)))?;
             }
 
-            println!("{}", "Go from".bright_green().bold());
-            println!("{} {}", "=>".bright_yellow().bold(), runner.get_initial_state());
+            println!("{}", "Go from".bright_green().bold().plain(pp));
+            println!("{} {}", "=>".bright_yellow().bold().plain(pp), runner.get_initial_state());
 
             let stop_condition = runner.go(fset)?;
 
@@ -91,11 +92,11 @@ impl Command for Go {
 
             for (i, fc) in fcs.iter(fset).enumerate() {
                 if i > 0 {
-                    println!("{} {}", "=>".bright_yellow().bold(), state);
+                    println!("{} {}", "=>".bright_yellow().bold().plain(pp), state);
                 }
                 println!(
                     "{}. {}",
-                    format!("{:4}", (i + 1)).bright_yellow().bold(),
+                    format!("{:4}", (i + 1)).bright_yellow().bold().plain(pp),
                     fc.with(ces.get_context())
                 );
 
@@ -106,33 +107,33 @@ impl Command for Go {
                 StopCondition::GoalReached(node_id, num_steps) => {
                     print!(
                         "{} reached (node \"{}\")",
-                        "Goal".bright_cyan().bold(),
+                        "Goal".bright_cyan().bold().plain(pp),
                         node_id.with(ces.get_context()),
                     );
                     Some(num_steps)
                 }
                 StopCondition::Stalemate(num_steps) => {
-                    print!("{}", "Stuck".bright_red().bold());
+                    print!("{}", "Stuck".bright_red().bold().plain(pp));
                     Some(num_steps)
                 }
                 StopCondition::Pause(num_steps) => {
-                    print!("{}", "Paused".bright_green().bold());
+                    print!("{}", "Paused".bright_green().bold().plain(pp));
                     Some(num_steps)
                 }
                 StopCondition::UnimplementedFeature(feature) => {
                     println!(
                         "{}: {} isn't implemented yet.",
-                        "Failed".bright_red().bold(),
+                        "Failed".bright_red().bold().plain(pp),
                         feature
                     );
                     None
                 }
             } {
                 println!(" after {} steps at", num_steps);
-                println!("{} {}", "=>".bright_yellow().bold(), state);
+                println!("{} {}", "=>".bright_yellow().bold().plain(pp), state);
             }
         } else {
-            println!("{}.", "Structural deadlock".bright_red().bold());
+            println!("{}.", "Structural deadlock".bright_red().bold().plain(pp));
         }
 
         Ok(())

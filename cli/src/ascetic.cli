@@ -61,6 +61,10 @@ args:
         long: log-dir
         takes_value: true
         global: true
+    - plain:
+        help: Suppress styled printout
+        long: plain
+        global: true
     - verbose:
         help: Increase verbosity level
         long: verbose

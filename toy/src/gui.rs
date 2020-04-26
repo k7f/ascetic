@@ -1,4 +1,4 @@
-use std::{iter::FromIterator, time::Duration, error::Error};
+use std::{iter::FromIterator, time::Duration};
 use minifb::{Key, Scale, Window, WindowOptions, ScaleMode};
 use ascetic_vis::{Scene, Theme};
 use crate::{Action, Scheduler, Renderer, Pixels, Pan, Zoom, Keyboard, Mouse, ToyError};

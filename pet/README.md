@@ -14,7 +14,7 @@ project.
 
 In principle, `ascetic_pet` should build wherever `rustc` and `cargo`
 runs.  Be aware, though, that the project is very much a WIP.  The
-main toolchain used in development is nightly channel of Rust 1.43.
+main toolchain used in development is nightly channel of Rust 1.44.
 
 ## License
 

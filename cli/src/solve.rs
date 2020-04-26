@@ -4,6 +4,7 @@ use super::{App, Command, Styled};
 
 pub struct Solve {
     verbosity:          u64,
+    plain_printout:     bool,
     main_path:          String,
     more_paths:         Vec<String>,
     requested_encoding: Option<sat::Encoding>,
@@ -14,6 +15,7 @@ pub struct Solve {
 impl Solve {
     pub(crate) fn new(app: &mut App) -> Self {
         let verbosity = app.occurrences_of("verbose").max(app.occurrences_of("log"));
+        let plain_printout = app.is_present("plain");
 
         let mut path_values = app.values_of("MAIN_PATH").unwrap_or_else(|| unreachable!());
         let main_path = path_values.next().unwrap_or_else(|| unreachable!()).to_owned();
@@ -40,7 +42,15 @@ impl Solve {
 
         app.accept_selectors(&["SAT_ENCODING", "SAT_SEARCH"]);
 
-        Self { verbosity, main_path, more_paths, requested_encoding, requested_search, ces }
+        Self {
+            verbosity,
+            plain_printout,
+            main_path,
+            more_paths,
+            requested_encoding,
+            requested_search,
+            ces,
+        }
     }
 
     /// Creates a [`Solve`] instance and returns it as a [`Command`]
@@ -62,6 +72,10 @@ impl Solve {
 
     pub fn get_ces(&self) -> &CEStructure {
         &self.ces
+    }
+
+    pub fn plain_printout(&self) -> bool {
+        self.plain_printout
     }
 }
 
@@ -91,6 +105,8 @@ impl Command for Solve {
     }
 
     fn run(&mut self) -> Result<(), Box<dyn Error>> {
+        let pp = self.plain_printout;
+
         if let Some(encoding) = self.requested_encoding {
             self.ces.get_context().lock().unwrap().set_encoding(encoding);
         }
@@ -122,14 +138,20 @@ impl Command for Solve {
         if let Some(fset) = self.ces.get_firing_set() {
             match fset.as_slice().len() {
                 0 => panic!("Found no firing components."),
-                1 => println!("{} one firing component:", "Found".bright_green().bold()),
-                n => println!("{} {} firing components:", "Found".bright_green().bold(), n),
+                1 => println!("{} one firing component:", "Found".bright_green().bold().plain(pp)),
+                n => {
+                    println!("{} {} firing components:", "Found".bright_green().bold().plain(pp), n)
+                }
             }
 
             let ctx = self.ces.get_context();
 
             for (i, fc) in fset.as_slice().iter().enumerate() {
-                println!("{}. {}", format!("{:4}", (i + 1)).bright_yellow().bold(), fc.with(ctx));
+                println!(
+                    "{}. {}",
+                    format!("{:4}", (i + 1)).bright_yellow().bold().plain(pp),
+                    fc.with(ctx)
+                );
             }
         }
 

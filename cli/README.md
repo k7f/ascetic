@@ -14,15 +14,15 @@ interacting systems.  This is a set of command-line tools of the
 
 In principle, `ascetic_cli` should build wherever `rustc` and `cargo`
 runs.  Its executables should run on any
-[platform](https://forge.rust-lang.org/platform-support.html)
+[platform](https://forge.rust-lang.org/release/platform-support.html)
 supporting the Rust `std` library.  Be aware, though, that the project
 is very much a WIP.  The main toolchain used in development is nightly
-channel of Rust 1.43.
+channel of Rust 1.44.
 
 ## Installation
 
 Having [Rust](https://www.rust-lang.org/downloads.html) installed,
-ensure its version is at least 1.43: check with `cargo version` and
+ensure its version is at least 1.44: check with `cargo version` and
 run `rustup update` if needed.  Then
 
 ```bash
@@ -53,13 +53,13 @@ inform about structural deadlock.  When instructed, it may execute one
 step of a simulation,
 
 ```bash
-$ ascesis scripts/ces/zerotest.ces -gentry -gtested
+$ ascesis scripts/examples/zerotest.ces -f entry tested
 ```
 
 run a longer simulation,
 
 ```bash
-$ ascesis scripts/ces/arrow.ces scripts/ces/choice-two.ces -ga:3 -x3
+$ ascesis scripts/examples/arrow.ces scripts/examples/choice-two.ces -f a:3 -x 3
 ```
 
 or validate a set of files,

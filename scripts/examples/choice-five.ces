@@ -2,6 +2,8 @@ vis {
     title: "Choice (five arrows)"
 }
 
+unbounded { a }
+
 ces Main {
     a => v + w + x + y + z
 }

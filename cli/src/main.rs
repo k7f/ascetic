@@ -9,7 +9,7 @@ fn main() {
     let cli_spec = match clap::YamlLoader::load_from_str(cli_spec_str) {
         Ok(spec) => spec,
         Err(err) => {
-            let mut logger = Logger::new("ascetic.cli").with_console(log::LevelFilter::Debug);
+            let mut logger = Logger::new("ascetic_cli").with_console(log::LevelFilter::Debug);
             logger.apply();
 
             AppError::report("Internal error in CLI specification..".into());
@@ -30,10 +30,7 @@ fn main() {
             }
         }
         "validate" => Validate::new_command(&app),
-        x => {
-            println!("{}", x);
-            panic!()
-        }
+        unreachable => unreachable!("command \"{}\"", unreachable),
     };
 
     let console_level = command.console_level().unwrap_or(match app.occurrences_of("verbose") {

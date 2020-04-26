@@ -1,13 +1,14 @@
 use std::{rc::Rc, path::PathBuf, error::Error};
 use ascesis::{Context, CEStructure, AscesisFormat, YamlFormat};
-use super::{App, Command, AppError};
+use super::{App, Command, Styled, AppError};
 
 pub struct Validate {
-    glob_path:    String,
-    do_abort:     bool,
-    syntax_only:  bool,
-    is_recursive: bool,
-    verbosity:    u64,
+    glob_path:      String,
+    do_abort:       bool,
+    syntax_only:    bool,
+    is_recursive:   bool,
+    verbosity:      u64,
+    plain_printout: bool,
 }
 
 impl Validate {
@@ -17,8 +18,9 @@ impl Validate {
         let syntax_only = app.is_present("syntax");
         let is_recursive = app.is_present("recursive");
         let verbosity = app.occurrences_of("verbose").max(app.occurrences_of("log"));
+        let plain_printout = app.is_present("plain");
 
-        Self { glob_path, do_abort, syntax_only, is_recursive, verbosity }
+        Self { glob_path, do_abort, syntax_only, is_recursive, verbosity, plain_printout }
     }
 
     pub fn new_command(app: &App) -> Box<dyn Command> {
@@ -33,6 +35,7 @@ impl Command for Validate {
 
     fn run(&mut self) -> Result<(), Box<dyn Error>> {
         let mut glob_path = PathBuf::from(&self.glob_path);
+        let pp = self.plain_printout;
 
         if self.is_recursive {
             glob_path.push("**");
@@ -113,13 +116,18 @@ impl Command for Validate {
 
                 if num_bad_files > 0 {
                     println!(
-                        "... Done ({} bad file{} out of {} checked).",
+                        "... {} ({} bad file{} out of {} checked).",
+                        "Done".bright_red().bold().plain(pp),
                         num_bad_files,
                         if num_bad_files == 1 { "" } else { "s" },
                         num_all_files,
                     );
                 } else {
-                    println!("... Done (no bad files out of {} checked).", num_all_files);
+                    println!(
+                        "... {} (no bad files out of {} checked).",
+                        "Done".bright_green().bold().plain(pp),
+                        num_all_files
+                    );
                 }
 
                 if self.verbosity >= 3 {

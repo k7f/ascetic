@@ -2,19 +2,31 @@ use std::fmt;
 
 pub struct WithStyle<S: AsRef<str>> {
     message: S,
+    is_off:  bool,
     color:   &'static str,
     style:   &'static str,
 }
 
+impl<S: AsRef<str>> WithStyle<S> {
+    pub fn plain(mut self, is_plain: bool) -> Self {
+        self.is_off = is_plain;
+        self
+    }
+}
+
 impl<S: AsRef<str>> From<S> for WithStyle<S> {
     fn from(message: S) -> Self {
-        WithStyle { message, color: "49", style: "" }
+        WithStyle { message, is_off: false, color: "49", style: "" }
     }
 }
 
 impl<S: AsRef<str>> fmt::Display for WithStyle<S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "\x1B[{}{}m{}\x1B[0m", self.style, self.color, self.message.as_ref())
+        if self.is_off {
+            self.message.as_ref().fmt(f)
+        } else {
+            write!(f, "\x1B[{}{}m{}\x1B[0m", self.style, self.color, self.message.as_ref())
+        }
     }
 }
 
