@@ -14,15 +14,35 @@ inhibit {
 
 ces Main {
     { start -> h + hprime }
+
     { stop <- (h + hprime) x }
-    { x -> stop + i + iprime }
-    { yprime -> y -> a yprime + h }
-    { y -> yprime -> aprime y + hprime }
+
+    { x ->
+      stop + i + iprime }
+
+    { yprime ->
+      y -> a yprime + h }
+
+    { y ->
+      yprime -> aprime y + hprime }
+
     { z <- a + aprime }
-    { i y -> a -> i z }
-    { iprime yprime -> aprime -> iprime z }
-    { a + hprime x -> i -> a + h }
-    { aprime + h x -> iprime -> aprime + hprime }
-    { (start + i) y -> h -> stop + iprime }
-    { (start + iprime) yprime -> hprime -> stop + i }
+
+    { i y ->
+      a -> i z }
+
+    { iprime yprime ->
+      aprime -> iprime z }
+
+    { a + hprime x ->
+      i -> a + h }
+
+    { aprime + h x ->
+      iprime -> aprime + hprime }
+
+    { (start + i) y ->
+      h -> stop + iprime }
+
+    { (start + iprime) yprime ->
+      hprime -> stop + i }
 }

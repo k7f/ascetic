@@ -7,30 +7,46 @@ unbounded {
 }
 
 inhibit {
-    x -> stop,
-    x -> h,
-    x -> iprime,
-    xprime -> stop,
-    xprime -> hprime,
-    xprime -> i,
-    y -> xprime,
-    y -> h,
-    yprime -> x,
-    yprime -> hprime,
+    x -> stop + h + iprime,
+    xprime -> stop + hprime + i,
+    y -> xprime + h,
+    yprime -> x + hprime,
 }
 
 ces Main {
     { start -> i + iprime }
+
     { stop <- i x y + iprime xprime yprime }
-    { xprime yprime -> x -> stop + xprime + a + h + iprime }
-    { x y -> xprime -> stop + x + aprime + hprime + i }
-    { yprime -> y -> stop + xprime + a yprime + h }
-    { y -> yprime -> stop + x + aprime y + hprime }
+
+    { xprime yprime ->
+      x -> stop + xprime + a + h + iprime }
+
+    { x y ->
+      xprime -> stop + x + aprime + hprime + i }
+
+    { yprime ->
+      y -> stop + xprime + a yprime + h }
+
+    { y ->
+      yprime -> stop + x + aprime y + hprime }
+
     { z <- h + hprime }
-    { x y i -> a -> i }
-    { xprime yprime iprime -> aprime -> iprime }
-    { x y i -> h -> z iprime }
-    { xprime yprime iprime -> hprime -> z i }
-    { start xprime + a + hprime -> i -> stop + a + h }
-    { start x + aprime + h -> iprime -> stop + aprime + hprime }
+
+    { x y i ->
+      a -> i }
+
+    { xprime yprime iprime ->
+      aprime -> iprime }
+
+    { x y i ->
+      h -> z iprime }
+
+    { xprime yprime iprime ->
+      hprime -> z i }
+
+    { start xprime + a + hprime ->
+      i -> stop + a + h }
+
+    { start x + aprime + h ->
+      iprime -> stop + aprime + hprime }
 }

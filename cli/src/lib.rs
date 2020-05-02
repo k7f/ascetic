@@ -6,6 +6,7 @@ extern crate log;
 mod style;
 mod solve;
 mod go;
+mod sample;
 mod validate;
 
 use std::error::Error;
@@ -14,6 +15,7 @@ use ascesis::{ContextHandle, Semantics};
 pub use style::Styled;
 pub use solve::Solve;
 pub use go::Go;
+pub use sample::Sample;
 pub use validate::Validate;
 
 pub struct AppError;
@@ -174,6 +176,15 @@ impl<'a> App<'a> {
                 Ok(val) => ctx.set_max_steps(val),
                 Err(err) => {
                     panic!("The argument '{}' isn't a valid value of MAX_STEPS ({})", v, err)
+                }
+            }
+        }
+
+        if let Some(v) = self.value_of("NUM_PASSES") {
+            match v.parse::<usize>() {
+                Ok(val) => ctx.set_num_passes(val),
+                Err(err) => {
+                    panic!("The argument '{}' isn't a valid value of NUM_PASSES ({})", v, err)
                 }
             }
         }

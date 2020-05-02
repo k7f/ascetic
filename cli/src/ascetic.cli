@@ -50,6 +50,12 @@ args:
         takes_value: true
         multiple: false
         global: false
+    - NUM_PASSES:
+        help: Compute a summary after running a given number of executions
+        long: num-passes
+        takes_value: true
+        multiple: false
+        global: false
     - log:
         help: Turn on logging to file
         long: log
@@ -62,7 +68,7 @@ args:
         takes_value: true
         global: true
     - plain:
-        help: Suppress styled printout
+        help: Suppress styling of printout
         long: plain
         global: true
     - verbose:

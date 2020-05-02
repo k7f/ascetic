@@ -17,12 +17,12 @@ runs.  Its executables should run on any
 [platform](https://forge.rust-lang.org/release/platform-support.html)
 supporting the Rust `std` library.  Be aware, though, that the project
 is very much a WIP.  The main toolchain used in development is nightly
-channel of Rust 1.44.
+channel of Rust 1.45.
 
 ## Installation
 
 Having [Rust](https://www.rust-lang.org/downloads.html) installed,
-ensure its version is at least 1.44: check with `cargo version` and
+ensure its version is at least 1.45: check with `cargo version` and
 run `rustup update` if needed.  Then
 
 ```bash

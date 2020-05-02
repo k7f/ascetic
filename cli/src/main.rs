@@ -1,7 +1,7 @@
 #![allow(clippy::toplevel_ref_arg)]
 
 use ascesis::Logger;
-use ascetic_cli::{App, Solve, Go, Validate, AppError};
+use ascetic_cli::{App, Solve, Go, Sample, Validate, AppError};
 
 fn main() {
     let ref cli_spec_str = include_str!("ascetic.cli");
@@ -24,7 +24,11 @@ fn main() {
     let mut command = match app.subcommand_name().unwrap_or("_") {
         "_" => {
             if app.is_present("START") {
-                Go::new_command(&mut app)
+                if app.is_present("NUM_PASSES") {
+                    Sample::new_command(&mut app)
+                } else {
+                    Go::new_command(&mut app)
+                }
             } else {
                 Solve::new_command(&mut app)
             }
@@ -62,7 +66,7 @@ fn main() {
     logger.apply();
 
     app.post_warnings();
-    app.check_selectors(&["SAT_ENCODING", "SAT_SEARCH", "SEMANTICS", "MAX_STEPS"]);
+    app.check_selectors(&["SAT_ENCODING", "SAT_SEARCH", "SEMANTICS", "MAX_STEPS", "NUM_PASSES"]);
 
     if let Err(err) = command.run() {
         AppError::report(err);

@@ -1,0 +1,28 @@
+vis {
+    title: "Summation of natural numbers"
+}
+
+unbounded {
+    x1 x2 x3 x4 x5 x6 x7 x8
+}
+
+inhibit {
+    x2 x3 x4 x5 x6 x7 x8 -> stop,
+}
+
+hold {
+    start -> x1,
+}
+
+ces Main {
+    { start -> x1 + stop }
+    { stop <- start x2 x3 x4 x5 x6 x7 x8 }
+    { x1 <- start (x2 + x3 + x4 + x5 + x6 + x7 + x8) }
+    { x2 -> stop + x1 }
+    { x3 -> stop + x1 }
+    { x4 -> stop + x1 }
+    { x5 -> stop + x1 }
+    { x6 -> stop + x1 }
+    { x7 -> stop + x1 }
+    { x8 -> stop + x1 }
+}

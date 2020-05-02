@@ -1,11 +1,11 @@
 use std::error::Error;
-use ascesis::{Contextual, Runner, StopCondition, Multiplicity};
+use ascesis::{ContextHandle, Contextual, CEStructure, Runner, StopCondition, Multiplicity, FiringSet};
 use super::{App, Command, Solve, Styled};
 
 pub struct Go {
-    solve_command:  Solve,
-    start_triggers: Vec<(String, Multiplicity)>,
-    stop_triggers:  Vec<(String, Multiplicity)>,
+    pub(crate) solve_command: Solve,
+    start_triggers:           Vec<(String, Multiplicity)>,
+    stop_triggers:            Vec<(String, Multiplicity)>,
 }
 
 impl Go {
@@ -54,26 +54,13 @@ impl Go {
 
         Box::new(Self::new(app))
     }
-}
 
-impl Command for Go {
-    fn name_of_log_file(&self) -> String {
-        self.solve_command.name_of_log_file()
-    }
-
-    fn console_level(&self) -> Option<log::LevelFilter> {
-        self.solve_command.console_level()
-    }
-
-    fn run(&mut self) -> Result<(), Box<dyn Error>> {
+    pub(crate) fn init(&mut self) -> Result<Option<(Runner, FiringSet)>, Box<dyn Error>> {
         self.solve_command.run()?;
 
-        let ces = self.solve_command.get_ces();
-        let pp = self.solve_command.plain_printout();
-
-        if let Some(fset) = ces.get_firing_set() {
+        if let Some(fset) = self.get_ces().get_firing_set().cloned() {
             let mut runner = Runner::new(
-                ces.get_context(),
+                self.get_ces().get_context(),
                 self.start_triggers.iter().map(|(name, mul)| (name, *mul)),
             );
 
@@ -82,15 +69,56 @@ impl Command for Go {
                     runner.with_goal(self.stop_triggers.iter().map(|(name, mul)| (name, *mul)))?;
             }
 
+            Ok(Some((runner, fset)))
+        } else {
+            let pp = self.plain_printout();
+            println!("{}.", "Structural deadlock".bright_red().bold().plain(pp));
+
+            Ok(None)
+        }
+    }
+
+    #[inline]
+    pub fn get_context(&self) -> &ContextHandle {
+        self.solve_command.get_context()
+    }
+
+    #[inline]
+    pub fn get_ces(&self) -> &CEStructure {
+        &self.solve_command.get_ces()
+    }
+
+    #[inline]
+    pub fn plain_printout(&self) -> bool {
+        self.solve_command.plain_printout()
+    }
+}
+
+impl Command for Go {
+    #[inline]
+    fn name_of_log_file(&self) -> String {
+        self.solve_command.name_of_log_file()
+    }
+
+    #[inline]
+    fn console_level(&self) -> Option<log::LevelFilter> {
+        self.solve_command.console_level()
+    }
+
+    fn run(&mut self) -> Result<(), Box<dyn Error>> {
+        if let Some((mut runner, fset)) = self.init()? {
+            let pp = self.solve_command.plain_printout();
+
             println!("{}", "Go from".bright_green().bold().plain(pp));
             println!("{} {}", "=>".bright_yellow().bold().plain(pp), runner.get_initial_state());
 
-            let stop_condition = runner.go(fset)?;
+            let stop_condition = runner.go(&fset)?;
 
+            let ces = self.solve_command.get_ces();
             let fcs = runner.get_firing_sequence();
             let mut state = runner.get_initial_state().clone();
 
-            for (i, fc) in fcs.iter(fset).enumerate() {
+            for (i, fc) in fcs.iter(&fset).enumerate() {
                 if i > 0 {
                     println!("{} {}", "=>".bright_yellow().bold().plain(pp), state);
                 }
@@ -132,8 +160,6 @@ impl Command for Go {
                 println!(" after {} steps at", num_steps);
                 println!("{} {}", "=>".bright_yellow().bold().plain(pp), state);
             }
-        } else {
-            println!("{}.", "Structural deadlock".bright_red().bold().plain(pp));
         }
 
         Ok(())

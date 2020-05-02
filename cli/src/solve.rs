@@ -66,14 +66,17 @@ impl Solve {
         Box::new(Self::new(app))
     }
 
+    #[inline]
     pub fn get_context(&self) -> &ContextHandle {
         self.ces.get_context()
     }
 
+    #[inline]
     pub fn get_ces(&self) -> &CEStructure {
         &self.ces
     }
 
+    #[inline]
     pub fn plain_printout(&self) -> bool {
         self.plain_printout
     }
