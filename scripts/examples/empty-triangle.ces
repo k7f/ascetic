@@ -1,0 +1,10 @@
+vis {
+    title: "A triangle without firing components"
+}
+
+ces Main {
+    { a -> b c }
+    { b <- a c }
+    { a ->
+      c -> b }
+}

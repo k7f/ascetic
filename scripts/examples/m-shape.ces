@@ -1,0 +1,12 @@
+vis {
+    title: "Product of two forks with one common sink"
+}
+
+// assert {
+//     transition: { a b => x y z }
+// }
+
+ces Main {
+    { a => x y }
+    { b => y z }
+}

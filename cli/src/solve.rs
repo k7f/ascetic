@@ -140,7 +140,10 @@ impl Command for Solve {
 
         if let Some(fset) = self.ces.get_firing_set() {
             match fset.as_slice().len() {
-                0 => panic!("Found no firing components."),
+                0 => {
+                    warn!("Unsat resulted in empty FiringSet, instead of explicit deadlock");
+                    println!("{}.", "Structural deadlock".bright_red().bold().plain(pp));
+                }
                 1 => println!("{} one firing component:", "Found".bright_green().bold().plain(pp)),
                 n => {
                     println!("{} {} firing components:", "Found".bright_green().bold().plain(pp), n)
@@ -156,6 +159,8 @@ impl Command for Solve {
                     fc.with(ctx)
                 );
             }
+        } else {
+            println!("{}.", "Structural deadlock".bright_red().bold().plain(pp));
         }
 
         Ok(())

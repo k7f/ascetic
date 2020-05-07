@@ -76,14 +76,12 @@ impl Command for Sample {
             let mut stalemate_sample = HashMap::new();
 
             for pass in 0..self.num_passes {
-                let stop_condition;
-
-                if pass > 0 {
+                let stop_condition = if pass > 0 {
                     runner.restart();
-                    stop_condition = runner.resume(&fset)?;
+                    runner.resume(&fset)?
                 } else {
-                    stop_condition = runner.go(&fset)?;
-                }
+                    runner.go(&fset)?
+                };
 
                 let fcs = runner.get_firing_sequence();
                 let mut state = runner.get_initial_state().clone();

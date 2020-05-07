@@ -1,0 +1,81 @@
+vis {
+    title: "Greatest common divisor"
+}
+
+unbounded {
+    x xprime y yprime r rprime
+}
+
+inhibit {
+    stop -> xprime,
+    x -> iprime + s,
+    xprime -> i + sprime,
+    y -> iprime + xprime + h + g + stop,
+    yprime -> i + h + g + stop,
+    r -> g + stop,
+    rprime -> stop + start,
+    h g -> xprime,
+}
+
+hold {
+    x -> start,
+    y -> s + start,
+    yprime -> sprime,
+    h -> x,
+    g -> y,
+    s sprime -> r rprime,
+}
+
+flow {
+    ω yprime xprime => x,
+}
+
+ces Main {
+    { g x y rprime ->
+      start -> i }
+
+    { g r rprime y yprime ->
+      stop -> xprime }
+
+    { xprime yprime + h (y + r + yprime) ->
+      x -> a + xprime + iprime + s + start }
+
+    { x y h stop g ->
+      xprime -> aprime + x + i + sprime }
+
+    { yprime + g rprime ->
+      y -> iprime + a yprime + s + xprime + r rprime + h + g + x + stop + start }
+
+    { y ->
+      yprime -> i + aprime y + sprime + x + r rprime + h + g + stop }
+
+    { y sprime + yprime s ->
+      r -> g + stop + x }
+
+    { y sprime + yprime s ->
+      rprime -> y + stop + start }
+
+    { s yprime + sprime y ->
+      h -> x + g + xprime }
+
+    { h y r yprime ->
+      g -> y + start + stop + xprime }
+
+    { i x y ->
+      s -> r rprime + h }
+
+    { iprime xprime yprime ->
+      sprime -> r rprime + h }
+
+    { a + iprime xprime yprime + start ->
+      i -> a + iprime + s }
+
+    { aprime + i x y ->
+      iprime -> aprime + i + sprime }
+
+    { x y i ->
+      a -> i }
+
+    { xprime yprime iprime ->
+      aprime -> iprime }
+}

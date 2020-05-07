@@ -59,17 +59,26 @@ impl Go {
         self.solve_command.run()?;
 
         if let Some(fset) = self.get_ces().get_firing_set().cloned() {
-            let mut runner = Runner::new(
-                self.get_ces().get_context(),
-                self.start_triggers.iter().map(|(name, mul)| (name, *mul)),
-            );
+            if fset.as_slice().is_empty() {
+                warn!("Unsat resulted in empty FiringSet, instead of explicit deadlock");
 
-            if !self.stop_triggers.is_empty() {
-                runner =
-                    runner.with_goal(self.stop_triggers.iter().map(|(name, mul)| (name, *mul)))?;
+                let pp = self.plain_printout();
+                println!("{}.", "Structural deadlock".bright_red().bold().plain(pp));
+
+                Ok(None)
+            } else {
+                let mut runner = Runner::new(
+                    self.get_ces().get_context(),
+                    self.start_triggers.iter().map(|(name, mul)| (name, *mul)),
+                );
+
+                if !self.stop_triggers.is_empty() {
+                    runner = runner
+                        .with_goal(self.stop_triggers.iter().map(|(name, mul)| (name, *mul)))?;
+                }
+
+                Ok(Some((runner, fset)))
             }
-
-            Ok(Some((runner, fset)))
         } else {
             let pp = self.plain_printout();
             println!("{}.", "Structural deadlock".bright_red().bold().plain(pp));
