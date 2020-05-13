@@ -1,0 +1,3 @@
+// Run as `ascesis grids.ces grid1d.ces ...`
+
+ces Main { Grid1D() }

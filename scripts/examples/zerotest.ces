@@ -4,7 +4,7 @@ vis {
 
 unbounded { tested }
 inhibit   { tested -> zero }
-hold      { tested -> notzero }
+activate  { tested -> notzero }
 
 ces Main {
     entry tested => zero + notzero

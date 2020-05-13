@@ -1,0 +1,10 @@
+vis {
+    title: "2-by-2 biclique decomposed into arrows"
+}
+
+ces Main {
+    { a => x } { b => x }
+  + { a => x } { b => y }
+  + { a => x } { a => y }
+  + { a b => y } { b => x }
+}

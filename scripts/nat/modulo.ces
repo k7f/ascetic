@@ -13,7 +13,7 @@ inhibit {
     yprime -> stop + x + i,
 }
 
-hold {
+activate {
     s -> r,
     sprime -> r,
     y -> s,

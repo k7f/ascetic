@@ -17,7 +17,7 @@ inhibit {
     h g -> xprime,
 }
 
-hold {
+activate {
     x -> start,
     y -> s + start,
     yprime -> sprime,

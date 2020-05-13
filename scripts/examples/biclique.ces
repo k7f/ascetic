@@ -1,0 +1,36 @@
+vis {
+    title: "2-by-2 biclique"
+}
+
+ces Main {
+    a + b + a b => x + y + x y
+}
+
+// The above structure resolves to 13 firing components:
+// four arrows, two forks, two joins, and the following
+// five 2-by-2 structures:
+// { a -> x y } { b -> x y } { x <- a b } { y <- a b }
+// { a -> x y } { b -> x   } { x <- a b } { y <- a   }
+// { a -> x y } { b ->   y } { x <- a   } { y <- a b }
+// { a ->   y } { b -> x y } { x <-   b } { y <- a b }
+// { a -> x   } { b -> x y } { x <- a b } { y <-   b }
+
+// Weights are declared below as a way of distinguishing different
+// firing components defined on the same pre-set and post-set.
+
+inhibit {
+    a -> x y,
+    b -> x y,
+    x <- a b,
+    y <- a b,
+}
+
+activate {
+    a -> x,
+    b -> y,
+}
+
+drop {
+    x <- a,
+    y <- b,
+}
