@@ -1,0 +1,20 @@
+[package]
+
+name = "ascetic_dam_macro"
+version = "0.0.1-pre"
+description = "Asset preprocessor (module attribute part)"
+authors = ["k7f"]
+edition = "2018"
+license = "MIT"
+repository = "https://github.com/k7f/ascetic"
+readme = "README.md"
+
+[lib]
+
+proc-macro = true
+
+[dependencies]
+
+proc-macro2 = "1.0"
+syn = { version = "1.0", features = ["full"] }
+quote = "1.0"

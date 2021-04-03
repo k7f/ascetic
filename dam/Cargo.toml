@@ -1,0 +1,20 @@
+[package]
+
+name = "ascetic_dam"
+version = "0.0.1-pre"
+description = "Asset preprocessor"
+authors = ["k7f"]
+edition = "2018"
+license = "MIT"
+repository = "https://github.com/k7f/ascetic"
+readme = "README.md"
+
+[dependencies]
+
+tracing = "0.1"
+seahash = "4.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.5"
+tinytemplate = "1.2"
+ascetic_dam_macro = { path = "macro" }

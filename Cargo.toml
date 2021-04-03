@@ -5,4 +5,5 @@ members = [
     "pet",
     "vis",
     "toy",
+    "dam",
 ]

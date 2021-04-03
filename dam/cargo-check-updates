@@ -1,0 +1,33 @@
+#!/bin/bash
+
+__CRATES="tracing seahash serde serde_json toml tinytemplate"
+MACRO_CRATES="proc-macro2 syn quote"
+
+print_requested_version() {
+    toml=${1}
+    crate=${2}
+
+    version=$(grep -m 1 "^$crate = " ${toml} | cut -d\" -f2)
+    if [ -z ${version} ] ; then
+        version=$(grep -m 1 -A 5 -e "\[\(.\+-\)\?dependencies\.${crate}\]" ${toml} | grep -m 1 "version" | cut -d\" -f2)
+    fi
+
+    echo -n \"${version}\"
+}
+
+for proj in _ macro ; do
+    CRATES=${proj^^}_CRATES
+    if [ ${proj} == _ ] ; then
+        toml="Cargo.toml"
+    else
+        toml="${proj}/Cargo.toml"
+        echo "*** Parsing ${toml} ***"
+    fi
+
+    for crate in ${!CRATES} ; do
+        echo -n "$crate = "
+        print_requested_version ${toml} ${crate}
+        echo -n " -> "
+        cargo search --limit 1 $crate | head -1 | awk '{print $3}'
+    done
+done
