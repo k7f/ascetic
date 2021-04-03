@@ -37,10 +37,11 @@ args:
         multiple: true
         global: false
     - SEMANTICS:
-        help: Choose state transitions according to sequential or parallel semantics
+        help: Choose state transitions according to sequential, parallel or maximal semantics
         long: semantics
+        short: S
         takes_value: true
-        possible_values: [seq, par]
+        possible_values: [seq, par, max]
         multiple: false
         global: false
     - MAX_STEPS:

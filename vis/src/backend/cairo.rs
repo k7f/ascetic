@@ -1,10 +1,10 @@
 use std::{mem, fmt, error::Error};
-use piet::{ErrorKind, ImageFormat};
+use piet::ImageFormat;
 use piet_cairo::CairoRenderContext;
 use cairo::{Context, Format, ImageSurface};
 
 #[derive(Debug)]
-pub struct CairoError(cairo::Status);
+pub struct CairoError(cairo::Error);
 
 impl fmt::Display for CairoError {
     #[inline]
@@ -37,7 +37,7 @@ impl BitmapDevice {
 
     pub fn into_raw_pixels(mut self, fmt: ImageFormat) -> Result<Vec<u8>, piet::Error> {
         if fmt != ImageFormat::RgbaPremul {
-            return Err(piet::new_error(ErrorKind::NotSupported))
+            return Err(piet::Error::NotSupported)
         }
 
         mem::drop(self.ctx);

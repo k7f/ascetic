@@ -1,0 +1,32 @@
+vis {
+    title: "Two-phase rendering of example A2"
+}
+
+inhibit { s -> b }
+
+activate {
+    q -> a + b + c,
+    r -> a,
+    s -> b,
+}
+
+drop {
+    qsink <- q,
+    rsink <- r,
+    ssink <- s,
+}
+
+ces Main {
+    // places
+    { b -> q -> a + b + c + qsink }
+    { a + b -> r -> a + rsink }
+    { c -> s -> b + ssink }
+
+    // transitions
+    { qsink <- q }
+    { rsink <- r }
+    { ssink <- s }
+    { q r -> a -> r }
+    { q s -> b -> q r }
+    { q -> c -> s }
+}

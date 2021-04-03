@@ -11,8 +11,8 @@ readme = "README.md"
 
 [dependencies]
 
-kurbo = "0.5"
-piet = "0.0.12"
-piet-cairo = "0.0.12"
-cairo-rs = "0.8"
+kurbo = "0.7"
+piet = "0.3"
+piet-cairo = "0.3"
+cairo-rs = "0.9"
 png = "0.16"

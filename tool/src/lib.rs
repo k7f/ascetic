@@ -167,6 +167,7 @@ impl<'a> App<'a> {
             match v {
                 "seq" => ctx.set_semantics(Semantics::Sequential),
                 "par" => ctx.set_semantics(Semantics::Parallel),
+                "max" => ctx.set_semantics(Semantics::Maximal),
                 _ => unreachable!(),
             }
         }

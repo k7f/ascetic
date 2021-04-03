@@ -1,8 +1,8 @@
 [package]
 
-name = "ascetic_cli"
+name = "ascetic_tool"
 version = "0.0.3-pre"
-description = "Command-line tools for analysis and synthesis of cause-effect synchronised interacting systems"
+description = "Command-line tools for Ascesis"
 authors = ["k7f"]
 edition = "2018"
 license = "MIT"

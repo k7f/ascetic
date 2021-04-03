@@ -1,6 +1,6 @@
 use std::{str::FromStr, rc::Rc, error::Error};
-use ascesis::{Context, ContextHandle, Contextual, CEStructure, AscesisFormat, YamlFormat, sat};
-use super::{App, Command, Styled};
+use ascesis::{Context, ContextHandle, Contextual, FusetHolder, AscesisFormat, YamlFormat, sat};
+use crate::{App, Command, Styled};
 
 pub struct Solve {
     verbosity:          u64,
@@ -9,7 +9,7 @@ pub struct Solve {
     more_paths:         Vec<String>,
     requested_encoding: Option<sat::Encoding>,
     requested_search:   Option<sat::Search>,
-    ces:                CEStructure,
+    ces:                FusetHolder,
 }
 
 impl Solve {
@@ -38,7 +38,7 @@ impl Solve {
             app.get_mode().expect("unexpected anonymous mode").to_lowercase()
         );
         let context = Context::new_toplevel(context_name);
-        let ces = CEStructure::new_interactive(&context);
+        let ces = FusetHolder::new_interactive(&context);
 
         app.accept_selectors(&["SAT_ENCODING", "SAT_SEARCH"]);
 
@@ -72,7 +72,7 @@ impl Solve {
     }
 
     #[inline]
-    pub fn get_ces(&self) -> &CEStructure {
+    pub fn get_ces(&self) -> &FusetHolder {
         &self.ces
     }
 

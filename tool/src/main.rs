@@ -1,7 +1,7 @@
 #![allow(clippy::toplevel_ref_arg)]
 
 use ascesis::Logger;
-use ascetic_cli::{App, Solve, Go, Sample, Validate, AppError};
+use ascetic_tool::{App, Solve, Go, Sample, Validate, AppError};
 
 fn main() {
     let ref cli_spec_str = include_str!("ascetic.cli");
@@ -9,7 +9,7 @@ fn main() {
     let cli_spec = match clap::YamlLoader::load_from_str(cli_spec_str) {
         Ok(spec) => spec,
         Err(err) => {
-            let mut logger = Logger::new("ascetic_cli").with_console(log::LevelFilter::Debug);
+            let mut logger = Logger::new("ascetic_tool").with_console(log::LevelFilter::Debug);
             logger.apply();
 
             AppError::report("Internal error in CLI specification..".into());

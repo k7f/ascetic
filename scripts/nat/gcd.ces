@@ -26,9 +26,15 @@ activate {
     s sprime -> r rprime,
 }
 
-flow {
-    ω yprime xprime => x,
-}
+// in ( yprime xprime => x ) {
+//     inhibit {
+//         yprime -> x,
+//     }
+// }
+
+// flow {
+//     ω yprime xprime => x,
+// }
 
 ces Main {
     { g x y rprime ->

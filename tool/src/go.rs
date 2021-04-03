@@ -1,6 +1,6 @@
 use std::error::Error;
-use ascesis::{ContextHandle, Contextual, CEStructure, Runner, StopCondition, Multiplicity, FiringSet};
-use super::{App, Command, Solve, Styled};
+use ascesis::{ContextHandle, Contextual, FusetHolder, Semantics, Runner, StopCondition, Multiplicity, FiringSet};
+use crate::{App, Command, Solve, Styled};
 
 pub struct Go {
     pub(crate) solve_command: Solve,
@@ -93,7 +93,7 @@ impl Go {
     }
 
     #[inline]
-    pub fn get_ces(&self) -> &CEStructure {
+    pub fn get_ces(&self) -> &FusetHolder {
         &self.solve_command.get_ces()
     }
 
@@ -126,18 +126,49 @@ impl Command for Go {
             let ces = self.solve_command.get_ces();
             let fcs = runner.get_firing_sequence();
             let mut state = runner.get_initial_state().clone();
+            let semantics = ces.get_context().lock().unwrap().get_semantics().unwrap_or(Semantics::Sequential);
 
-            for (i, fc) in fcs.iter(&fset).enumerate() {
-                if i > 0 {
-                    println!("{} {}", "=>".bright_yellow().bold().plain(pp), state);
+            match semantics {
+                Semantics::Sequential => {
+                    for (i, fc) in fcs.seq_iter(&fset).enumerate() {
+                        if i > 0 {
+                            println!("{} {}", "=>".bright_yellow().bold().plain(pp), state);
+                        }
+                        println!(
+                            "{}. {}",
+                            format!("{:4}", (i + 1)).bright_yellow().bold().plain(pp),
+                            fc.with(ces.get_context())
+                        );
+
+                        fc.fire(&mut state)?;
+                    }
                 }
-                println!(
-                    "{}. {}",
-                    format!("{:4}", (i + 1)).bright_yellow().bold().plain(pp),
-                    fc.with(ces.get_context())
-                );
 
-                fc.fire(&mut state)?;
+                Semantics::Parallel |
+                Semantics::Maximal => {
+                    for (i, fsub) in fcs.par_iter().enumerate() {
+                        if i > 0 {
+                            println!("{} {}", "=>".bright_yellow().bold().plain(pp), state);
+                        }
+
+                        let mut it = fsub.iter(&fset);
+
+                        println!(
+                            "{}. {}",
+                            format!("{:4}", (i + 1)).bright_yellow().bold().plain(pp),
+                            it.next().unwrap().with(ces.get_context())  // FIXME
+                        );
+                        for fc in it {
+                            println!("      {}", fc.with(ces.get_context()));
+                        }
+
+                        if semantics == Semantics::Parallel {
+                            fsub.fire_all(&mut state, &fset)?;
+                        } else {
+                            fsub.fire_maximal(&mut state, &fset)?;
+                        }
+                    }
+                }
             }
 
             if let Some(num_steps) = match stop_condition {

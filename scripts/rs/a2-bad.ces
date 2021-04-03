@@ -1,0 +1,25 @@
+vis {
+    title: "Example A2"
+}
+
+inhibit {
+    s -> qprime,
+}
+
+activate {
+    q -> qprime,
+    qprime -> r,
+}
+
+drop {
+    rsink <- r,
+    qsink <- q,
+    ssink <- s,
+}
+
+ces Main {
+    { { r <- q qprime } + { r => rsink } }
+    { { q -> r + qprime + s } + { q => qsink } }
+    { q s -> qprime -> r }
+    { { q -> s -> qprime } + { s => ssink } }
+}

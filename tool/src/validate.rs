@@ -1,6 +1,6 @@
 use std::{rc::Rc, path::PathBuf, error::Error};
-use ascesis::{Context, CEStructure, AscesisFormat, YamlFormat};
-use super::{App, Command, Styled, AppError};
+use ascesis::{Context, FusetHolder, AscesisFormat, YamlFormat};
+use crate::{App, Command, Styled, AppError};
 
 pub struct Validate {
     glob_path:      String,
@@ -62,7 +62,7 @@ impl Command for Validate {
 
                             ctx.lock().unwrap().reset();
 
-                            let result = CEStructure::from_file(
+                            let result = FusetHolder::from_file(
                                 &ctx,
                                 path,
                                 &[

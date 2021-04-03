@@ -8,7 +8,7 @@ ces Main {
 
 // The above structure resolves to 13 firing components:
 // four arrows, two forks, two joins, and the following
-// five 2-by-2 structures:
+// five 2-by-2 structures (first one is closely connected):
 // { a -> x y } { b -> x y } { x <- a b } { y <- a b }
 // { a -> x y } { b -> x   } { x <- a b } { y <- a   }
 // { a -> x y } { b ->   y } { x <- a   } { y <- a b }

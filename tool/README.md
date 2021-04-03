@@ -1,7 +1,7 @@
-ascetic_cli
-===========
-[![Latest version](https://img.shields.io/crates/v/ascetic_cli.svg)](https://crates.io/crates/ascetic_cli)
-[![docs](https://docs.rs/ascetic_cli/badge.svg)](https://docs.rs/ascetic_cli)
+ascetic_tool
+============
+[![Latest version](https://img.shields.io/crates/v/ascetic_tool.svg)](https://crates.io/crates/ascetic_tool)
+[![docs](https://docs.rs/ascetic_tool/badge.svg)](https://docs.rs/ascetic_tool)
 ![Rust](https://img.shields.io/badge/rust-nightly-brightgreen.svg)
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 
@@ -12,7 +12,7 @@ interacting systems.  This is a set of command-line tools of the
 
 ## Prerequisites
 
-In principle, `ascetic_cli` should build wherever `rustc` and `cargo`
+In principle, `ascetic_tool` should build wherever `rustc` and `cargo`
 runs.  Its executables should run on any
 [platform](https://forge.rust-lang.org/release/platform-support.html)
 supporting the Rust `std` library.  Be aware, though, that the project
@@ -26,12 +26,12 @@ ensure its version is at least 1.45: check with `cargo version` and
 run `rustup update` if needed.  Then
 
 ```bash
-$ cargo install ascetic_cli
+$ cargo install ascetic_tool
 ```
 
 will automatically download, build, and install the latest
-`ascetic_cli` release on
-[crates.io](https://crates.io/crates/ascetic_cli).
+`ascetic_tool` release on
+[crates.io](https://crates.io/crates/ascetic_tool).
 
 ## Command line interface
 
@@ -76,6 +76,6 @@ $ ascesis --help
 
 ## License
 
-`ascetic_cli` is licensed under the MIT license.  Please read the
+`ascetic_tool` is licensed under the MIT license.  Please read the
 [LICENSE-MIT](LICENSE-MIT) file in this repository for more
 information.

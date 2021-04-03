@@ -3,8 +3,8 @@ use std::{
     iter::FromIterator,
     error::Error,
 };
-use ascesis::{ContextHandle, CEStructure, StopCondition};
-use super::{App, Command, Go, Styled};
+use ascesis::{ContextHandle, FusetHolder, StopCondition};
+use crate::{App, Command, Go, Styled};
 
 pub struct Sample {
     go_command: Go,
@@ -47,7 +47,7 @@ impl Sample {
     }
 
     #[inline]
-    pub fn get_ces(&self) -> &CEStructure {
+    pub fn get_ces(&self) -> &FusetHolder {
         &self.go_command.get_ces()
     }
 
@@ -86,7 +86,7 @@ impl Command for Sample {
                 let fcs = runner.get_firing_sequence();
                 let mut state = runner.get_initial_state().clone();
 
-                for fc in fcs.iter(&fset) {
+                for fc in fcs.seq_iter(&fset) {
                     fc.fire(&mut state)?;
                 }
 
