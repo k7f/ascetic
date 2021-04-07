@@ -1,7 +1,9 @@
 ascetic_dam
 ===========
 
-An asset preprocessor targeting `maple-core` and `trunk`.
+An asset preprocessor targeting
+[maple-core](https://github.com/lukechu10/maple) and
+[trunk](https://github.com/thedodd/trunk).
 
 ## Installation
 
@@ -40,7 +42,7 @@ template](https://github.com/bheisler/TinyTemplate)
 
 and `Assets.toml` is the root of a tree of [asset-declaring
 manifests](#asset-declaration).  Then application's `build.rs` file
-might look like so:
+might look like
 
 ```rust
 use ascetic_dam::AssetMaker;
@@ -48,26 +50,28 @@ use ascetic_dam::AssetMaker;
 fn main() {
     let asset_maker = AssetMaker::new("assets/Assets.toml").unwrap();
 
-    asset_maker.save_mod_file().unwrap();
+    asset_maker.save_mod_files("badges", &["img"]).unwrap();
     asset_maker.save_html_file(include_str!("assets/index.tt.html"), "index.trunk.html").unwrap();
 
     println!("cargo:rerun-if-changed=assets");
 }
 ```
 
-and `src/main.rs` might define a module `assets`
+and `src/main.rs` might define a module, `assets`,
 
 ```rust
-#[ascetic_dam::assets]
-pub mod assets {}
+pub mod assets {
+    #[ascetic_dam::assets(group="badges", tag="img")]
+    pub mod badges {}
+}
 ```
 
-populated with [asset-invoking function
+containing submodules populated with [asset-invoking function
 definitions](#asset-invocation).
 
 ### Asset declaration
 
-For example, if the root `Assets.toml` declares
+If the root manifest declares, for example,
 
 ```toml
 [images]
@@ -75,8 +79,10 @@ For example, if the root `Assets.toml` declares
 ```
 
 then it refers to the file `assets/images/book.svg` as an `<img>`
-element.  Assets may also be declared in non-root manifests.  If there
-is a non-root manifest `assets/styles/Assets.toml`, then it would be
+element.
+
+Assets may also be declared in non-root manifests.  If there is a
+non-root manifest `assets/styles/Assets.toml`, then it would be
 introduced in the root as
 
 ```toml
@@ -95,7 +101,7 @@ and its reference to a file `assets/styles/index.scss` would read
 ```rust
 template! {
     ...
-    (assets::book_img())
+    (assets::badges::book_img())
     ...
 }
 ```

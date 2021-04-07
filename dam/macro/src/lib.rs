@@ -1,3 +1,5 @@
+#![feature(extend_one)]
+
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
@@ -49,21 +51,34 @@ fn parse(args: syn::AttributeArgs, item: syn::ItemMod) -> Result<TokenStream, sy
     let vis = item.vis;
     let mod_token = item.mod_token;
     let ident = item.ident;
+    let mut groups = Vec::new();
+    let mut tags = Vec::new();
+    let mut body = quote! {};
 
     for arg in args {
-        let (_key, _value) = parse_arg(arg)?;
+        let (key, value) = parse_arg(arg)?;
+        match key {
+            "group" => groups.push(value),
+            "tag" => tags.push(value),
+            _ => unreachable!(),
+        }
     }
 
-    let body = if let Some((_, ref content)) = item.content {
-        quote! {
-            include!(concat!(env!("OUT_DIR"), "/assets.rs"));
+    for group in groups {
+        for tag in tags.iter() {
+            let path = format!("/{}_{}.rs", group, tag);
+
+            body.extend_one(quote! {
+                include!(concat!(env!("OUT_DIR"), #path));
+            });
+        }
+    }
+
+    if let Some((_, ref content)) = item.content {
+        body.extend_one(quote! {
             #(#content)*
-        }
-    } else {
-        quote! {
-            include!(concat!(env!("OUT_DIR"), "/assets.rs"));
-        }
-    };
+        });
+    }
 
     let result = quote! {
         #(#attrs)*

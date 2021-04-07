@@ -20,6 +20,17 @@ pub struct Asset {
 }
 
 impl Asset {
+    pub fn as_html_element<S: AsRef<str>>(&self, tag: S) -> Result<String, std::io::Error> {
+        let tag = tag.as_ref();
+        match tag {
+            "img" => Ok(self.as_img()),
+            _ => {
+                let msg = format!("HTML element with tag `{}` isn't supported", tag);
+                Err(std::io::Error::new(std::io::ErrorKind::Other, msg))
+            }
+        }
+    }
+
     pub fn as_img(&self) -> String {
         if let Some(ref alt) = self.decl.alt {
             format!(
@@ -265,23 +276,37 @@ impl AssetMaker {
         Ok(AssetMaker { root_dir, current_dir, work_dir: work_dir.into(), assets })
     }
 
-    pub fn save_mod_file(&self) -> Result<(), std::io::Error> {
-        let path = Path::new(&self.work_dir).join("assets.rs");
-        let file = std::fs::File::create(path)?;
+    pub fn save_mod_files<S, I>(&self, group_name: S, tags: I) -> Result<(), std::io::Error>
+    where
+        S: AsRef<str>,
+        I: IntoIterator,
+        I::Item: AsRef<str>,
+    {
+        for tag in tags.into_iter() {
+            let tag = tag.as_ref();
+            let file_name = format!("{}_{}.rs", group_name.as_ref(), tag);
+            let path = Path::new(&self.work_dir).join(file_name);
+            let file = std::fs::File::create(path)?;
 
-        writeln!(&file, "use maple_core::{{TemplateResult, template, generic_node::GenericNode}};")?;
+            writeln!(
+                &file,
+                "\
+use maple_core::{{template, template_result::TemplateResult, generic_node::GenericNode}};"
+            )?;
 
-        for (name, asset) in self.assets.iter() {
-            if asset.decl.tags.iter().any(|v| v == "img") {
-                writeln!(
-                    &file,
-                    "
-pub fn {}_img<G: GenericNode>() -> TemplateResult<G> {{
+            for (name, asset) in self.assets.iter() {
+                if asset.decl.tags.iter().any(|v| v == "img") {
+                    writeln!(
+                        &file,
+                        "
+pub fn {}_{}<G: GenericNode>() -> TemplateResult<G> {{
     template! {{ {} }}
 }}",
-                    name,
-                    asset.as_img(),
-                )?;
+                        name,
+                        tag,
+                        asset.as_html_element(tag)?,
+                    )?;
+                }
             }
         }
 
