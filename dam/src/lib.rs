@@ -288,9 +288,30 @@ impl AssetGroup {
         Ok(AssetGroup { name, root_dir, current_dir, work_dir: work_dir.into(), assets })
     }
 
+    pub fn as_empty(&self) -> Self {
+        let name = self.name.clone();
+        let root_dir = self.root_dir.clone();
+        let current_dir = self.current_dir.clone();
+        let work_dir = self.work_dir.clone();
+        let assets = HashMap::new();
+
+        AssetGroup { name, root_dir, current_dir, work_dir, assets }
+    }
+
+    pub fn clone_with_prefix<S>(&self, prefix: S) -> Self
+    where
+        S: AsRef<str>,
+    {
+        let mut result = self.as_empty();
+
+        result.extend_with_prefix(prefix, &self.assets);
+
+        result
+    }
+
     pub fn extend<S, A, I>(&mut self, assets: I)
     where
-        I: IntoIterator<Item=(S, A)>,
+        I: IntoIterator<Item = (S, A)>,
         S: AsRef<str>,
         A: AsRef<Asset>,
     {
@@ -305,7 +326,7 @@ impl AssetGroup {
     pub fn extend_with_prefix<S1, S2, A, I>(&mut self, prefix: S1, assets: I)
     where
         S1: AsRef<str>,
-        I: IntoIterator<Item=(S2, A)>,
+        I: IntoIterator<Item = (S2, A)>,
         S2: AsRef<str>,
         A: AsRef<Asset>,
     {
@@ -377,6 +398,8 @@ pub fn {}_{}<G: GenericNode>() -> TemplateResult<G> {{
 }
 
 pub trait AssetMaker {
+    fn as_group(&self) -> AssetGroup;
+
     fn save_html_file<P: AsRef<Path>>(
         &self,
         template: &str,
@@ -385,6 +408,10 @@ pub trait AssetMaker {
 }
 
 impl AssetMaker for AssetGroup {
+    fn as_group(&self) -> AssetGroup {
+        self.clone()
+    }
+
     fn save_html_file<P: AsRef<Path>>(
         &self,
         template: &str,
@@ -405,6 +432,20 @@ impl AssetMaker for AssetGroup {
 }
 
 impl AssetMaker for [AssetGroup] {
+    fn as_group(&self) -> AssetGroup {
+        if let Some((head, tail)) = self.split_first() {
+            let mut result = head.clone_with_prefix(&head.name);
+
+            for group in tail {
+                result.extend_with_prefix(&group.name, &group.assets);
+            }
+
+            result
+        } else {
+            AssetGroup::default()
+        }
+    }
+
     fn save_html_file<P: AsRef<Path>>(
         &self,
         template: &str,
@@ -417,18 +458,7 @@ impl AssetMaker for [AssetGroup] {
         tt.add_formatter("scripts_formatter", scripts_formatter);
         tt.add_template("html", template)?;
 
-        let context = if let Some((head, tail)) = self.split_first() {
-            let mut context = head.clone();
-
-            for group in tail {
-                context.extend_with_prefix(&group.name, &group.assets);
-            }
-
-            context
-        } else {
-            AssetGroup::default()
-        };
-
+        let context = self.as_group();
         let rendered = tt.render("html", &context)?;
         writeln!(&file, "{}", rendered)?;
 
@@ -565,15 +595,43 @@ fn scripts_formatter(value: &serde_json::Value, output: &mut String) -> Result<(
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_dotted_file_stem() {
-        let decl: AssetDeclaration = toml::from_str("").expect("declaration parsing error");
+    fn declaration_from_spec(spec: &str) -> AssetDeclaration {
+        toml::from_str(spec).expect("declaration parsing error")
+    }
+
+    fn asset_from_spec(file_name: &str, work_dir: &str, spec: &str) -> (String, Asset) {
+        let decl = declaration_from_spec(spec);
         let current_dir = std::env::current_dir().expect("current dir is unknown");
         let source_dir = normalize_path_relative(".", current_dir).unwrap();
-        let (stem, asset) = decl
-            .into_asset("dotted.file.name.ext", source_dir, "work_dir")
-            .expect("asset creation error");
+
+        decl.into_asset(file_name, source_dir, work_dir).expect("asset creation error")
+    }
+
+    #[test]
+    fn test_dotted_file_stem() {
+        let (stem, asset) = asset_from_spec("dotted.file.name.ext", "work_dir", "");
         assert_eq!(stem.as_str(), "dotted.file.name");
         assert_eq!(asset.target_url.as_str(), "dotted.file.name.ext");
+    }
+
+    #[test]
+    fn test_key_clash() {
+        let mut g1 = AssetGroup::default();
+        let (_, asset) = g1
+            .create_asset("file_name.ext", ".", declaration_from_spec(""))
+            .expect("asset creation error");
+        g1.register_asset("test", asset);
+        g1.name = "g1".to_string();
+
+        let mut g2 = AssetGroup::default();
+        let (_, asset) = g2
+            .create_asset("file_name.ext", ".", declaration_from_spec(""))
+            .expect("asset creation error");
+        g2.register_asset("test", asset);
+        g2.name = "g2".to_string();
+
+        let group = [g1, g2].as_group();
+        assert!(group.assets.contains_key("g1::test"));
+        assert!(group.assets.contains_key("g2::test"));
     }
 }
