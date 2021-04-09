@@ -45,13 +45,35 @@ manifests](#asset-declaration).  Then application's `build.rs` file
 might look like
 
 ```rust
-use ascetic_dam::AssetMaker;
+use ascetic_dam::{AssetGroup, AssetMaker};
 
 fn main() {
-    let asset_maker = AssetMaker::new("assets/Assets.toml").unwrap();
+    let asset_group = AssetGroup::new("assets", "assets/Assets.toml").unwrap();
 
-    asset_maker.save_mod_files("badges", &["img"]).unwrap();
-    asset_maker.save_html_file(include_str!("assets/index.tt.html"), "index.trunk.html").unwrap();
+    asset_group.save_mod_files(&["img"]).unwrap();
+    asset_group.save_html_file(include_str!("assets/index.tt.html"), "index.trunk.html").unwrap();
+
+    println!("cargo:rerun-if-changed=assets");
+}
+```
+
+or
+
+```rust
+use ascetic_dam::{AssetGroup, AssetMaker};
+
+fn main() {
+    let icon_group = AssetGroup::new("icons", "assets/icons/Assets.toml").unwrap();
+    let badge_group = AssetGroup::new("badges", "assets/badges/Assets.toml").unwrap();
+    let style_group = AssetGroup::new("styles", "assets/styles/Assets.toml").unwrap();
+    let script_group = AssetGroup::new("scripts", "assets/scripts/Assets.toml").unwrap();
+
+    icon_group.save_mod_files(&["img"]).unwrap();
+    badge_group.save_mod_files(&["img"]).unwrap();
+
+    [icon_group, badge_group, style_group, script_group]
+        .save_html_file(include_str!("assets/index.tt.html"), "index.trunk.html")
+        .unwrap();
 
     println!("cargo:rerun-if-changed=assets");
 }
@@ -61,6 +83,9 @@ and `src/main.rs` might define a module, `assets`,
 
 ```rust
 pub mod assets {
+    #[ascetic_dam::assets(group="icons", tag="img")]
+    pub mod icons {}
+
     #[ascetic_dam::assets(group="badges", tag="img")]
     pub mod badges {}
 }
@@ -101,7 +126,7 @@ and its reference to a file `assets/styles/index.scss` would read
 ```rust
 template! {
     ...
-    (assets::badges::book_img())
+    (assets::icons::book_img())
     ...
 }
 ```

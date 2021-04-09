@@ -9,7 +9,7 @@ use tinytemplate::{TinyTemplate, error::Error as TTError};
 
 pub use ascetic_dam_macro::assets;
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Clone, Debug)]
 pub struct Asset {
     source_path: PathBuf,
     work_href:   String,
@@ -55,11 +55,18 @@ impl Asset {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+impl AsRef<Asset> for Asset {
+    fn as_ref(&self) -> &Asset {
+        &self
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[allow(dead_code)]
 pub struct AssetDeclaration {
     /// target URL modulo hashing
     href:   Option<String>,
+    name:   Option<String>,
     #[serde(default)]
     flags:  Vec<String>,
     #[serde(default)]
@@ -91,7 +98,8 @@ impl AssetDeclaration {
             .to_str()
             .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::Other, "invalid file stem"))?;
 
-        let path_str = self.href.as_ref().map_or_else(|| file_stem, |s| s.as_str());
+        let asset_name = self.name.as_ref().map_or_else(|| file_stem, |s| s.as_str());
+        let path_str = self.href.as_ref().map_or_else(|| asset_name, |s| s.as_str());
 
         let (target_path, work_path) = if self.flags.iter().any(|v| v == "hash") {
             let bytes = std::fs::read(&source_path)?;
@@ -135,7 +143,7 @@ impl AssetDeclaration {
             .map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)))?;
         let tags = self.tags.clone();
 
-        Ok((file_stem.to_string(), Asset { source_path, work_href, target_url, tags, decl: self }))
+        Ok((asset_name.to_string(), Asset { source_path, work_href, target_url, tags, decl: self }))
     }
 }
 
@@ -227,19 +235,23 @@ fn collect_assets(
 #[allow(dead_code)]
 struct AssetFolder(HashMap<String, AssetDeclaration>);
 
-#[derive(Serialize, Debug)]
-pub struct AssetMaker {
+#[derive(Serialize, Clone, Default, Debug)]
+pub struct AssetGroup {
+    name:        String,
     root_dir:    PathBuf,
     current_dir: PathBuf,
     work_dir:    PathBuf,
     assets:      HashMap<String, Asset>, // keyed by file_stem (by default)
 }
 
-impl AssetMaker {
-    pub fn new<P>(manifest_path: P) -> Result<Self, std::io::Error>
+impl AssetGroup {
+    pub fn new<S, P>(group_name: S, manifest_path: P) -> Result<Self, std::io::Error>
     where
+        S: AsRef<str>,
         P: AsRef<Path>,
     {
+        let name = group_name.as_ref().to_string();
+
         let folders = read_folders(&manifest_path)?;
         println!("Folders: {:?}", folders);
 
@@ -273,18 +285,48 @@ impl AssetMaker {
         collect_assets(&mut assets, &mut visited, folders, &root_dir, &work_dir)?;
         println!("Assets: {:?}", assets);
 
-        Ok(AssetMaker { root_dir, current_dir, work_dir: work_dir.into(), assets })
+        Ok(AssetGroup { name, root_dir, current_dir, work_dir: work_dir.into(), assets })
     }
 
-    pub fn save_mod_files<S, I>(&self, group_name: S, tags: I) -> Result<(), std::io::Error>
+    pub fn extend<S, A, I>(&mut self, assets: I)
     where
+        I: IntoIterator<Item=(S, A)>,
         S: AsRef<str>,
+        A: AsRef<Asset>,
+    {
+        for (key, asset) in assets.into_iter() {
+            let key = key.as_ref().to_string();
+            let asset = asset.as_ref().clone();
+
+            self.assets.insert(key, asset);
+        }
+    }
+
+    pub fn extend_with_prefix<S1, S2, A, I>(&mut self, prefix: S1, assets: I)
+    where
+        S1: AsRef<str>,
+        I: IntoIterator<Item=(S2, A)>,
+        S2: AsRef<str>,
+        A: AsRef<Asset>,
+    {
+        let prefix = prefix.as_ref();
+
+        for (key, asset) in assets.into_iter() {
+            let key = format!("{}::{}", prefix, key.as_ref());
+            let asset = asset.as_ref().clone();
+
+            self.assets.insert(key, asset);
+        }
+    }
+
+    pub fn save_mod_files<I>(&self, tags: I) -> Result<(), std::io::Error>
+    where
         I: IntoIterator,
         I::Item: AsRef<str>,
     {
         for tag in tags.into_iter() {
             let tag = tag.as_ref();
-            let file_name = format!("{}_{}.rs", group_name.as_ref(), tag);
+            let file_name = format!("{}_{}.rs", self.name, tag);
             let path = Path::new(&self.work_dir).join(file_name);
             let file = std::fs::File::create(path)?;
 
@@ -313,24 +355,6 @@ pub fn {}_{}<G: GenericNode>() -> TemplateResult<G> {{
         Ok(())
     }
 
-    pub fn save_html_file<P: AsRef<Path>>(
-        &self,
-        template: &str,
-        out_path: P,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let file = std::fs::File::create(out_path.as_ref())?;
-
-        let mut tt = TinyTemplate::new();
-        tt.add_formatter("links_formatter", links_formatter);
-        tt.add_formatter("scripts_formatter", scripts_formatter);
-        tt.add_template("html", template)?;
-
-        let rendered = tt.render("html", &self)?;
-        writeln!(&file, "{}", rendered)?;
-
-        Ok(())
-    }
-
     pub fn create_asset<S, P>(
         &self,
         file_name: S,
@@ -349,6 +373,66 @@ pub fn {}_{}<G: GenericNode>() -> TemplateResult<G> {{
 
     pub fn register_asset<S: AsRef<str>>(&mut self, key: S, asset: Asset) {
         self.assets.insert(key.as_ref().to_string(), asset);
+    }
+}
+
+pub trait AssetMaker {
+    fn save_html_file<P: AsRef<Path>>(
+        &self,
+        template: &str,
+        out_path: P,
+    ) -> Result<(), Box<dyn std::error::Error>>;
+}
+
+impl AssetMaker for AssetGroup {
+    fn save_html_file<P: AsRef<Path>>(
+        &self,
+        template: &str,
+        out_path: P,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let file = std::fs::File::create(out_path.as_ref())?;
+
+        let mut tt = TinyTemplate::new();
+        tt.add_formatter("links_formatter", links_formatter);
+        tt.add_formatter("scripts_formatter", scripts_formatter);
+        tt.add_template("html", template)?;
+
+        let rendered = tt.render("html", &self)?;
+        writeln!(&file, "{}", rendered)?;
+
+        Ok(())
+    }
+}
+
+impl AssetMaker for [AssetGroup] {
+    fn save_html_file<P: AsRef<Path>>(
+        &self,
+        template: &str,
+        out_path: P,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let file = std::fs::File::create(out_path.as_ref())?;
+
+        let mut tt = TinyTemplate::new();
+        tt.add_formatter("links_formatter", links_formatter);
+        tt.add_formatter("scripts_formatter", scripts_formatter);
+        tt.add_template("html", template)?;
+
+        let context = if let Some((head, tail)) = self.split_first() {
+            let mut context = head.clone();
+
+            for group in tail {
+                context.extend_with_prefix(&group.name, &group.assets);
+            }
+
+            context
+        } else {
+            AssetGroup::default()
+        };
+
+        let rendered = tt.render("html", &context)?;
+        writeln!(&file, "{}", rendered)?;
+
+        Ok(())
     }
 }
 
