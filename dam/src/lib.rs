@@ -235,6 +235,60 @@ fn collect_assets(
 #[allow(dead_code)]
 struct AssetFolder(HashMap<String, AssetDeclaration>);
 
+/// # Examples
+///
+/// ```no_run
+/// use ascetic_dam::{AssetGroup, AssetMaker};
+///
+/// fn main() {
+///     let asset_group = AssetGroup::new("assets", "assets/Assets.toml").unwrap();
+///
+///     asset_group.save_all(include_str!("assets/index.tt.html"), "index.trunk.html", &["img"]).unwrap();
+///
+///     println!("cargo:rerun-if-changed=assets");
+/// }
+/// ```
+///
+/// or
+///
+/// ```no_run
+/// use ascetic_dam::{AssetGroup, AssetMaker};
+///
+/// fn main() {
+///     let icon_group = AssetGroup::new("icons", "assets/icons/Assets.toml").unwrap();
+///     let badge_group = AssetGroup::new("badges", "assets/badges/Assets.toml").unwrap();
+///     let style_group = AssetGroup::new("styles", "assets/styles/Assets.toml").unwrap();
+///     let script_group = AssetGroup::new("scripts", "assets/scripts/Assets.toml").unwrap();
+///
+///     icon_group.save_mod_files(&["img"]).unwrap();
+///     badge_group.save_mod_files(&["img"]).unwrap();
+///
+///     [icon_group, badge_group, style_group, script_group]
+///         .save_html_file(include_str!("assets/index.tt.html"), "index.trunk.html")
+///         .unwrap();
+///
+///     println!("cargo:rerun-if-changed=assets");
+/// }
+/// ```
+///
+/// or
+///
+/// ```no_run
+/// use ascetic_dam::{AssetGroup, AssetMaker};
+///
+/// fn main() {
+///     let icon_group = AssetGroup::new("icons", "assets/icons/Assets.toml").unwrap();
+///     let badge_group = AssetGroup::new("badges", "assets/badges/Assets.toml").unwrap();
+///     let style_group = AssetGroup::new("styles", "assets/styles/Assets.toml").unwrap();
+///     let script_group = AssetGroup::new("scripts", "assets/scripts/Assets.toml").unwrap();
+///
+///     [icon_group, badge_group, style_group, script_group]
+///         .save_all(include_str!("assets/index.tt.html"), "index.trunk.html", &["img"])
+///         .unwrap();
+///
+///     println!("cargo:rerun-if-changed=assets");
+/// }
+/// ```
 #[derive(Serialize, Clone, Default, Debug)]
 pub struct AssetGroup {
     name:        String,
@@ -288,7 +342,10 @@ impl AssetGroup {
         Ok(AssetGroup { name, root_dir, current_dir, work_dir: work_dir.into(), assets })
     }
 
-    pub fn has_tag<S>(&self, tag: S) -> bool where S: AsRef<str> {
+    pub fn has_tag<S>(&self, tag: S) -> bool
+    where
+        S: AsRef<str>,
+    {
         let tag = tag.as_ref();
 
         self.assets.values().any(|asset| asset.decl.tags.iter().any(|v| v == tag))
@@ -410,9 +467,22 @@ pub trait AssetMaker {
         &self,
         template: &str,
         out_path: P,
-    ) -> Result<(), Box<dyn std::error::Error>>;
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let file = std::fs::File::create(out_path.as_ref())?;
 
-    fn save<P, I>(
+        let mut tt = TinyTemplate::new();
+        tt.add_formatter("links_formatter", links_formatter);
+        tt.add_formatter("scripts_formatter", scripts_formatter);
+        tt.add_template("html", template)?;
+
+        let context = self.as_group();
+        let rendered = tt.render("html", &context)?;
+        writeln!(&file, "{}", rendered)?;
+
+        Ok(())
+    }
+
+    fn save_all<P, I>(
         &self,
         template: &str,
         out_path: P,
@@ -421,8 +491,7 @@ pub trait AssetMaker {
     where
         P: AsRef<Path>,
         I: IntoIterator + Clone,
-        I::Item: AsRef<str>,
-    ;
+        I::Item: AsRef<str>;
 }
 
 impl AssetMaker for AssetGroup {
@@ -448,7 +517,7 @@ impl AssetMaker for AssetGroup {
         Ok(())
     }
 
-    fn save<P, I>(
+    fn save_all<P, I>(
         &self,
         template: &str,
         out_path: P,
@@ -479,26 +548,7 @@ impl AssetMaker for [AssetGroup] {
         }
     }
 
-    fn save_html_file<P: AsRef<Path>>(
-        &self,
-        template: &str,
-        out_path: P,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let file = std::fs::File::create(out_path.as_ref())?;
-
-        let mut tt = TinyTemplate::new();
-        tt.add_formatter("links_formatter", links_formatter);
-        tt.add_formatter("scripts_formatter", scripts_formatter);
-        tt.add_template("html", template)?;
-
-        let context = self.as_group();
-        let rendered = tt.render("html", &context)?;
-        writeln!(&file, "{}", rendered)?;
-
-        Ok(())
-    }
-
-    fn save<P, I>(
+    fn save_all<P, I>(
         &self,
         template: &str,
         out_path: P,
@@ -513,6 +563,84 @@ impl AssetMaker for [AssetGroup] {
             group.save_mod_files(tags.clone())?;
         }
         self.save_html_file(template, out_path)
+    }
+}
+
+impl AssetMaker for Vec<Result<AssetGroup, std::io::Error>> {
+    fn as_group(&self) -> AssetGroup {
+        let mut iter = self.iter().filter_map(|item| item.as_ref().ok());
+
+        if let Some(head) = iter.next() {
+            let mut result = head.clone_with_prefix(&head.name);
+
+            for group in iter {
+                result.extend_with_prefix(&group.name, &group.assets);
+            }
+
+            result
+        } else {
+            AssetGroup::default()
+        }
+    }
+
+    fn save_all<P, I>(
+        &self,
+        template: &str,
+        out_path: P,
+        tags: I,
+    ) -> Result<(), Box<dyn std::error::Error>>
+    where
+        P: AsRef<Path>,
+        I: IntoIterator + Clone,
+        I::Item: AsRef<str>,
+    {
+        for group in self.iter().filter_map(|item| item.as_ref().ok()) {
+            group.save_mod_files(tags.clone())?;
+        }
+        self.save_html_file(template, out_path)
+    }
+}
+
+#[allow(clippy::upper_case_acronyms)]
+#[derive(Default)]
+pub struct DAM {
+    groups: Vec<Result<AssetGroup, std::io::Error>>,
+    tags:   Vec<String>,
+}
+
+impl DAM {
+    pub fn new() -> Self {
+        DAM::default()
+    }
+
+    pub fn with_group<S, P>(mut self, group_name: S, manifest_path: P) -> Self
+    where
+        S: AsRef<str>,
+        P: AsRef<Path>,
+    {
+        self.groups.push(AssetGroup::new(group_name, manifest_path));
+        self
+    }
+
+    pub fn with_tags<A, S>(mut self, tags: A) -> Self
+    where
+        A: Into<Vec<S>>,
+        S: AsRef<str>,
+    {
+        self.tags.extend(tags.into().into_iter().map(|tag| tag.as_ref().to_string()));
+        self
+    }
+
+    pub fn save<'a, P>(
+        &'a self,
+        template: &str,
+        out_path: P,
+    ) -> Result<(), Box<dyn std::error::Error + 'a>>
+    where
+        P: AsRef<Path>,
+    {
+        self.groups.save_all(template, out_path, &self.tags)?;
+        self.groups.iter().try_for_each(|g| g.as_ref().map(|_| ()).map_err(|err| err.into()))
     }
 }
 

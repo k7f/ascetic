@@ -42,59 +42,22 @@ template](https://github.com/bheisler/TinyTemplate)
 
 and `Assets.toml` is the root of a tree of [asset-declaring
 manifests](#asset-declaration).  Then application's `build.rs` file
-might look like
+might look like (more verbose forms of a build file are also possible;
+see examples in the documentation of struct `AssetGroup` and trait
+`AssetMaker`)
 
 ```rust
-use ascetic_dam::{AssetGroup, AssetMaker};
-
 fn main() {
-    let asset_group = AssetGroup::new("assets", "assets/Assets.toml").unwrap();
-
-    asset_group.save(include_str!("assets/index.tt.html"), "index.trunk.html", &["img"]).unwrap();
-
-    println!("cargo:rerun-if-changed=assets");
-}
-```
-
-or, verbosely,
-
-```rust
-use ascetic_dam::{AssetGroup, AssetMaker};
-
-fn main() {
-    let icon_group = AssetGroup::new("icons", "assets/icons/Assets.toml").unwrap();
-    let badge_group = AssetGroup::new("badges", "assets/badges/Assets.toml").unwrap();
-    let style_group = AssetGroup::new("styles", "assets/styles/Assets.toml").unwrap();
-    let script_group = AssetGroup::new("scripts", "assets/scripts/Assets.toml").unwrap();
-
-    icon_group.save_mod_files(&["img"]).unwrap();
-    badge_group.save_mod_files(&["img"]).unwrap();
-
-    [icon_group, badge_group, style_group, script_group]
-        .save_html_file(include_str!("assets/index.tt.html"), "index.trunk.html")
+    ascetic_dam::DAM::new()
+        .with_group("icons", "assets/icons/Assets.toml")
+        .with_group("badges", "assets/badges/Assets.toml")
+        .with_group("styles", "assets/styles/Assets.toml")
+        .with_group("scripts", "assets/scripts/Assets.toml")
+        .with_tags(["img"])
+        .save(include_str!("assets/index.tt.html"), "index.trunk.html")
         .unwrap();
 
     println!("cargo:rerun-if-changed=assets");
-}
-```
-
-or
-
-```rust
-use ascetic_dam::{AssetGroup, AssetMaker};
-
-fn main() {
-    let icon_group = AssetGroup::new("icons", "assets/icons/Assets.toml").unwrap();
-    let badge_group = AssetGroup::new("badges", "assets/badges/Assets.toml").unwrap();
-    let style_group = AssetGroup::new("styles", "assets/styles/Assets.toml").unwrap();
-    let script_group = AssetGroup::new("scripts", "assets/scripts/Assets.toml").unwrap();
-
-    [icon_group, badge_group, style_group, script_group]
-        .save(include_str!("assets/index.tt.html"), "index.trunk.html", &["img"])
-        .unwrap();
-
-    println!("cargo:rerun-if-changed=assets");
-}
 ```
 
 and `src/main.rs` might define a module, `assets`,
