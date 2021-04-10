@@ -288,6 +288,12 @@ impl AssetGroup {
         Ok(AssetGroup { name, root_dir, current_dir, work_dir: work_dir.into(), assets })
     }
 
+    pub fn has_tag<S>(&self, tag: S) -> bool where S: AsRef<str> {
+        let tag = tag.as_ref();
+
+        self.assets.values().any(|asset| asset.decl.tags.iter().any(|v| v == tag))
+    }
+
     pub fn as_empty(&self) -> Self {
         let name = self.name.clone();
         let root_dir = self.root_dir.clone();
@@ -345,7 +351,7 @@ impl AssetGroup {
         I: IntoIterator,
         I::Item: AsRef<str>,
     {
-        for tag in tags.into_iter() {
+        for tag in tags.into_iter().filter(|tag| self.has_tag(tag)) {
             let tag = tag.as_ref();
             let file_name = format!("{}_{}.rs", self.name, tag);
             let path = Path::new(&self.work_dir).join(file_name);
@@ -358,7 +364,7 @@ use maple_core::{{template, template_result::TemplateResult, generic_node::Gener
             )?;
 
             for (name, asset) in self.assets.iter() {
-                if asset.decl.tags.iter().any(|v| v == "img") {
+                if asset.decl.tags.iter().any(|v| v == tag) {
                     writeln!(
                         &file,
                         "
@@ -405,6 +411,18 @@ pub trait AssetMaker {
         template: &str,
         out_path: P,
     ) -> Result<(), Box<dyn std::error::Error>>;
+
+    fn save<P, I>(
+        &self,
+        template: &str,
+        out_path: P,
+        tags: I,
+    ) -> Result<(), Box<dyn std::error::Error>>
+    where
+        P: AsRef<Path>,
+        I: IntoIterator + Clone,
+        I::Item: AsRef<str>,
+    ;
 }
 
 impl AssetMaker for AssetGroup {
@@ -428,6 +446,21 @@ impl AssetMaker for AssetGroup {
         writeln!(&file, "{}", rendered)?;
 
         Ok(())
+    }
+
+    fn save<P, I>(
+        &self,
+        template: &str,
+        out_path: P,
+        tags: I,
+    ) -> Result<(), Box<dyn std::error::Error>>
+    where
+        P: AsRef<Path>,
+        I: IntoIterator + Clone,
+        I::Item: AsRef<str>,
+    {
+        self.save_mod_files(tags)?;
+        self.save_html_file(template, out_path)
     }
 }
 
@@ -463,6 +496,23 @@ impl AssetMaker for [AssetGroup] {
         writeln!(&file, "{}", rendered)?;
 
         Ok(())
+    }
+
+    fn save<P, I>(
+        &self,
+        template: &str,
+        out_path: P,
+        tags: I,
+    ) -> Result<(), Box<dyn std::error::Error>>
+    where
+        P: AsRef<Path>,
+        I: IntoIterator + Clone,
+        I::Item: AsRef<str>,
+    {
+        for group in self.iter() {
+            group.save_mod_files(tags.clone())?;
+        }
+        self.save_html_file(template, out_path)
     }
 }
 
