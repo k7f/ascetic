@@ -21,10 +21,66 @@ ascetic_dam = "0.0.1"
 
 ## Usage
 
-Let's assume the application crate's directory contains a subirectory
-`assets` with files `index.tt.html` and `Assets.toml`, where
-`index.tt.html` is a [tiny
-template](https://github.com/bheisler/TinyTemplate)
+Suppose, the application crate's directory contains a subirectory
+`assets` with a file `Assets.toml`, which is the root of a tree of
+[asset-declaring manifests](#asset-declaration).  Then, the
+application's `build.rs` file might look like
+
+```rust
+fn main() {
+    ascetic_dam::DAM::new()
+        .with_group("assets", "assets/Assets.toml")
+        .with_tags(["img"])
+        .with_title("Title")
+        .save("index.trunk.html")
+        .unwrap();
+
+    println!("cargo:rerun-if-changed=assets");
+}
+```
+
+and the file `src/main.rs` might define a module, `assets`,
+
+```rust
+#[ascetic_dam::assets(group="assets", tag="img")]
+pub mod assets {}
+```
+
+decorated with attribute macro application, which populates the module
+with [asset-invoking function definitions](#asset-invocation).
+
+### Multiple root manifests and custom template
+
+It is possible to explicitly load several manifest files,
+
+```rust
+    ascetic_dam::DAM::new()
+        .with_group("icons", "assets/icons/Assets.toml")
+        .with_group("badges", "assets/badges/Assets.toml")
+        .with_group("styles", "assets/styles/Assets.toml")
+        .with_group("scripts", "assets/scripts/Assets.toml")
+        .with_tags(["img"])
+        .with_template(include_str!("assets/index.tt.html"))
+        .save("index.trunk.html")
+        .unwrap();
+```
+
+so that definitions of asset-invoking functions may be grouped into
+submodules,
+
+```rust
+pub mod assets {
+    #[ascetic_dam::assets(group="icons", tag="img")]
+    pub mod icons {}
+
+    #[ascetic_dam::assets(group="badges", tag="img")]
+    pub mod badges {}
+}
+```
+
+There is a call to `with_template` above, which includes a custom
+[tiny template](https://github.com/bheisler/TinyTemplate)
+`assets/index.tt.html`, for example,
 
 ```html
 <!DOCTYPE html>
@@ -40,62 +96,30 @@ template](https://github.com/bheisler/TinyTemplate)
 </html>
 ```
 
-and `Assets.toml` is the root of a tree of [asset-declaring
-manifests](#asset-declaration).  Then application's `build.rs` file
-might look like (more verbose forms of a build file are also possible;
-see examples in the documentation of struct `AssetGroup` and trait
-`AssetMaker`)
-
-```rust
-fn main() {
-    ascetic_dam::DAM::new()
-        .with_group("icons", "assets/icons/Assets.toml")
-        .with_group("badges", "assets/badges/Assets.toml")
-        .with_group("styles", "assets/styles/Assets.toml")
-        .with_group("scripts", "assets/scripts/Assets.toml")
-        .with_tags(["img"])
-        .save(include_str!("assets/index.tt.html"), "index.trunk.html")
-        .unwrap();
-
-    println!("cargo:rerun-if-changed=assets");
-```
-
-and `src/main.rs` might define a module, `assets`,
-
-```rust
-pub mod assets {
-    #[ascetic_dam::assets(group="icons", tag="img")]
-    pub mod icons {}
-
-    #[ascetic_dam::assets(group="badges", tag="img")]
-    pub mod badges {}
-}
-```
-
-containing submodules populated with [asset-invoking function
-definitions](#asset-invocation).
+More verbose examples showing how to use the library may be found in
+the [API documentation](https://docs.rs/ascetic_dam).
 
 ### Asset declaration
 
-If the root manifest declares, for example,
+If there is a declaration
 
 ```toml
 [images]
 "book.svg" = { flags = ["hash"], tags = ["link", "img"], alt = "documentation" }
 ```
 
-then it refers to the file `assets/images/book.svg` as an `<img>`
-element.
+in a manifest `assets/Assets.toml`, then it refers to the file
+`assets/images/book.svg` as an `<img>` element.
 
-Assets may also be declared in non-root manifests.  If there is a
-non-root manifest `assets/styles/Assets.toml`, then it would be
-introduced in the root as
+Assets may also be declared in non-root manifests.  Directive
 
 ```toml
 ["styles/Assets.toml"]
 ```
 
-and its reference to a file `assets/styles/index.scss` would read
+in `assets/Assets.toml` introduces a child manifest
+`assets/styles/Assets.toml`.  The reference to a file
+`assets/styles/index.scss` in the child manifest would read
 
 ```toml
 ["."]
