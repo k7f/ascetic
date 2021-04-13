@@ -1,3 +1,7 @@
+// FIXME ordering of scripts
+// FIXME script dependencies (`deps` key)
+// FIXME push scripts to end of <body>
+
 use std::{
     path::{Path, PathBuf},
     collections::{HashMap, HashSet},
@@ -5,9 +9,15 @@ use std::{
 };
 use tracing::{warn, error};
 use serde::{Serialize, Deserialize};
-use tinytemplate::{TinyTemplate, error::Error as TTError};
+use tinytemplate::TinyTemplate;
 
 pub use ascetic_dam_macro::assets;
+
+mod formatter;
+mod error;
+
+use formatter::{links_formatter, scripts_formatter};
+use error::{AssetError, DetailedError};
 
 #[derive(Serialize, Clone, Debug)]
 pub struct Asset {
@@ -20,14 +30,11 @@ pub struct Asset {
 }
 
 impl Asset {
-    pub fn as_html_element<S: AsRef<str>>(&self, tag: S) -> Result<String, std::io::Error> {
+    pub fn as_html_element<S: AsRef<str>>(&self, tag: S) -> Result<String, AssetError> {
         let tag = tag.as_ref();
         match tag {
             "img" => Ok(self.as_img()),
-            _ => {
-                let msg = format!("HTML element with tag `{}` isn't supported", tag);
-                Err(std::io::Error::new(std::io::ErrorKind::Other, msg))
-            }
+            _ => Err(AssetError::bad_tag(tag)),
         }
     }
 
@@ -82,7 +89,7 @@ impl AssetDeclaration {
         file_name: S,
         source_dir: P1,
         work_dir: P2,
-    ) -> Result<(String, Asset), std::io::Error>
+    ) -> Result<(String, Asset), AssetError>
     where
         S: AsRef<str>,
         P1: AsRef<Path>,
@@ -94,20 +101,20 @@ impl AssetDeclaration {
 
         let file_stem = source_path
             .file_stem()
-            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::Other, "missing file stem"))?
+            .ok_or_else(|| AssetError::std_io("Missing file stem"))?
             .to_str()
-            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::Other, "invalid file stem"))?;
+            .ok_or_else(|| AssetError::std_io("Invalid file stem"))?;
 
         let asset_name = self.name.as_ref().map_or_else(|| file_stem, |s| s.as_str());
         let path_str = self.href.as_ref().map_or_else(|| asset_name, |s| s.as_str());
 
         let (target_path, work_path) = if self.flags.iter().any(|v| v == "hash") {
-            let bytes = std::fs::read(&source_path)?;
+            let bytes = std::fs::read(&source_path)
+                .map_err(|err| err.with_string(format!("missing file {:?}", source_path)))?;
             let hash = seahash::hash(bytes.as_ref());
             let target_path = if let Some(ext) = source_path.extension() {
-                let ext = ext.to_str().ok_or_else(|| {
-                    std::io::Error::new(std::io::ErrorKind::Other, "invalid file extension")
-                })?;
+                let ext =
+                    ext.to_str().ok_or_else(|| AssetError::std_io("Invalid file extension"))?;
                 PathBuf::from(format!("{}-{:x}.{}", path_str, hash, ext))
             } else {
                 PathBuf::from(format!("{}-{:x}", path_str, hash))
@@ -119,9 +126,10 @@ impl AssetDeclaration {
             (target_path, work_path)
         } else {
             let target_path = if let Some(ext) = source_path.extension() {
-                let ext = ext.to_str().ok_or_else(|| {
-                    std::io::Error::new(std::io::ErrorKind::Other, "invalid file extension")
-                })?;
+                let ext = ext
+                    .to_str()
+                    .ok_or_else(|| AssetError::std_io("Invalid file extension"))
+                    .map_err(detailed_error!("{:?}", ext))?;
                 PathBuf::from(format!("{}.{}", path_str, ext))
             } else {
                 PathBuf::from(path_str)
@@ -136,52 +144,48 @@ impl AssetDeclaration {
         let work_href = work_path
             .into_os_string()
             .into_string()
-            .map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)))?;
+            .map_err(|err| AssetError::std_io(format!("{:?}", err)))
+            .map_err(detailed_error!("Path error"))?;
         let target_url = target_path
             .into_os_string()
             .into_string()
-            .map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", err)))?;
+            .map_err(|err| AssetError::std_io(format!("{:?}", err)))
+            .map_err(detailed_error!("Path error"))?;
         let tags = self.tags.clone();
 
         Ok((asset_name.to_string(), Asset { source_path, work_href, target_url, tags, decl: self }))
     }
 }
 
-fn normalize_path_relative<P1, P2>(path: P1, relative_to: P2) -> Result<PathBuf, std::io::Error>
+fn normalize_path_relative<P1, P2>(path: P1, relative_to: P2) -> Result<PathBuf, AssetError>
 where
     P1: AsRef<Path>,
     P2: AsRef<Path>,
 {
     let path = path.as_ref();
-    let abs_path = path.canonicalize().map_err(|err| {
-        error!("path \"{:?}\" can't be resolved", path);
-        err
-    })?;
-
+    let abs_path =
+        path.canonicalize().map_err(detailed_error!("path {:?} can't be resolved", path))?;
     let relative_to = relative_to.as_ref();
 
     Ok(abs_path
         .strip_prefix(relative_to)
-        .map_err(|err| {
-            error!("path \"{:?}\" doesn't contain path \"{:?}\"", relative_to, abs_path);
-            std::io::Error::new(std::io::ErrorKind::Other, err)
-        })?
+        .map_err(|err| AssetError::std_io(err))
+        .map_err(detailed_error!("path {:?} doesn't contain path {:?}", relative_to, abs_path))?
         .into())
 }
 
-fn read_folders<P>(manifest_path: P) -> Result<HashMap<String, AssetFolder>, std::io::Error>
+fn read_folders<P>(manifest_path: P) -> Result<HashMap<String, AssetFolder>, AssetError>
 where
     P: AsRef<Path>,
 {
-    let manifest = std::fs::read_to_string(&manifest_path).map_err(|err| {
-        error!("manifest \"{}\" is missing", manifest_path.as_ref().to_str().unwrap());
-        err
-    })?;
+    let manifest = std::fs::read_to_string(&manifest_path).map_err(detailed_error!(
+        "manifest \"{}\" is missing",
+        manifest_path.as_ref().to_str().unwrap()
+    ))?;
 
-    toml::from_str(manifest.as_str()).map_err(|err| {
-        error!("manifest \"{}\" is broken", manifest_path.as_ref().to_str().unwrap());
-        std::io::Error::new(std::io::ErrorKind::Other, err)
-    })
+    toml::from_str(manifest.as_str()).map_err(|err| AssetError::std_io(err)).map_err(
+        detailed_error!("manifest \"{}\" is broken", manifest_path.as_ref().to_str().unwrap()),
+    )
 }
 
 fn collect_assets(
@@ -190,7 +194,7 @@ fn collect_assets(
     folders: HashMap<String, AssetFolder>,
     root_dir: &Path,
     work_dir: &Path,
-) -> Result<(), std::io::Error> {
+) -> Result<(), AssetError> {
     for (folder_path, folder) in folders {
         if folder_path.ends_with(".toml") {
             let manifest_path = root_dir.join(folder_path.as_str());
@@ -200,10 +204,9 @@ fn collect_assets(
                 println!("More folders: {:?}", folders);
 
                 if let Some(base_dir) = manifest_path.parent() {
-                    let base_dir = base_dir.canonicalize().map_err(|err| {
-                        error!("base dir can't be resolved");
-                        err
-                    })?;
+                    let base_dir = base_dir
+                        .canonicalize()
+                        .map_err(detailed_error!("base dir {:?} can't be resolved", base_dir))?;
 
                     visited.insert(manifest_path);
                     collect_assets(assets, visited, folders, &base_dir, work_dir)?;
@@ -214,10 +217,8 @@ fn collect_assets(
             }
         } else {
             let folder_path = root_dir.join(folder_path);
-            let current_dir = std::env::current_dir().map_err(|err| {
-                error!("current dir is unknown");
-                err
-            })?;
+            let current_dir =
+                std::env::current_dir().map_err(detailed_error!("current dir is unknown"))?;
             let source_dir = normalize_path_relative(folder_path, current_dir)?;
 
             for (asset_name, asset_decl) in folder.0 {
@@ -300,7 +301,7 @@ pub struct AssetGroup {
 }
 
 impl AssetGroup {
-    pub fn new<S, P>(group_name: S, manifest_path: P) -> Result<Self, std::io::Error>
+    pub fn new<S, P>(group_name: S, manifest_path: P) -> Result<Self, AssetError>
     where
         S: AsRef<str>,
         P: AsRef<Path>,
@@ -310,16 +311,12 @@ impl AssetGroup {
         let folders = read_folders(&manifest_path)?;
         println!("Folders: {:?}", folders);
 
-        let current_dir = std::env::current_dir().map_err(|err| {
-            error!("current dir is unknown");
-            err
-        })?;
-
+        let current_dir =
+            std::env::current_dir().map_err(detailed_error!("current dir is unknown"))?;
         let root_dir = if let Some(root_dir) = manifest_path.as_ref().parent() {
-            root_dir.canonicalize().map_err(|err| {
-                error!("root dir can't be resolved");
-                err
-            })?
+            root_dir
+                .canonicalize()
+                .map_err(detailed_error!("root dir {:?} can't be resolved", root_dir))?
         } else {
             current_dir.clone()
         };
@@ -329,10 +326,13 @@ impl AssetGroup {
             current_dir.as_os_str().into()
         });
 
-        let work_dir = Path::new(&out_dir).strip_prefix(&current_dir).map_err(|err| {
-            error!("current dir doesn't contain \"OUT_DIR\"");
-            std::io::Error::new(std::io::ErrorKind::Other, err)
-        })?;
+        let work_dir = Path::new(&out_dir)
+            .strip_prefix(&current_dir)
+            .map_err(|err| AssetError::std_io(err))
+            .map_err(detailed_error!(
+                "current dir {:?} doesn't contain \"OUT_DIR\"",
+                current_dir
+            ))?;
 
         let mut assets = HashMap::new();
         let mut visited = HashSet::new();
@@ -421,7 +421,7 @@ impl AssetGroup {
         }
     }
 
-    fn render_template(&self, template: &str) -> Result<String, Box<dyn std::error::Error>> {
+    fn render_template(&self, template: &str) -> Result<String, AssetError> {
         let mut tt = TinyTemplate::new();
 
         tt.add_formatter("links_formatter", links_formatter);
@@ -437,7 +437,7 @@ impl AssetGroup {
         file_name: S,
         source_dir: P,
         decl: AssetDeclaration,
-    ) -> Result<(String, Asset), std::io::Error>
+    ) -> Result<(String, Asset), AssetError>
     where
         S: AsRef<str>,
         P: AsRef<Path>,
@@ -456,7 +456,7 @@ impl AssetGroup {
 pub trait AssetMaker {
     fn as_group(&self) -> AssetGroup;
 
-    fn save_mod_files<I>(&self, tags: I) -> Result<(), std::io::Error>
+    fn save_mod_files<I>(&self, tags: I) -> Result<(), AssetError>
     where
         I: IntoIterator + Clone,
         I::Item: AsRef<str>;
@@ -465,7 +465,7 @@ pub trait AssetMaker {
         &self,
         template: &str,
         out_path: P,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<(), AssetError> {
         let file = std::fs::File::create(out_path.as_ref())?;
         let context = self.as_group();
         let rendered = context.render_template(template)?;
@@ -480,7 +480,7 @@ pub trait AssetMaker {
         template: &str,
         out_path: P,
         tags: I,
-    ) -> Result<(), Box<dyn std::error::Error>>
+    ) -> Result<(), AssetError>
     where
         P: AsRef<Path>,
         I: IntoIterator + Clone,
@@ -496,7 +496,7 @@ impl AssetMaker for AssetGroup {
         self.clone()
     }
 
-    fn save_mod_files<I>(&self, tags: I) -> Result<(), std::io::Error>
+    fn save_mod_files<I>(&self, tags: I) -> Result<(), AssetError>
     where
         I: IntoIterator,
         I::Item: AsRef<str>,
@@ -536,7 +536,7 @@ pub fn {}_{}<G: GenericNode>() -> TemplateResult<G> {{
         &self,
         template: &str,
         out_path: P,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<(), AssetError> {
         let file = std::fs::File::create(out_path.as_ref())?;
         let rendered = self.render_template(template)?;
 
@@ -561,7 +561,7 @@ impl AssetMaker for [AssetGroup] {
         }
     }
 
-    fn save_mod_files<I>(&self, tags: I) -> Result<(), std::io::Error>
+    fn save_mod_files<I>(&self, tags: I) -> Result<(), AssetError>
     where
         I: IntoIterator + Clone,
         I::Item: AsRef<str>,
@@ -574,7 +574,7 @@ impl AssetMaker for [AssetGroup] {
     }
 }
 
-impl AssetMaker for Vec<Result<AssetGroup, std::io::Error>> {
+impl AssetMaker for Vec<Result<AssetGroup, AssetError>> {
     fn as_group(&self) -> AssetGroup {
         let mut iter = self.iter().filter_map(|item| item.as_ref().ok());
 
@@ -591,7 +591,7 @@ impl AssetMaker for Vec<Result<AssetGroup, std::io::Error>> {
         }
     }
 
-    fn save_mod_files<I>(&self, tags: I) -> Result<(), std::io::Error>
+    fn save_mod_files<I>(&self, tags: I) -> Result<(), AssetError>
     where
         I: IntoIterator + Clone,
         I::Item: AsRef<str>,
@@ -609,7 +609,7 @@ impl AssetMaker for Vec<Result<AssetGroup, std::io::Error>> {
 pub struct DAM {
     title:    Option<String>,
     template: Option<String>,
-    groups:   Vec<Result<AssetGroup, std::io::Error>>,
+    groups:   Vec<Result<AssetGroup, AssetError>>,
     tags:     Vec<String>,
 }
 
@@ -684,131 +684,6 @@ impl DAM {
         writeln!(&file, "{}", rendered)?;
         self.groups.iter().try_for_each(|g| g.as_ref().map(|_| ()).map_err(|err| err.into()))
     }
-}
-
-fn assets_formatter<F1, F2>(
-    value: &serde_json::Value,
-    output: &mut String,
-    filter_fn: F1,
-    mut print_fn: F2,
-) -> Result<(), TTError>
-where
-    F1: Fn(&[serde_json::Value]) -> bool,
-    F2: FnMut(&str, &str, &mut String),
-{
-    if let serde_json::Value::Object(assets) = value {
-        let mut at_first = true;
-
-        for asset in assets.values() {
-            let asset = if let serde_json::Value::Object(asset) = asset {
-                asset
-            } else {
-                return Err(TTError::GenericError {
-                    msg: format!("Expected a map, found {:?}.", asset),
-                })
-            };
-
-            let tags = if let Some(tags) = asset.get("tags") {
-                if let serde_json::Value::Array(tags) = tags {
-                    tags.as_slice()
-                } else {
-                    return Err(TTError::GenericError {
-                        msg: format!("Expected an array, found {:?}.", tags),
-                    })
-                }
-            } else {
-                return Err(TTError::GenericError { msg: "Missing tags in asset".to_string() })
-            };
-
-            if filter_fn(tags) {
-                let work_href = if let Some(work_href) = asset.get("work_href") {
-                    if let serde_json::Value::String(work_href) = work_href {
-                        work_href.as_str()
-                    } else {
-                        return Err(TTError::GenericError {
-                            msg: "Invalid work_href in asset".to_string(),
-                        })
-                    }
-                } else {
-                    return Err(TTError::GenericError {
-                        msg: "Missing work_href in asset".to_string(),
-                    })
-                };
-
-                let target_url = if let Some(target_url) = asset.get("target_url") {
-                    if let serde_json::Value::String(target_url) = target_url {
-                        target_url.as_str()
-                    } else {
-                        return Err(TTError::GenericError {
-                            msg: "Invalid target_url in asset".to_string(),
-                        })
-                    }
-                } else {
-                    return Err(TTError::GenericError {
-                        msg: "Missing target_url in asset".to_string(),
-                    })
-                };
-
-                if at_first {
-                    at_first = false;
-                } else {
-                    output.push_str("\n        ");
-                }
-
-                print_fn(work_href, target_url, output);
-            }
-        }
-        Ok(())
-    } else {
-        Err(TTError::GenericError { msg: format!("Expected a map, found {:?}.", value) })
-    }
-}
-
-fn links_formatter(value: &serde_json::Value, output: &mut String) -> Result<(), TTError> {
-    assets_formatter(
-        value,
-        output,
-        |tags| {
-            tags.iter().any(
-                |v| {
-                    if let serde_json::Value::String(v) = v {
-                        v == "link"
-                    } else {
-                        false
-                    }
-                },
-            )
-        },
-        |work_href, _target_url, output| {
-            if work_href.ends_with(".scss") {
-                output.push_str(&format!("<link data-trunk rel=\"scss\" href={} />", work_href));
-            } else if work_href.ends_with(".css") {
-                output.push_str(&format!("<link data-trunk rel=\"css\" href={} />", work_href));
-            } else {
-                output
-                    .push_str(&format!("<link data-trunk rel=\"copy-file\" href={} />", work_href));
-            }
-        },
-    )
-}
-
-fn scripts_formatter(value: &serde_json::Value, output: &mut String) -> Result<(), TTError> {
-    assets_formatter(
-        value,
-        output,
-        |tags| {
-            tags.iter().any(|v| {
-                if let serde_json::Value::String(v) = v {
-                    v == "script"
-                } else {
-                    false
-                }
-            })
-        },
-        |_work_href, target_url, output| {
-            output.push_str(&format!("<script src={}></script>", target_url));
-        },
-    )
 }
 
 #[cfg(test)]
