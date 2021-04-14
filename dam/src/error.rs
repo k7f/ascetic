@@ -18,6 +18,7 @@ enum InnerError {
     IO(std::io::Error),
     TT(tinytemplate::error::Error),
     Tag(String),
+    Collect(usize, usize),
 }
 
 macro_rules! impl_inner_error {
@@ -62,6 +63,7 @@ impl std::fmt::Display for InnerError {
             IO(err) => write!(f, "IO error {:?}", err),
             TT(err) => write!(f, "TT error {:?}", err),
             Tag(tag) => write!(f, "HTML element with tag `{}` isn't supported", tag),
+            Collect(running, total) => write!(f, "Traversed {} assets, but collected {}", running, total),
         }
     }
 }
@@ -75,6 +77,10 @@ pub struct AssetError {
 impl AssetError {
     pub(crate) fn bad_tag<S: AsRef<str>>(tag: S) -> Self {
         InnerError::Tag(tag.as_ref().to_string()).into()
+    }
+
+    pub(crate) fn bad_collect(running: usize, total: usize) -> Self {
+        InnerError::Collect(running, total).into()
     }
 
     pub(crate) fn std_io<E>(err: E) -> Self

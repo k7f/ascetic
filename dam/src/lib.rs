@@ -1,32 +1,44 @@
-// FIXME ordering of scripts
-// FIXME script dependencies (`deps` key)
-// FIXME push scripts to end of <body>
+// FIXME(#0) push scripts to end of <body>
 
 use std::{
     path::{Path, PathBuf},
-    collections::{HashMap, HashSet},
     io::Write,
+    sync::atomic::{self, AtomicU64},
 };
-use tracing::{warn, error};
+use tracing::error;
+use indexmap::{self, IndexMap};
 use serde::{Serialize, Deserialize};
-use tinytemplate::TinyTemplate;
 
 pub use ascetic_dam_macro::assets;
 
+mod source;
+mod group;
 mod formatter;
 mod error;
 
-use formatter::{links_formatter, scripts_formatter};
-use error::{AssetError, DetailedError};
+pub use group::AssetGroup;
+pub use error::AssetError;
 
+use error::DetailedError;
+
+static ASSET_SERIAL_NUMBER: AtomicU64 = AtomicU64::new(0);
+
+#[inline]
+pub fn sort_assets(assets: &mut IndexMap<String, Asset>) {
+    assets.sort_by(|_, v1, _, v2| v1.serial_number.cmp(&v2.serial_number));
+}
+
+/// Every path in the call graph leading to `Asset` creation is
+/// expected to go through `AssetDeclaration::into_asset()`.
 #[derive(Serialize, Clone, Debug)]
 pub struct Asset {
-    source_path: PathBuf,
-    work_href:   String,
-    target_url:  String,
-    tags:        Vec<String>,
+    serial_number: u64,
+    source_path:   PathBuf,
+    work_href:     String,
+    target_url:    String,
+    tags:          Vec<String>,
     #[serde(skip_serializing)]
-    decl:        AssetDeclaration,
+    decl:          AssetDeclaration,
 }
 
 impl Asset {
@@ -84,7 +96,7 @@ pub struct AssetDeclaration {
 }
 
 impl AssetDeclaration {
-    pub fn into_asset<S, P1, P2>(
+    fn into_asset<S, P1, P2>(
         self,
         file_name: S,
         source_dir: P1,
@@ -95,6 +107,8 @@ impl AssetDeclaration {
         P1: AsRef<Path>,
         P2: AsRef<Path>,
     {
+        let serial_number = ASSET_SERIAL_NUMBER.fetch_add(1, atomic::Ordering::SeqCst);
+
         let file_name = file_name.as_ref();
         let source_dir = source_dir.as_ref();
         let source_path = source_dir.join(file_name);
@@ -153,303 +167,10 @@ impl AssetDeclaration {
             .map_err(detailed_error!("Path error"))?;
         let tags = self.tags.clone();
 
-        Ok((asset_name.to_string(), Asset { source_path, work_href, target_url, tags, decl: self }))
-    }
-}
-
-fn normalize_path_relative<P1, P2>(path: P1, relative_to: P2) -> Result<PathBuf, AssetError>
-where
-    P1: AsRef<Path>,
-    P2: AsRef<Path>,
-{
-    let path = path.as_ref();
-    let abs_path =
-        path.canonicalize().map_err(detailed_error!("path {:?} can't be resolved", path))?;
-    let relative_to = relative_to.as_ref();
-
-    Ok(abs_path
-        .strip_prefix(relative_to)
-        .map_err(|err| AssetError::std_io(err))
-        .map_err(detailed_error!("path {:?} doesn't contain path {:?}", relative_to, abs_path))?
-        .into())
-}
-
-fn read_folders<P>(manifest_path: P) -> Result<HashMap<String, AssetFolder>, AssetError>
-where
-    P: AsRef<Path>,
-{
-    let manifest = std::fs::read_to_string(&manifest_path).map_err(detailed_error!(
-        "manifest \"{}\" is missing",
-        manifest_path.as_ref().to_str().unwrap()
-    ))?;
-
-    toml::from_str(manifest.as_str()).map_err(|err| AssetError::std_io(err)).map_err(
-        detailed_error!("manifest \"{}\" is broken", manifest_path.as_ref().to_str().unwrap()),
-    )
-}
-
-fn collect_assets(
-    assets: &mut HashMap<String, Asset>,
-    visited: &mut HashSet<PathBuf>,
-    folders: HashMap<String, AssetFolder>,
-    root_dir: &Path,
-    work_dir: &Path,
-) -> Result<(), AssetError> {
-    for (folder_path, folder) in folders {
-        if folder_path.ends_with(".toml") {
-            let manifest_path = root_dir.join(folder_path.as_str());
-
-            if !visited.contains(&manifest_path) {
-                let folders = read_folders(&manifest_path)?;
-                println!("More folders: {:?}", folders);
-
-                if let Some(base_dir) = manifest_path.parent() {
-                    let base_dir = base_dir
-                        .canonicalize()
-                        .map_err(detailed_error!("base dir {:?} can't be resolved", base_dir))?;
-
-                    visited.insert(manifest_path);
-                    collect_assets(assets, visited, folders, &base_dir, work_dir)?;
-                } else {
-                    visited.insert(manifest_path);
-                    collect_assets(assets, visited, folders, root_dir, work_dir)?;
-                }
-            }
-        } else {
-            let folder_path = root_dir.join(folder_path);
-            let current_dir =
-                std::env::current_dir().map_err(detailed_error!("current dir is unknown"))?;
-            let source_dir = normalize_path_relative(folder_path, current_dir)?;
-
-            for (asset_name, asset_decl) in folder.0 {
-                let (key, asset) = asset_decl.into_asset(asset_name, &source_dir, work_dir)?;
-
-                assets.insert(key, asset);
-            }
-        }
-    }
-
-    Ok(())
-}
-
-#[derive(Deserialize, Debug)]
-#[allow(dead_code)]
-struct AssetFolder(HashMap<String, AssetDeclaration>);
-
-/// # Examples
-///
-/// ```no_run
-/// use ascetic_dam::{AssetGroup, AssetMaker};
-///
-/// fn main() {
-///     let asset_group = AssetGroup::new("assets", "assets/Assets.toml").unwrap();
-///
-///     asset_group.save_all(include_str!("assets/index.tt.html"), "index.trunk.html", &["img"]).unwrap();
-///
-///     println!("cargo:rerun-if-changed=assets");
-/// }
-/// ```
-///
-/// or
-///
-/// ```no_run
-/// use ascetic_dam::{AssetGroup, AssetMaker};
-///
-/// fn main() {
-///     let icon_group = AssetGroup::new("icons", "assets/icons/Assets.toml").unwrap();
-///     let badge_group = AssetGroup::new("badges", "assets/badges/Assets.toml").unwrap();
-///     let style_group = AssetGroup::new("styles", "assets/styles/Assets.toml").unwrap();
-///     let script_group = AssetGroup::new("scripts", "assets/scripts/Assets.toml").unwrap();
-///
-///     icon_group.save_mod_files(&["img"]).unwrap();
-///     badge_group.save_mod_files(&["img"]).unwrap();
-///
-///     [icon_group, badge_group, style_group, script_group]
-///         .save_html_file(include_str!("assets/index.tt.html"), "index.trunk.html")
-///         .unwrap();
-///
-///     println!("cargo:rerun-if-changed=assets");
-/// }
-/// ```
-///
-/// or
-///
-/// ```no_run
-/// use ascetic_dam::{AssetGroup, AssetMaker};
-///
-/// fn main() {
-///     let icon_group = AssetGroup::new("icons", "assets/icons/Assets.toml").unwrap();
-///     let badge_group = AssetGroup::new("badges", "assets/badges/Assets.toml").unwrap();
-///     let style_group = AssetGroup::new("styles", "assets/styles/Assets.toml").unwrap();
-///     let script_group = AssetGroup::new("scripts", "assets/scripts/Assets.toml").unwrap();
-///
-///     [icon_group, badge_group, style_group, script_group]
-///         .save_all(include_str!("assets/index.tt.html"), "index.trunk.html", &["img"])
-///         .unwrap();
-///
-///     println!("cargo:rerun-if-changed=assets");
-/// }
-/// ```
-#[derive(Serialize, Clone, Default, Debug)]
-pub struct AssetGroup {
-    name:        String,
-    root_dir:    PathBuf,
-    current_dir: PathBuf,
-    work_dir:    PathBuf,
-    title:       Option<String>,
-    assets:      HashMap<String, Asset>, // keyed by file_stem (by default)
-}
-
-impl AssetGroup {
-    pub fn new<S, P>(group_name: S, manifest_path: P) -> Result<Self, AssetError>
-    where
-        S: AsRef<str>,
-        P: AsRef<Path>,
-    {
-        let name = group_name.as_ref().to_string();
-
-        let folders = read_folders(&manifest_path)?;
-        println!("Folders: {:?}", folders);
-
-        let current_dir =
-            std::env::current_dir().map_err(detailed_error!("current dir is unknown"))?;
-        let root_dir = if let Some(root_dir) = manifest_path.as_ref().parent() {
-            root_dir
-                .canonicalize()
-                .map_err(detailed_error!("root dir {:?} can't be resolved", root_dir))?
-        } else {
-            current_dir.clone()
-        };
-
-        let out_dir = std::env::var_os("OUT_DIR").unwrap_or_else(|| {
-            warn!("\"OUT_DIR\" isn't set");
-            current_dir.as_os_str().into()
-        });
-
-        let work_dir = Path::new(&out_dir)
-            .strip_prefix(&current_dir)
-            .map_err(|err| AssetError::std_io(err))
-            .map_err(detailed_error!(
-                "current dir {:?} doesn't contain \"OUT_DIR\"",
-                current_dir
-            ))?;
-
-        let mut assets = HashMap::new();
-        let mut visited = HashSet::new();
-
-        collect_assets(&mut assets, &mut visited, folders, &root_dir, &work_dir)?;
-        println!("Assets: {:?}", assets);
-
-        Ok(AssetGroup {
-            name,
-            root_dir,
-            current_dir,
-            work_dir: work_dir.into(),
-            title: None,
-            assets,
-        })
-    }
-
-    pub fn with_title<S: AsRef<str>>(mut self, title: S) -> Self {
-        self.set_title(title);
-        self
-    }
-
-    pub fn set_title<S: AsRef<str>>(&mut self, title: S) {
-        self.title = Some(title.as_ref().to_string());
-    }
-
-    pub fn has_tag<S>(&self, tag: S) -> bool
-    where
-        S: AsRef<str>,
-    {
-        let tag = tag.as_ref();
-
-        self.assets.values().any(|asset| asset.decl.tags.iter().any(|v| v == tag))
-    }
-
-    pub fn as_empty(&self) -> Self {
-        let name = self.name.clone();
-        let root_dir = self.root_dir.clone();
-        let current_dir = self.current_dir.clone();
-        let work_dir = self.work_dir.clone();
-        let title = self.title.clone();
-        let assets = HashMap::new();
-
-        AssetGroup { name, root_dir, current_dir, work_dir, title, assets }
-    }
-
-    pub fn clone_with_prefix<S>(&self, prefix: S) -> Self
-    where
-        S: AsRef<str>,
-    {
-        let mut result = self.as_empty();
-
-        result.extend_with_prefix(prefix, &self.assets);
-
-        result
-    }
-
-    pub fn extend<S, A, I>(&mut self, assets: I)
-    where
-        I: IntoIterator<Item = (S, A)>,
-        S: AsRef<str>,
-        A: AsRef<Asset>,
-    {
-        for (key, asset) in assets.into_iter() {
-            let key = key.as_ref().to_string();
-            let asset = asset.as_ref().clone();
-
-            self.assets.insert(key, asset);
-        }
-    }
-
-    pub fn extend_with_prefix<S1, S2, A, I>(&mut self, prefix: S1, assets: I)
-    where
-        S1: AsRef<str>,
-        I: IntoIterator<Item = (S2, A)>,
-        S2: AsRef<str>,
-        A: AsRef<Asset>,
-    {
-        let prefix = prefix.as_ref();
-
-        for (key, asset) in assets.into_iter() {
-            let key = format!("{}::{}", prefix, key.as_ref());
-            let asset = asset.as_ref().clone();
-
-            self.assets.insert(key, asset);
-        }
-    }
-
-    fn render_template(&self, template: &str) -> Result<String, AssetError> {
-        let mut tt = TinyTemplate::new();
-
-        tt.add_formatter("links_formatter", links_formatter);
-        tt.add_formatter("scripts_formatter", scripts_formatter);
-        tt.add_template("html", template)?;
-        let result = tt.render("html", self)?;
-
-        Ok(result)
-    }
-
-    pub fn create_asset<S, P>(
-        &self,
-        file_name: S,
-        source_dir: P,
-        decl: AssetDeclaration,
-    ) -> Result<(String, Asset), AssetError>
-    where
-        S: AsRef<str>,
-        P: AsRef<Path>,
-    {
-        let source_dir = self.root_dir.join(source_dir);
-        let source_dir = normalize_path_relative(source_dir, &self.current_dir)?;
-
-        decl.into_asset(file_name.as_ref(), source_dir, &self.work_dir)
-    }
-
-    pub fn register_asset<S: AsRef<str>>(&mut self, key: S, asset: Asset) {
-        self.assets.insert(key.as_ref().to_string(), asset);
+        Ok((
+            asset_name.to_string(),
+            Asset { serial_number, source_path, work_href, target_url, tags, decl: self },
+        ))
     }
 }
 
@@ -475,12 +196,7 @@ pub trait AssetMaker {
         Ok(())
     }
 
-    fn save_all<P, I>(
-        &self,
-        template: &str,
-        out_path: P,
-        tags: I,
-    ) -> Result<(), AssetError>
+    fn save_all<P, I>(&self, template: &str, out_path: P, tags: I) -> Result<(), AssetError>
     where
         P: AsRef<Path>,
         I: IntoIterator + Clone,
@@ -488,119 +204,6 @@ pub trait AssetMaker {
     {
         self.save_mod_files(tags)?;
         self.save_html_file(template, out_path)
-    }
-}
-
-impl AssetMaker for AssetGroup {
-    fn as_group(&self) -> AssetGroup {
-        self.clone()
-    }
-
-    fn save_mod_files<I>(&self, tags: I) -> Result<(), AssetError>
-    where
-        I: IntoIterator,
-        I::Item: AsRef<str>,
-    {
-        for tag in tags.into_iter().filter(|tag| self.has_tag(tag)) {
-            let tag = tag.as_ref();
-            let file_name = format!("{}_{}.rs", self.name, tag);
-            let path = Path::new(&self.work_dir).join(file_name);
-            let file = std::fs::File::create(path)?;
-
-            writeln!(
-                &file,
-                "\
-use maple_core::{{template, template_result::TemplateResult, generic_node::GenericNode}};"
-            )?;
-
-            for (name, asset) in self.assets.iter() {
-                if asset.decl.tags.iter().any(|v| v == tag) {
-                    writeln!(
-                        &file,
-                        "
-pub fn {}_{}<G: GenericNode>() -> TemplateResult<G> {{
-    template! {{ {} }}
-}}",
-                        name,
-                        tag,
-                        asset.as_html_element(tag)?,
-                    )?;
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    fn save_html_file<P: AsRef<Path>>(
-        &self,
-        template: &str,
-        out_path: P,
-    ) -> Result<(), AssetError> {
-        let file = std::fs::File::create(out_path.as_ref())?;
-        let rendered = self.render_template(template)?;
-
-        writeln!(&file, "{}", rendered)?;
-
-        Ok(())
-    }
-}
-
-impl AssetMaker for [AssetGroup] {
-    fn as_group(&self) -> AssetGroup {
-        if let Some((head, tail)) = self.split_first() {
-            let mut result = head.clone_with_prefix(&head.name);
-
-            for group in tail {
-                result.extend_with_prefix(&group.name, &group.assets);
-            }
-
-            result
-        } else {
-            AssetGroup::default()
-        }
-    }
-
-    fn save_mod_files<I>(&self, tags: I) -> Result<(), AssetError>
-    where
-        I: IntoIterator + Clone,
-        I::Item: AsRef<str>,
-    {
-        for group in self.iter() {
-            group.save_mod_files(tags.clone())?;
-        }
-
-        Ok(())
-    }
-}
-
-impl AssetMaker for Vec<Result<AssetGroup, AssetError>> {
-    fn as_group(&self) -> AssetGroup {
-        let mut iter = self.iter().filter_map(|item| item.as_ref().ok());
-
-        if let Some(head) = iter.next() {
-            let mut result = head.clone_with_prefix(&head.name);
-
-            for group in iter {
-                result.extend_with_prefix(&group.name, &group.assets);
-            }
-
-            result
-        } else {
-            AssetGroup::default()
-        }
-    }
-
-    fn save_mod_files<I>(&self, tags: I) -> Result<(), AssetError>
-    where
-        I: IntoIterator + Clone,
-        I::Item: AsRef<str>,
-    {
-        for group in self.iter().filter_map(|item| item.as_ref().ok()) {
-            group.save_mod_files(tags.clone())?;
-        }
-
-        Ok(())
     }
 }
 
@@ -690,23 +293,32 @@ impl DAM {
 mod tests {
     use super::*;
 
-    fn declaration_from_spec(spec: &str) -> AssetDeclaration {
+    pub(crate) fn create_dummy_asset() -> Asset {
+        let decl = declaration_from_spec("");
+        let (_, asset) = decl.into_asset("asset.test", "", "").expect("asset creation error");
+        asset
+    }
+
+    pub(crate) fn declaration_from_spec(spec: &str) -> AssetDeclaration {
         toml::from_str(spec).expect("declaration parsing error")
     }
 
-    fn asset_from_spec(file_name: &str, work_dir: &str, spec: &str) -> (String, Asset) {
+    pub(crate) fn asset_from_spec(file_name: &str, work_dir: &str, spec: &str) -> (String, Asset) {
         let decl = declaration_from_spec(spec);
         let current_dir = std::env::current_dir().expect("current dir is unknown");
-        let source_dir = normalize_path_relative(".", current_dir).unwrap();
+        let source_dir = source::AssetPaths::normalize_path(".", current_dir).unwrap();
 
         decl.into_asset(file_name, source_dir, work_dir).expect("asset creation error")
     }
 
     #[test]
-    fn test_group_title() {
-        let group = AssetGroup::default().with_title("Test");
-        let rendered = group.render_template(r#"{title}"#);
-        assert_eq!(rendered.unwrap().as_str(), "Test");
+    fn test_serial_number() {
+        let mut ser_no = create_dummy_asset().serial_number;
+        for _ in 0..43 {
+            let new_ser_no = create_dummy_asset().serial_number;
+            assert!(new_ser_no > ser_no);
+            ser_no = new_ser_no;
+        }
     }
 
     #[test]
@@ -714,26 +326,5 @@ mod tests {
         let (stem, asset) = asset_from_spec("dotted.file.name.ext", "work_dir", "");
         assert_eq!(stem.as_str(), "dotted.file.name");
         assert_eq!(asset.target_url.as_str(), "dotted.file.name.ext");
-    }
-
-    #[test]
-    fn test_key_clash() {
-        let mut g1 = AssetGroup::default();
-        let (_, asset) = g1
-            .create_asset("file_name.ext", ".", declaration_from_spec(""))
-            .expect("asset creation error");
-        g1.register_asset("test", asset);
-        g1.name = "g1".to_string();
-
-        let mut g2 = AssetGroup::default();
-        let (_, asset) = g2
-            .create_asset("file_name.ext", ".", declaration_from_spec(""))
-            .expect("asset creation error");
-        g2.register_asset("test", asset);
-        g2.name = "g2".to_string();
-
-        let group = [g1, g2].as_group();
-        assert!(group.assets.contains_key("g1::test"));
-        assert!(group.assets.contains_key("g2::test"));
     }
 }

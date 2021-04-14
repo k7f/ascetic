@@ -13,8 +13,9 @@ readme = "README.md"
 
 tracing = "0.1"
 seahash = "4.1"
+indexmap = { version = "1.6", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde_json = { version = "1.0", features = ["preserve_order"] }
 toml = "0.5"
 tinytemplate = "1.2"
 ascetic_dam_macro = { path = "macro" }

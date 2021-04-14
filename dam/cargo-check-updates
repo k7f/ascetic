@@ -1,6 +1,6 @@
 #!/bin/bash
 
-__CRATES="tracing seahash serde serde_json toml tinytemplate"
+__CRATES="tracing seahash indexmap serde serde_json toml tinytemplate"
 MACRO_CRATES="proc-macro2 syn quote"
 
 print_requested_version() {
