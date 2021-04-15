@@ -1,6 +1,5 @@
-// FIXME(#0) push scripts to end of <body>
-
 use std::{
+    collections::HashMap,
     path::{Path, PathBuf},
     io::Write,
     sync::atomic::{self, AtomicU64},
@@ -37,6 +36,7 @@ pub struct Asset {
     work_href:     String,
     target_url:    String,
     tags:          Vec<String>,
+    attrs:         HashMap<String, String>, // maps tags to attribute lists
     #[serde(skip_serializing)]
     decl:          AssetDeclaration,
 }
@@ -81,7 +81,6 @@ impl AsRef<Asset> for Asset {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[allow(dead_code)]
 pub struct AssetDeclaration {
     /// target URL modulo hashing
     href:   Option<String>,
@@ -90,6 +89,8 @@ pub struct AssetDeclaration {
     flags:  Vec<String>,
     #[serde(default)]
     tags:   Vec<String>,
+    #[serde(default)]
+    attrs:  HashMap<String, String>,
     width:  Option<u32>,
     height: Option<u32>,
     alt:    Option<String>,
@@ -166,10 +167,11 @@ impl AssetDeclaration {
             .map_err(|err| AssetError::std_io(format!("{:?}", err)))
             .map_err(detailed_error!("Path error"))?;
         let tags = self.tags.clone();
+        let attrs = self.attrs.clone();
 
         Ok((
             asset_name.to_string(),
-            Asset { serial_number, source_path, work_href, target_url, tags, decl: self },
+            Asset { serial_number, source_path, work_href, target_url, tags, attrs, decl: self },
         ))
     }
 }
