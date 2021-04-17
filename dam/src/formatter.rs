@@ -112,7 +112,10 @@ where
     }
 }
 
-pub(crate) fn links_formatter(value: &serde_json::Value, output: &mut String) -> Result<(), Error> {
+pub(crate) fn link_assets_formatter(
+    value: &serde_json::Value,
+    output: &mut String,
+) -> Result<(), Error> {
     assets_formatter("link", value, output, |_attrs, work_href, _target_url, output| {
         if work_href.ends_with(".scss") {
             output.push_str(&format!("<link data-trunk rel=\"scss\" href={} />", work_href));
@@ -124,7 +127,7 @@ pub(crate) fn links_formatter(value: &serde_json::Value, output: &mut String) ->
     })
 }
 
-pub(crate) fn scripts_formatter(
+pub(crate) fn script_assets_formatter(
     value: &serde_json::Value,
     output: &mut String,
 ) -> Result<(), Error> {
@@ -137,12 +140,108 @@ pub(crate) fn scripts_formatter(
     })
 }
 
+pub(crate) fn elements_formatter(
+    value: &serde_json::Value,
+    output: &mut String,
+) -> Result<(), Error> {
+    if let serde_json::Value::Array(elements) = value {
+        //
+        for element in elements {
+            if let serde_json::Value::Object(element) = element {
+                if let Some(tags) = element.get("tags") {
+                    if let serde_json::Value::Array(tags) = tags {
+                        //
+                        for tag_name in tags {
+                            if let serde_json::Value::String(tag_name) = tag_name {
+                                if let Some(attrs) = element.get("attrs") {
+                                    if let serde_json::Value::Object(attrs) = attrs {
+                                        if let Some(attrs) = attrs.get(tag_name) {
+                                            if let serde_json::Value::String(attrs) = attrs {
+                                                //
+                                                output.push_str(&format!(
+                                                    "<{0} {1}></{0}>",
+                                                    tag_name, attrs
+                                                ));
+                                                continue
+                                                //
+                                            } else {
+                                                return Err(Error::GenericError {
+                                                    msg: format!(
+                                                        "Expected attributes (a string) of tag \
+                                                         <{}>, found {:?}.",
+                                                        tag_name, attrs
+                                                    ),
+                                                })
+                                            }
+                                        }
+                                    } else {
+                                        return Err(Error::GenericError {
+                                            msg: format!(
+                                                "Expected attributes (a map), found {:?}.",
+                                                attrs
+                                            ),
+                                        })
+                                    }
+                                }
+                                //
+                                output.push_str(&format!("<{0}></{0}>", tag_name));
+                            } else {
+                                return Err(Error::GenericError {
+                                    msg: format!(
+                                        "Expected a tag name (string), found {:?}.",
+                                        tag_name
+                                    ),
+                                })
+                            }
+                        }
+                    } else {
+                        return Err(Error::GenericError {
+                            msg: format!("Expected tags (an array), found {:?}.", tags),
+                        })
+                    }
+                } else {
+                    return Err(Error::GenericError { msg: "Missing tags in element".to_string() })
+                }
+            } else {
+                return Err(Error::GenericError {
+                    msg: format!("Expected element (a map), found {:?}.", element),
+                })
+            }
+        }
+    } else {
+        return Err(Error::GenericError {
+            msg: format!("Expected elements (an array), found {:?}.", value),
+        })
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_attrs() {
+    fn test_attrs_from_toml() {
+        let decl = toml::from_str(
+            r#"
+            tags = ["script"]
+            attrs = { "script" = "defer=true" }
+            "#,
+        )
+        .expect("toml parsing error");
+        let mut group = crate::AssetGroup::default();
+        let (key, asset) = group.create_asset("test.js", ".", decl).expect("asset creation error");
+        group.register_asset(key, asset);
+        let mut tt = tinytemplate::TinyTemplate::new();
+        tt.add_formatter("script_assets_formatter", script_assets_formatter);
+        tt.add_template("html", r#"{assets | script_assets_formatter}"#).expect("bad template");
+        let result = tt.render("html", &group).expect("template rendering error");
+        assert_eq!(result.as_str(), "<script src=test.js defer=true></script>");
+    }
+
+    #[test]
+    fn test_attrs_from_json() {
         let value = serde_json::from_str(
             r#"{ "test": {
             "tags": ["script"],
@@ -150,9 +249,9 @@ mod tests {
             "work_href": "work/test.js",
             "target_url": "test.js"}}"#,
         )
-        .unwrap();
+        .expect("json parsing error");
         let mut result = String::new();
-        scripts_formatter(&value, &mut result).unwrap();
+        script_assets_formatter(&value, &mut result).expect("script assets formatter error");
         assert_eq!(result.as_str(), "<script src=test.js defer=true></script>");
     }
 }

@@ -36,7 +36,7 @@ impl AssetPaths {
 
         let work_dir = Path::new(&out_dir)
             .strip_prefix(&current_dir)
-            .map_err(|err| AssetError::std_io(err))
+            .map_err(AssetError::std_io)
             .map_err(detailed_error!("current dir {:?} doesn't contain \"OUT_DIR\"", current_dir))?
             .into();
 
@@ -60,16 +60,13 @@ impl AssetPaths {
 
         Ok(abs_path
             .strip_prefix(relative_to)
-            .map_err(|err| AssetError::std_io(err))
+            .map_err(AssetError::std_io)
             .map_err(detailed_error!("path {:?} doesn't contain path {:?}", relative_to, abs_path))?
             .into())
     }
 
     #[inline]
-    pub(crate) fn rooted_path<P: AsRef<Path>>(
-        &self,
-        path: P,
-    ) -> Result<PathBuf, AssetError> {
+    pub(crate) fn rooted_path<P: AsRef<Path>>(&self, path: P) -> Result<PathBuf, AssetError> {
         Self::normalize_path(self.root_dir.join(path), &self.current_dir)
     }
 }
@@ -86,7 +83,7 @@ impl AssetFolders {
             manifest_path.as_ref().to_str().unwrap()
         ))?;
 
-        let folders = toml::from_str(manifest.as_str()).map_err(|err| AssetError::std_io(err)).map_err(
+        let folders = toml::from_str(manifest.as_str()).map_err(AssetError::std_io).map_err(
             detailed_error!("manifest \"{}\" is broken", manifest_path.as_ref().to_str().unwrap()),
         )?;
 
@@ -107,7 +104,7 @@ impl AssetFolders {
         if count == assets.len() {
             Ok(assets)
         } else {
-            Err(AssetError::bad_collect(count, assets.len()))
+            Err(AssetError::mismatched_collect(count, assets.len()))
         }
     }
 

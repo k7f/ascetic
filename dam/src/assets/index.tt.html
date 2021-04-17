@@ -3,9 +3,10 @@
     <head>
         <meta charset="utf-8" />
         <title>{title}</title>
-        {assets | links_formatter}
+        {assets | link_assets_formatter}
     </head>
     <body>
-        {assets | scripts_formatter}
+        {elements | elements_formatter}
+        {assets | script_assets_formatter}
     </body>
 </html>

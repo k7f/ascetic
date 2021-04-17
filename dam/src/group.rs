@@ -1,11 +1,11 @@
 use std::{path::Path, io::Write};
-use indexmap::{self, IndexMap};
+use indexmap::IndexMap;
 use serde::Serialize;
 use tinytemplate::TinyTemplate;
 use crate::{
     Asset, AssetDeclaration, AssetMaker, AssetError, sort_assets,
     source::{AssetFolders, AssetPaths},
-    formatter::{links_formatter, scripts_formatter},
+    formatter::{link_assets_formatter, script_assets_formatter, elements_formatter},
 };
 
 /// # Examples
@@ -13,13 +13,11 @@ use crate::{
 /// ```no_run
 /// use ascetic_dam::{AssetGroup, AssetMaker};
 ///
-/// fn main() {
-///     let asset_group = AssetGroup::new("assets", "assets/Assets.toml").unwrap();
+/// let asset_group = AssetGroup::new("assets", "assets/Assets.toml").unwrap();
 ///
-///     asset_group.save_all(include_str!("assets/index.tt.html"), "index.trunk.html", &["img"]).unwrap();
+/// asset_group.save_all(include_str!("assets/index.tt.html"), "index.trunk.html", &["img"]).unwrap();
 ///
-///     println!("cargo:rerun-if-changed=assets");
-/// }
+/// println!("cargo:rerun-if-changed=assets");
 /// ```
 ///
 /// or
@@ -27,21 +25,19 @@ use crate::{
 /// ```no_run
 /// use ascetic_dam::{AssetGroup, AssetMaker};
 ///
-/// fn main() {
-///     let icon_group = AssetGroup::new("icons", "assets/icons/Assets.toml").unwrap();
-///     let badge_group = AssetGroup::new("badges", "assets/badges/Assets.toml").unwrap();
-///     let style_group = AssetGroup::new("styles", "assets/styles/Assets.toml").unwrap();
-///     let script_group = AssetGroup::new("scripts", "assets/scripts/Assets.toml").unwrap();
+/// let icon_group = AssetGroup::new("icons", "assets/icons/Assets.toml").unwrap();
+/// let badge_group = AssetGroup::new("badges", "assets/badges/Assets.toml").unwrap();
+/// let style_group = AssetGroup::new("styles", "assets/styles/Assets.toml").unwrap();
+/// let script_group = AssetGroup::new("scripts", "assets/scripts/Assets.toml").unwrap();
 ///
-///     icon_group.save_mod_files(&["img"]).unwrap();
-///     badge_group.save_mod_files(&["img"]).unwrap();
+/// icon_group.save_mod_files(&["img"]).unwrap();
+/// badge_group.save_mod_files(&["img"]).unwrap();
 ///
-///     [icon_group, badge_group, style_group, script_group]
-///         .save_html_file(include_str!("assets/index.tt.html"), "index.trunk.html")
-///         .unwrap();
+/// [icon_group, badge_group, style_group, script_group]
+///     .save_html_file(include_str!("assets/index.tt.html"), "index.trunk.html")
+///     .unwrap();
 ///
-///     println!("cargo:rerun-if-changed=assets");
-/// }
+/// println!("cargo:rerun-if-changed=assets");
 /// ```
 ///
 /// or
@@ -49,25 +45,24 @@ use crate::{
 /// ```no_run
 /// use ascetic_dam::{AssetGroup, AssetMaker};
 ///
-/// fn main() {
-///     let icon_group = AssetGroup::new("icons", "assets/icons/Assets.toml").unwrap();
-///     let badge_group = AssetGroup::new("badges", "assets/badges/Assets.toml").unwrap();
-///     let style_group = AssetGroup::new("styles", "assets/styles/Assets.toml").unwrap();
-///     let script_group = AssetGroup::new("scripts", "assets/scripts/Assets.toml").unwrap();
+/// let icon_group = AssetGroup::new("icons", "assets/icons/Assets.toml").unwrap();
+/// let badge_group = AssetGroup::new("badges", "assets/badges/Assets.toml").unwrap();
+/// let style_group = AssetGroup::new("styles", "assets/styles/Assets.toml").unwrap();
+/// let script_group = AssetGroup::new("scripts", "assets/scripts/Assets.toml").unwrap();
 ///
-///     [icon_group, badge_group, style_group, script_group]
-///         .save_all(include_str!("assets/index.tt.html"), "index.trunk.html", &["img"])
-///         .unwrap();
+/// [icon_group, badge_group, style_group, script_group]
+///     .save_all(include_str!("assets/index.tt.html"), "index.trunk.html", &["img"])
+///     .unwrap();
 ///
-///     println!("cargo:rerun-if-changed=assets");
-/// }
+/// println!("cargo:rerun-if-changed=assets");
 /// ```
 #[derive(Serialize, Clone, Default, Debug)]
 pub struct AssetGroup {
-    name:   String,
-    title:  Option<String>,
-    paths:  AssetPaths,
-    assets: IndexMap<String, Asset>, // keyed by file_stem (by default)
+    name:     String,
+    title:    Option<String>,
+    paths:    AssetPaths,
+    elements: Vec<Asset>,
+    assets:   IndexMap<String, Asset>, // keyed by file_stem (by default)
 }
 
 impl AssetGroup {
@@ -82,39 +77,23 @@ impl AssetGroup {
         let folders = AssetFolders::from_manifest(&manifest_path)?;
         println!("Folders: {:?}", folders);
 
+        let elements = Vec::new();
         let mut assets = folders.collect_assets(&paths)?;
 
         sort_assets(&mut assets);
         println!("Assets: {:?}", assets);
 
-        Ok(AssetGroup { name, title, paths, assets })
-    }
-
-    pub fn with_title<S: AsRef<str>>(mut self, title: S) -> Self {
-        self.set_title(title);
-        self
-    }
-
-    pub fn set_title<S: AsRef<str>>(&mut self, title: S) {
-        self.title = Some(title.as_ref().to_string());
-    }
-
-    pub fn has_tag<S>(&self, tag: S) -> bool
-    where
-        S: AsRef<str>,
-    {
-        let tag = tag.as_ref();
-
-        self.assets.values().any(|asset| asset.decl.tags.iter().any(|v| v == tag))
+        Ok(AssetGroup { name, title, paths, elements, assets })
     }
 
     pub fn as_empty(&self) -> Self {
         let name = self.name.clone();
         let title = self.title.clone();
         let paths = self.paths.clone();
+        let elements = Vec::new();
         let assets = IndexMap::new();
 
-        AssetGroup { name, title, paths, assets }
+        AssetGroup { name, title, paths, elements, assets }
     }
 
     pub fn clone_with_prefix<S>(&self, prefix: S) -> Self
@@ -126,6 +105,43 @@ impl AssetGroup {
         result.extend_with_prefix(prefix, &self.assets);
 
         result
+    }
+
+    pub fn with_title<S: AsRef<str>>(mut self, title: S) -> Self {
+        self.set_title(title);
+        self
+    }
+
+    #[inline]
+    pub fn set_title<S: AsRef<str>>(&mut self, title: S) {
+        self.title = Some(title.as_ref().to_string());
+    }
+
+    pub fn with_elements<I>(mut self, elts: I) -> Self
+    where
+        I: IntoIterator<Item = Asset>,
+    {
+        self.elements.extend(elts);
+        self
+    }
+
+    #[inline]
+    pub fn num_assets(&self) -> usize {
+        self.assets.len()
+    }
+
+    #[inline]
+    pub fn get_assets(&self) -> indexmap::map::Iter<String, Asset> {
+        self.assets.iter()
+    }
+
+    #[inline]
+    pub fn has_tag<S>(&self, tag: S) -> bool
+    where
+        S: AsRef<str>,
+    {
+        let tag = tag.as_ref();
+        self.assets.values().any(|asset| asset.get_tags().any(|v| v == tag))
     }
 
     pub fn extend<S, A, I>(&mut self, assets: I)
@@ -166,8 +182,9 @@ impl AssetGroup {
     pub fn render_template(&self, template: &str) -> Result<String, AssetError> {
         let mut tt = TinyTemplate::new();
 
-        tt.add_formatter("links_formatter", links_formatter);
-        tt.add_formatter("scripts_formatter", scripts_formatter);
+        tt.add_formatter("link_assets_formatter", link_assets_formatter);
+        tt.add_formatter("script_assets_formatter", script_assets_formatter);
+        tt.add_formatter("elements_formatter", elements_formatter);
         tt.add_template("html", template)?;
         let result = tt.render("html", self)?;
 
@@ -224,7 +241,7 @@ use maple_core::{{template, template_result::TemplateResult, generic_node::Gener
             )?;
 
             for (name, asset) in self.assets.iter() {
-                if asset.decl.tags.iter().any(|v| v == tag) {
+                if asset.get_tags().any(|v| v == tag) {
                     writeln!(
                         &file,
                         "
