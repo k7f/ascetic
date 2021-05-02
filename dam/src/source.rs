@@ -123,7 +123,7 @@ impl AssetFolders {
 
                 if !visited.contains(&manifest_path) {
                     let folders = AssetFolders::from_manifest(&manifest_path)?;
-                    println!("More folders: {:?}", folders);
+                    println!("\n*** More folders ***\n{:#?}", folders);
 
                     if let Some(base_dir) = manifest_path.parent() {
                         let base_dir = base_dir.canonicalize().map_err(detailed_error!(

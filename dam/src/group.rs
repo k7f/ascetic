@@ -9,8 +9,8 @@ use crate::{
     Asset, AssetDeclaration, AssetMaker, AssetError, sort_assets,
     source::{AssetFolders, AssetPaths},
     formatter::{
-        link_assets_formatter, script_assets_formatter, elements_formatter, scss_imports_formatter,
-        scss_icons_formatter,
+        link_assets_formatter, script_assets_formatter, elements_formatter,
+        import_assets_formatter, extend_assets_formatter,
     },
 };
 
@@ -81,13 +81,13 @@ impl AssetGroup {
         let title = None;
         let paths = AssetPaths::from_manifest(&manifest_path)?;
         let folders = AssetFolders::from_manifest(&manifest_path)?;
-        println!("Folders: {:?}", folders);
+        println!("\n*** Folders ***\n{:#?}", folders);
 
         let elements = Vec::new();
         let mut assets = folders.collect_assets(&paths)?;
 
         sort_assets(&mut assets);
-        println!("Assets: {:?}", assets);
+        println!("\n*** Assets ***\n{:#?}", assets);
 
         Ok(AssetGroup { name, title, paths, elements, assets })
     }
@@ -219,8 +219,8 @@ impl AssetGroup {
     pub fn render_scss_template(&self, template: &str) -> Result<String, AssetError> {
         let mut tt = TinyTemplate::new();
 
-        tt.add_formatter("scss_imports_formatter", scss_imports_formatter);
-        tt.add_formatter("scss_icons_formatter", scss_icons_formatter);
+        tt.add_formatter("import_assets_formatter", import_assets_formatter);
+        tt.add_formatter("extend_assets_formatter", extend_assets_formatter);
         tt.add_template("scss", template)?;
         let result = tt.render("scss", self)?;
 

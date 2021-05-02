@@ -80,7 +80,7 @@ pub mod assets {
 
 The optional call to `with_html_template` above includes a custom
 [tiny template](https://github.com/bheisler/TinyTemplate)
-`assets/index.tt.html`.  If this call is missing, then the default
+`assets/index.tt.html`.  If this call was missing, then the default
 template,
 
 ```html
@@ -98,15 +98,23 @@ template,
 </html>
 ```
 
-will be used.  The path to the rendered HTML file is given in the
-`save` call.
+would be used.  The path to the rendered HTML file is to be given in
+the `save` call.
 
 Also optionally, in order to refer to assets in style sheets, one may
 call `with_scss_template`, which takes two arguments: source of a
 style template, and a path to where a rendered SCSS file is to be
 output.  Since there is no default style template, the call to
 `with_scss_template` is required for style sheet rendering to take
-place.
+place.  The two formatters available in style templates are
+
+```scss
+// generate `@import` directives
+{assets | import_assets_formatter}
+
+// generate `@extend`ing class definitions
+{assets | extend_assets_formatter}
+```
 
 More verbose examples showing how to use the library may be found in
 the [API documentation](https://docs.rs/ascetic_dam).
@@ -117,26 +125,38 @@ If there is a declaration
 
 ```toml
 [images]
-"book.svg" = { flags = ["hash"], tags = ["link", "img"], alt = "documentation" }
+"book.svg" = { flags = ["hash"], tags = ["link", "img"], extends = ["btn-icon"], alt = "documentation" }
 ```
 
 in a manifest `assets/Assets.toml`, then it refers to the file
-`assets/images/book.svg` as an `<img>` element.
+`assets/images/book.svg` as an `<img>` element, and as a
+`background-image` property of the `.btn-icon-book` SCSS class.
 
-Assets may also be declared in non-root manifests.  Directive
+Assets may also be declared in non-root manifests.  A
+directive
 
 ```toml
 ["styles/Assets.toml"]
 ```
 
-in `assets/Assets.toml` introduces a child manifest
-`assets/styles/Assets.toml`.  The reference to a file
-`assets/styles/index.scss` in the child manifest would read
+if included in the manifest `assets/Assets.toml`, introduces a child
+manifest `assets/styles/Assets.toml`.  The reference to a file
+`assets/styles/index.scss` in the child manifest would then read
 
 ```toml
 ["."]
 "index.scss" = { tags = ["link"] }
 ```
+
+if the style sheet is to be `<link>`ed in the rendered HTML file, or
+
+```toml
+["."]
+"index.scss" = { flags = ["import"] }
+```
+
+if it is to be `@import`ed in a parent style sheet declared in the
+call to `with_scss_template`.
 
 ### Asset invocation
 

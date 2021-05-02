@@ -86,6 +86,13 @@ impl DAM {
         S: AsRef<str>,
         P: AsRef<Path>,
     {
+        println!(
+            "{}Building group {:?} declared in {:?}",
+            if self.groups.is_empty() { "" } else { "\n" },
+            group_name.as_ref(),
+            manifest_path.as_ref()
+        );
+
         match AssetGroup::new(group_name, manifest_path) {
             Ok(mut group) => {
                 if let Some(ref title) = self.title {
@@ -121,21 +128,27 @@ impl DAM {
             if let Some(ref scss_file_name) = self.scss_file_name {
                 let work_dir = context.work_dir();
                 let out_path = work_dir.clone().join(scss_file_name);
-                let file = std::fs::File::create(out_path)?;
+                let file = std::fs::File::create(&out_path)?;
                 let rendered = context.render_scss_template(scss_template)?;
+
                 writeln!(&file, "{}", rendered)?;
 
                 let decl: AssetDeclaration = toml::from_str("tags = [\"link\"]")?;
                 let (key, asset) = decl.into_asset("index.scss", work_dir, "")?;
                 let key = format!("scss_from_tt::{}", key);
                 context.register_asset(key, asset);
-                println!("{:#?}", context);
+                println!("\n*** Final context ***\n{:#?}", context);
+                println!("Saving SCSS to {:?}", out_path);
             } else {
                 return Err(AssetError::missing_target_for_template("SCSS").into())
             }
         }
 
-        let file = std::fs::File::create(out_path.as_ref())?;
+        let out_path = out_path.as_ref();
+
+        println!("Saving HTML to {:?}", out_path);
+
+        let file = std::fs::File::create(out_path)?;
         let rendered = if let Some(ref html_template) = self.html_template {
             context.render_html_template(html_template)
         } else {

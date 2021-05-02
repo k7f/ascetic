@@ -167,7 +167,7 @@ pub(crate) fn elements_formatter(
     Ok(())
 }
 
-pub(crate) fn scss_imports_formatter(
+pub(crate) fn import_assets_formatter(
     value: &serde_json::Value,
     output: &mut String,
 ) -> Result<(), Error> {
@@ -197,27 +197,33 @@ pub(crate) fn scss_imports_formatter(
     Ok(())
 }
 
-pub(crate) fn scss_icons_formatter(
+pub(crate) fn extend_assets_formatter(
     value: &serde_json::Value,
     output: &mut String,
 ) -> Result<(), Error> {
     let assets = get_object(value, "assets")?;
 
     for (key, asset) in assets {
-        if let Some((prefix, suffix)) = key.split_once("::") {
-            if prefix == "icons" {
+        let asset = get_object(asset, "asset")?;
+
+        if let Some(extends) = asset.get("extends") {
+            let extends = get_array(extends, "extends")?;
+
+            for class_name in extends {
+                let class_name = get_string(class_name, "css class name")?;
+                let suffix =
+                    if let Some((_prefix, suffix)) = key.rsplit_once("::") { suffix } else { key };
                 let suffix: String =
                     suffix.chars().map(|c| if c == '_' { '-' } else { c }).collect();
-                let asset = get_object(asset, "asset")?;
                 let target_url = get_value_for_key(asset, "target_url", "asset")?;
                 let target_url = get_string(target_url, "target URL")?;
 
                 output.push_str(&format!(
-                    "\n.btn-icon-{} {{
-    @extend .btn-icon;
+                    "\n.{}-{} {{
+    @extend .{};
     background-image: url('{}');
 }}\n",
-                    suffix, target_url
+                    class_name, suffix, class_name, target_url
                 ));
             }
         }

@@ -27,6 +27,7 @@ pub struct Asset {
     flags:         Vec<String>,
     tags:          Vec<String>,
     attrs:         HashMap<String, String>, // maps tags to attribute lists
+    extends:       Vec<String>,
     #[serde(skip_serializing)]
     decl:          AssetDeclaration,
 }
@@ -38,6 +39,10 @@ impl Asset {
 
     pub fn get_tags(&self) -> std::slice::Iter<String> {
         self.tags.iter()
+    }
+
+    pub fn get_extends(&self) -> std::slice::Iter<String> {
+        self.extends.iter()
     }
 
     pub fn as_html_element<S: AsRef<str>>(&self, tag: S) -> Result<String, AssetError> {
@@ -85,17 +90,19 @@ impl AsRef<Asset> for Asset {
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct AssetDeclaration {
     /// target URL modulo hashing
-    href:   Option<String>,
-    name:   Option<String>,
+    href:    Option<String>,
+    name:    Option<String>,
     #[serde(default)]
-    flags:  Vec<String>,
+    flags:   Vec<String>,
     #[serde(default)]
-    tags:   Vec<String>,
+    tags:    Vec<String>,
     #[serde(default)]
-    attrs:  HashMap<String, String>,
-    width:  Option<u32>,
-    height: Option<u32>,
-    alt:    Option<String>,
+    attrs:   HashMap<String, String>,
+    width:   Option<u32>,
+    height:  Option<u32>,
+    alt:     Option<String>,
+    #[serde(default)]
+    extends: Vec<String>,
 }
 
 impl AssetDeclaration {
@@ -118,6 +125,18 @@ impl AssetDeclaration {
     {
         for tag in tags.into_iter() {
             self.add_tag(tag)?
+        }
+
+        Ok(self)
+    }
+
+    pub fn with_extends<I>(mut self, extends: I) -> Result<Self, AssetError>
+    where
+        I: IntoIterator,
+        I::Item: AsRef<str>,
+    {
+        for class_name in extends.into_iter() {
+            self.add_class_name(class_name)?
         }
 
         Ok(self)
@@ -149,6 +168,19 @@ impl AssetDeclaration {
             self.tags.push(tag.to_string());
             Ok(())
         }
+    }
+
+    pub fn add_class_name<S>(&mut self, class_name: S) -> Result<(), AssetError>
+    where
+        S: AsRef<str>,
+    {
+        let class_name = class_name.as_ref();
+
+        if self.extends.iter().all(|n| class_name != n.as_str()) {
+            self.extends.push(class_name.to_string());
+        }
+
+        Ok(())
     }
 
     pub fn add_attrs<S1, S2>(&mut self, tag: S1, attrs: S2)
@@ -232,6 +264,7 @@ impl AssetDeclaration {
         let flags = self.flags.clone();
         let tags = self.tags.clone();
         let attrs = self.attrs.clone();
+        let extends = self.extends.clone();
 
         Ok((
             asset_name.to_string(),
@@ -243,6 +276,7 @@ impl AssetDeclaration {
                 flags,
                 tags,
                 attrs,
+                extends,
                 decl: self,
             },
         ))
