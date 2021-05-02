@@ -60,7 +60,7 @@ It is possible to explicitly load several manifest files,
         .with_group("styles", "assets/styles/Assets.toml")
         .with_group("scripts", "assets/scripts/Assets.toml")
         .with_tags(["img"])
-        .with_template(include_str!("assets/index.tt.html"))
+        .with_html_template(include_str!("assets/index.tt.html"))
         .save("index.trunk.html")
         .unwrap();
 ```
@@ -78,23 +78,35 @@ pub mod assets {
 }
 ```
 
-There is a call to `with_template` above, which includes a custom
+The optional call to `with_html_template` above includes a custom
 [tiny template](https://github.com/bheisler/TinyTemplate)
-`assets/index.tt.html`, for example,
+`assets/index.tt.html`.  If this call is missing, then the default
+template,
 
 ```html
 <!DOCTYPE html>
 <html lang="en">
     <head>
         <meta charset="utf-8" />
-        <title>Title</title>
-        {assets | links_formatter}
+        <title>{title}</title>
+        {assets | link_assets_formatter}
     </head>
     <body>
-        {assets | scripts_formatter}
+        {elements | elements_formatter}
+        {assets | script_assets_formatter}
     </body>
 </html>
 ```
+
+will be used.  The path to the rendered HTML file is given in the
+`save` call.
+
+Also optionally, in order to refer to assets in style sheets, one may
+call `with_scss_template`, which takes two arguments: source of a
+style template, and a path to where a rendered SCSS file is to be
+output.  Since there is no default style template, the call to
+`with_scss_template` is required for style sheet rendering to take
+place.
 
 More verbose examples showing how to use the library may be found in
 the [API documentation](https://docs.rs/ascetic_dam).

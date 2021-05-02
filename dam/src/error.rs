@@ -17,9 +17,11 @@ macro_rules! detailed_error {
 enum InnerError {
     IO(std::io::Error),
     TT(tinytemplate::error::Error),
-    TagUnrenderable(String),
+    FlagClash(String),
     TagClash(String),
+    TagUnrenderable(String),
     MismatchedCollect(usize, usize),
+    MissingTargetForTemplate(String),
 }
 
 macro_rules! impl_inner_error {
@@ -63,14 +65,20 @@ impl std::fmt::Display for InnerError {
         match self {
             IO(err) => write!(f, "IO error {:?}", err),
             TT(err) => write!(f, "TT error {:?}", err),
-            TagUnrenderable(tag) => write!(f, "HTML element with tag `{}` can't be rendered", tag),
+            FlagClash(flag) => {
+                write!(f, "Multiple copies of flag `{}` can't belong to a single asset", flag)
+            }
             TagClash(tag) => write!(
                 f,
                 "Multiple HTML elements with tag `{}` can't be rendered from a single asset",
                 tag
             ),
+            TagUnrenderable(tag) => write!(f, "HTML element with tag `{}` can't be rendered", tag),
             MismatchedCollect(running, total) => {
                 write!(f, "Traversed {} assets, but collected {}", running, total)
+            }
+            MissingTargetForTemplate(template_type) => {
+                write!(f, "Missing target path for {} template", template_type)
             }
         }
     }
@@ -83,16 +91,24 @@ pub struct AssetError {
 }
 
 impl AssetError {
-    pub(crate) fn tag_unrenderable<S: AsRef<str>>(tag: S) -> Self {
-        InnerError::TagUnrenderable(tag.as_ref().to_string()).into()
+    pub(crate) fn flag_clash<S: AsRef<str>>(flag: S) -> Self {
+        InnerError::FlagClash(flag.as_ref().to_string()).into()
     }
 
     pub(crate) fn tag_clash<S: AsRef<str>>(tag: S) -> Self {
         InnerError::TagClash(tag.as_ref().to_string()).into()
     }
 
+    pub(crate) fn tag_unrenderable<S: AsRef<str>>(tag: S) -> Self {
+        InnerError::TagUnrenderable(tag.as_ref().to_string()).into()
+    }
+
     pub(crate) fn mismatched_collect(running: usize, total: usize) -> Self {
         InnerError::MismatchedCollect(running, total).into()
+    }
+
+    pub(crate) fn missing_target_for_template<S: AsRef<str>>(template_type: S) -> Self {
+        InnerError::MissingTargetForTemplate(template_type.as_ref().to_string()).into()
     }
 
     pub(crate) fn std_io<E>(err: E) -> Self

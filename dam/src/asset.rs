@@ -24,6 +24,7 @@ pub struct Asset {
     source_path:   PathBuf,
     work_href:     String,
     target_url:    String,
+    flags:         Vec<String>,
     tags:          Vec<String>,
     attrs:         HashMap<String, String>, // maps tags to attribute lists
     #[serde(skip_serializing)]
@@ -31,6 +32,10 @@ pub struct Asset {
 }
 
 impl Asset {
+    pub fn get_flags(&self) -> std::slice::Iter<String> {
+        self.flags.iter()
+    }
+
     pub fn get_tags(&self) -> std::slice::Iter<String> {
         self.tags.iter()
     }
@@ -65,6 +70,10 @@ impl Asset {
     pub fn as_work_href(&self) -> &str {
         self.work_href.as_str()
     }
+
+    pub fn as_target_url(&self) -> &str {
+        self.target_url.as_str()
+    }
 }
 
 impl AsRef<Asset> for Asset {
@@ -90,6 +99,18 @@ pub struct AssetDeclaration {
 }
 
 impl AssetDeclaration {
+    pub fn with_flags<I>(mut self, flags: I) -> Result<Self, AssetError>
+    where
+        I: IntoIterator,
+        I::Item: AsRef<str>,
+    {
+        for flag in flags.into_iter() {
+            self.add_flag(flag)?
+        }
+
+        Ok(self)
+    }
+
     pub fn with_tags<I>(mut self, tags: I) -> Result<Self, AssetError>
     where
         I: IntoIterator,
@@ -100,6 +121,20 @@ impl AssetDeclaration {
         }
 
         Ok(self)
+    }
+
+    pub fn add_flag<S>(&mut self, flag: S) -> Result<(), AssetError>
+    where
+        S: AsRef<str>,
+    {
+        let flag = flag.as_ref();
+
+        if self.flags.iter().any(|f| flag == f.as_str()) {
+            Err(AssetError::flag_clash(flag))
+        } else {
+            self.flags.push(flag.to_string());
+            Ok(())
+        }
     }
 
     pub fn add_tag<S>(&mut self, tag: S) -> Result<(), AssetError>
@@ -194,12 +229,22 @@ impl AssetDeclaration {
             .into_string()
             .map_err(|err| AssetError::std_io(format!("{:?}", err)))
             .map_err(detailed_error!("Path error"))?;
+        let flags = self.flags.clone();
         let tags = self.tags.clone();
         let attrs = self.attrs.clone();
 
         Ok((
             asset_name.to_string(),
-            Asset { serial_number, source_path, work_href, target_url, tags, attrs, decl: self },
+            Asset {
+                serial_number,
+                source_path,
+                work_href,
+                target_url,
+                flags,
+                tags,
+                attrs,
+                decl: self,
+            },
         ))
     }
 }
@@ -219,7 +264,7 @@ pub trait AssetMaker {
     ) -> Result<(), AssetError> {
         let file = std::fs::File::create(out_path.as_ref())?;
         let context = self.as_group();
-        let rendered = context.render_template(template)?;
+        let rendered = context.render_html_template(template)?;
 
         writeln!(&file, "{}", rendered)?;
 

@@ -1,11 +1,17 @@
-use std::{path::Path, io::Write};
+use std::{
+    path::{Path, PathBuf},
+    io::Write,
+};
 use indexmap::IndexMap;
 use serde::Serialize;
 use tinytemplate::TinyTemplate;
 use crate::{
     Asset, AssetDeclaration, AssetMaker, AssetError, sort_assets,
     source::{AssetFolders, AssetPaths},
-    formatter::{link_assets_formatter, script_assets_formatter, elements_formatter},
+    formatter::{
+        link_assets_formatter, script_assets_formatter, elements_formatter, scss_imports_formatter,
+        scss_icons_formatter,
+    },
 };
 
 /// # Examples
@@ -136,6 +142,25 @@ impl AssetGroup {
     }
 
     #[inline]
+    pub fn work_dir(&self) -> &PathBuf {
+        self.paths.work_dir()
+    }
+
+    #[inline]
+    pub fn rooted_path<P: AsRef<Path>>(&self, path: P) -> Result<PathBuf, AssetError> {
+        self.paths.rooted_path(path)
+    }
+
+    #[inline]
+    pub fn has_flag<S>(&self, flag: S) -> bool
+    where
+        S: AsRef<str>,
+    {
+        let flag = flag.as_ref();
+        self.assets.values().any(|asset| asset.get_flags().any(|v| v == flag))
+    }
+
+    #[inline]
     pub fn has_tag<S>(&self, tag: S) -> bool
     where
         S: AsRef<str>,
@@ -179,7 +204,7 @@ impl AssetGroup {
         self.sort();
     }
 
-    pub fn render_template(&self, template: &str) -> Result<String, AssetError> {
+    pub fn render_html_template(&self, template: &str) -> Result<String, AssetError> {
         let mut tt = TinyTemplate::new();
 
         tt.add_formatter("link_assets_formatter", link_assets_formatter);
@@ -187,6 +212,17 @@ impl AssetGroup {
         tt.add_formatter("elements_formatter", elements_formatter);
         tt.add_template("html", template)?;
         let result = tt.render("html", self)?;
+
+        Ok(result)
+    }
+
+    pub fn render_scss_template(&self, template: &str) -> Result<String, AssetError> {
+        let mut tt = TinyTemplate::new();
+
+        tt.add_formatter("scss_imports_formatter", scss_imports_formatter);
+        tt.add_formatter("scss_icons_formatter", scss_icons_formatter);
+        tt.add_template("scss", template)?;
+        let result = tt.render("scss", self)?;
 
         Ok(result)
     }
@@ -228,6 +264,22 @@ impl AssetMaker for AssetGroup {
         I: IntoIterator,
         I::Item: AsRef<str>,
     {
+        let file_name = format!("{}_url.rs", self.name);
+        let path = Path::new(self.paths.work_dir()).join(file_name);
+        let file = std::fs::File::create(path)?;
+
+        for (name, asset) in self.assets.iter() {
+            writeln!(
+                &file,
+                "
+pub fn {}_url() -> &'static str {{
+    \"{}\"
+}}",
+                name,
+                asset.as_target_url(),
+            )?;
+        }
+
         for tag in tags.into_iter().filter(|tag| self.has_tag(tag)) {
             let tag = tag.as_ref();
             let file_name = format!("{}_{}.rs", self.name, tag);
@@ -265,7 +317,7 @@ pub fn {}_{}<G: GenericNode>() -> TemplateResult<G> {{
         out_path: P,
     ) -> Result<(), AssetError> {
         let file = std::fs::File::create(out_path.as_ref())?;
-        let rendered = self.render_template(template)?;
+        let rendered = self.render_html_template(template)?;
 
         writeln!(&file, "{}", rendered)?;
 
@@ -339,7 +391,7 @@ mod tests {
     #[test]
     fn test_group_title() {
         let group = AssetGroup::default().with_title("Test");
-        let rendered = group.render_template(r#"{title}"#);
+        let rendered = group.render_html_template(r#"{title}"#);
         assert_eq!(rendered.unwrap().as_str(), "Test");
     }
 
