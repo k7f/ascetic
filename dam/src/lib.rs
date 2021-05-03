@@ -90,6 +90,13 @@ impl Collection {
         Ok(self)
     }
 
+    pub fn with_default_scss_template<S>(self, rendered_file_name: S) -> Result<Self, AssetError>
+    where
+        S: AsRef<str>,
+    {
+        self.with_scss_template(include_str!("assets/index.tt.scss"), rendered_file_name)
+    }
+
     pub fn with_group<S, P>(mut self, group_name: S, manifest_path: P) -> Self
     where
         S: AsRef<str>,

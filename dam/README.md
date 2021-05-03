@@ -103,14 +103,18 @@ is used.  The path to the rendered HTML file is to be given in the
 call to `Collection::render`.
 
 Also optionally, in order to refer to assets in style sheets, one may
-call `with_scss_template`, which takes two arguments: source of a
-style template, and a path to where a rendered SCSS file is to be
-output.  Since, unlike the HTML case, there is no default style
-template, at least one call to `with_scss_template` is required for
-style sheet rendering to take place at all.  Two formatters available
-in style templates are
+call `with_scss_template` or `with_default_scss_template`.  First
+variant of this call accepts two arguments: source of a style
+template, and a path to where a rendered SCSS file is to be output.
+Second variant implicitly supplies the default style template, and
+takes only a target path argument.  At least one call to
+`with_scss_template` or `with_default_scss_template` is required for
+any style sheet rendering to take place at all, unlike in the HTML
+case.  Two formatters available in style templates are shown below.
 
 ```scss
+// This is the default style template, btw.
+
 // generate `@import` directives
 {assets | import_assets_formatter}
 
