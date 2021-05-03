@@ -28,11 +28,11 @@ application's `build.rs` file might look like
 
 ```rust
 fn main() {
-    ascetic_dam::DAM::new()
+    ascetic_dam::Collection::new()
         .with_group("assets", "assets/Assets.toml")
         .with_tags(["img"])
         .with_title("Title")
-        .save("index.trunk.html")
+        .render("index.trunk.html")
         .unwrap();
 
     println!("cargo:rerun-if-changed=assets");
@@ -54,15 +54,16 @@ with [asset-invoking function definitions](#asset-invocation).
 It is possible to explicitly load several manifest files,
 
 ```rust
-    ascetic_dam::DAM::new()
-        .with_group("icons", "assets/icons/Assets.toml")
-        .with_group("badges", "assets/badges/Assets.toml")
-        .with_group("styles", "assets/styles/Assets.toml")
-        .with_group("scripts", "assets/scripts/Assets.toml")
-        .with_tags(["img"])
-        .with_html_template(include_str!("assets/index.tt.html"))
-        .save("index.trunk.html")
-        .unwrap();
+ascetic_dam::Collection::new()
+    .with_group("styles", "assets/styles/Assets.toml")
+    .with_group("scripts", "assets/scripts/Assets.toml")
+    .with_group("icons", "assets/icons/Assets.toml")
+    .with_group("badges", "assets/badges/Assets.toml")
+    .with_tags(["img"])
+    .with_html_template(include_str!("assets/index.tt.html"))
+    .render("index.trunk.html")
+    .unwrap();
+}
 ```
 
 so that definitions of asset-invoking functions may be grouped into
@@ -78,10 +79,10 @@ pub mod assets {
 }
 ```
 
-The optional call to `with_html_template` above includes a custom
-[tiny template](https://github.com/bheisler/TinyTemplate)
-`assets/index.tt.html`.  If this call was missing, then the default
-template,
+The call to `with_html_template` above includes a custom [tiny
+template](https://github.com/bheisler/TinyTemplate)
+`assets/index.tt.html`.  This call is optional &mdash; without it, the
+default template,
 
 ```html
 <!DOCTYPE html>
@@ -98,15 +99,16 @@ template,
 </html>
 ```
 
-would be used.  The path to the rendered HTML file is to be given in
-the `save` call.
+is used.  The path to the rendered HTML file is to be given in the
+call to `Collection::render`.
 
 Also optionally, in order to refer to assets in style sheets, one may
 call `with_scss_template`, which takes two arguments: source of a
 style template, and a path to where a rendered SCSS file is to be
-output.  Since there is no default style template, the call to
-`with_scss_template` is required for style sheet rendering to take
-place.  The two formatters available in style templates are
+output.  Since, unlike the HTML case, there is no default style
+template, at least one call to `with_scss_template` is required for
+style sheet rendering to take place at all.  Two formatters available
+in style templates are
 
 ```scss
 // generate `@import` directives
@@ -114,6 +116,36 @@ place.  The two formatters available in style templates are
 
 // generate `@extend`ing class definitions
 {assets | extend_assets_formatter}
+```
+
+A successful call to `Collection::render` will always trigger
+rendering of exactly one HTML template (explicit or default), and of
+zero, one, or more style templates.
+
+Additionally, a HTML template may trigger rendering of the array of
+`elements` (see the default template above).  This array is populated
+by calls to `Collection::with_element`, such as the one in the
+following `build.rs` script.
+
+```rust
+use ascetic_dam::{Collection, AssetError};
+
+fn collect_assets() -> Result<Collection, AssetError> {
+    Collection::new()
+        .with_group("styles", "assets/styles/Assets.toml")
+        .with_group("scripts", "assets/scripts/Assets.toml")
+        .with_group("icons", "assets/icons/Assets.toml")
+        .with_group("badges", "assets/badges/Assets.toml")
+        .with_tags(["img"])
+        .with_html_template(include_str!("assets/index.tt.html"))
+        .with_element("div", "id=\"root\"")?
+        .with_scss_template(include_str!("assets/index.tt.scss"), "index.scss")
+}
+
+fn main() {
+    collect_assets().unwrap().render("index.trunk.html").unwrap();
+    println!("cargo:rerun-if-changed=assets");
+}
 ```
 
 More verbose examples showing how to use the library may be found in

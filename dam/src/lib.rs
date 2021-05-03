@@ -11,21 +11,19 @@ pub use error::AssetError;
 
 use std::{path::Path, io::Write};
 
-#[allow(clippy::upper_case_acronyms)]
 #[derive(Default)]
-pub struct DAM {
+pub struct Collection {
     title:          Option<String>,
     html_template:  Option<String>,
-    scss_template:  Option<String>,
-    scss_file_name: Option<String>,
+    scss_templates: Vec<(String, String)>,
     elements:       AssetGroup,
     groups:         Vec<Result<AssetGroup, AssetError>>,
     tags:           Vec<String>,
 }
 
-impl DAM {
+impl Collection {
     pub fn new() -> Self {
-        DAM::default()
+        Collection::default()
     }
 
     pub fn with_title<S>(mut self, title: S) -> Self
@@ -71,14 +69,25 @@ impl DAM {
         self
     }
 
-    pub fn with_scss_template<S1, S2>(mut self, template: S1, rendered_name: S2) -> Self
+    pub fn with_scss_template<S1, S2>(
+        mut self,
+        template: S1,
+        rendered_file_name: S2,
+    ) -> Result<Self, AssetError>
     where
         S1: AsRef<str>,
         S2: AsRef<str>,
     {
-        self.scss_template = Some(template.as_ref().to_string());
-        self.scss_file_name = Some(rendered_name.as_ref().to_string());
-        self
+        let rendered_file_name = rendered_file_name.as_ref();
+
+        for (_, another_file_name) in &self.scss_templates {
+            if another_file_name == rendered_file_name {
+                return Err(AssetError::template_target_clash(rendered_file_name))
+            }
+        }
+
+        self.scss_templates.push((template.as_ref().to_string(), rendered_file_name.to_string()));
+        Ok(self)
     }
 
     pub fn with_group<S, P>(mut self, group_name: S, manifest_path: P) -> Self
@@ -115,7 +124,7 @@ impl DAM {
         self
     }
 
-    pub fn save<'a, P>(&'a self, out_path: P) -> Result<(), Box<dyn std::error::Error + 'a>>
+    pub fn render<'a, P>(&'a self, out_path: P) -> Result<(), Box<dyn std::error::Error + 'a>>
     where
         P: AsRef<Path>,
     {
@@ -124,28 +133,27 @@ impl DAM {
         let mut context =
             self.groups.as_group().with_elements(self.elements.get_assets().map(|v| v.1.clone()));
 
-        if let Some(ref scss_template) = self.scss_template {
-            if let Some(ref scss_file_name) = self.scss_file_name {
-                let work_dir = context.work_dir();
-                let out_path = work_dir.clone().join(scss_file_name);
-                let file = std::fs::File::create(&out_path)?;
-                let rendered = context.render_scss_template(scss_template)?;
+        for (scss_template, scss_file_name) in &self.scss_templates {
+            let out_path = context.work_dir().clone().join(scss_file_name);
 
-                writeln!(&file, "{}", rendered)?;
+            println!("Saving SCSS to {:?}", out_path);
 
-                let decl: AssetDeclaration = toml::from_str("tags = [\"link\"]")?;
-                let (key, asset) = decl.into_asset("index.scss", work_dir, "")?;
-                let key = format!("scss_from_tt::{}", key);
-                context.register_asset(key, asset);
-                println!("\n*** Final context ***\n{:#?}", context);
-                println!("Saving SCSS to {:?}", out_path);
-            } else {
-                return Err(AssetError::missing_target_for_template("SCSS").into())
-            }
+            let file = std::fs::File::create(&out_path)?;
+            let rendered = context.render_scss_template(scss_template)?;
+
+            writeln!(&file, "{}", rendered)?;
+        }
+
+        for (_, scss_file_name) in &self.scss_templates {
+            let decl: AssetDeclaration = toml::from_str("tags = [\"link\"]")?;
+            let (key, asset) = decl.into_asset(scss_file_name, context.work_dir(), "")?;
+            let key = format!("scss_from_tt::{}", key);
+            context.register_asset(key, asset);
         }
 
         let out_path = out_path.as_ref();
 
+        println!("\n*** Final context ***\n{:#?}", context);
         println!("Saving HTML to {:?}", out_path);
 
         let file = std::fs::File::create(out_path)?;
@@ -156,6 +164,7 @@ impl DAM {
         }?;
 
         writeln!(&file, "{}", rendered)?;
+
         self.groups.iter().try_for_each(|g| g.as_ref().map(|_| ()).map_err(|err| err.into()))
     }
 }

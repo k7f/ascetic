@@ -21,7 +21,7 @@ enum InnerError {
     TagClash(String),
     TagUnrenderable(String),
     MismatchedCollect(usize, usize),
-    MissingTargetForTemplate(String),
+    TemplateTargetClash(String),
 }
 
 macro_rules! impl_inner_error {
@@ -77,8 +77,8 @@ impl std::fmt::Display for InnerError {
             MismatchedCollect(running, total) => {
                 write!(f, "Traversed {} assets, but collected {}", running, total)
             }
-            MissingTargetForTemplate(template_type) => {
-                write!(f, "Missing target path for {} template", template_type)
+            TemplateTargetClash(template_target) => {
+                write!(f, "Duplicated template target path {:?}", template_target)
             }
         }
     }
@@ -107,8 +107,8 @@ impl AssetError {
         InnerError::MismatchedCollect(running, total).into()
     }
 
-    pub(crate) fn missing_target_for_template<S: AsRef<str>>(template_type: S) -> Self {
-        InnerError::MissingTargetForTemplate(template_type.as_ref().to_string()).into()
+    pub(crate) fn template_target_clash<S: AsRef<str>>(template_target: S) -> Self {
+        InnerError::TemplateTargetClash(template_target.as_ref().to_string()).into()
     }
 
     pub(crate) fn std_io<E>(err: E) -> Self
