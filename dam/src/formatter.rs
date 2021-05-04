@@ -189,7 +189,7 @@ pub(crate) fn import_assets_formatter(
                     .join(source_path);
 
                 output.push_str(&format!("@import {:?};", path));
-                continue
+                break
             }
         }
     }
@@ -237,7 +237,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_attrs_from_toml() {
+    fn attrs_from_toml() {
         let decl = toml::from_str(
             r#"
             tags = ["script"]
@@ -247,7 +247,7 @@ mod tests {
         .expect("toml parsing error");
         let mut group = crate::AssetGroup::default();
         let (key, asset) = group.create_asset("test.js", ".", decl).expect("asset creation error");
-        group.register_asset(key, asset);
+        group.register_asset(key, asset).unwrap();
         let mut tt = tinytemplate::TinyTemplate::new();
         tt.add_formatter("script_assets_formatter", script_assets_formatter);
         tt.add_template("html", r#"{assets | script_assets_formatter}"#).expect("bad template");
@@ -256,7 +256,7 @@ mod tests {
     }
 
     #[test]
-    fn test_attrs_from_json() {
+    fn attrs_from_json() {
         let value = serde_json::from_str(
             r#"{ "test": {
             "tags": ["script"],
@@ -268,5 +268,43 @@ mod tests {
         let mut result = String::new();
         script_assets_formatter(&value, &mut result).expect("script assets formatter error");
         assert_eq!(result.as_str(), "<script src=test.js defer=true></script>");
+    }
+
+    #[test]
+    fn scss_from_toml() {
+        let scss_decl = toml::from_str(
+            r#"
+            flags = ["import"]
+            "#,
+        )
+        .expect("toml parsing error");
+        let svg_decl = toml::from_str(
+            r#"
+            extends = ["base-class"]
+            "#,
+        )
+        .expect("toml parsing error");
+        let mut group = crate::AssetGroup::default();
+        let (key, asset) =
+            group.create_asset("style.scss", ".", scss_decl).expect("asset creation error");
+        group.register_asset(key, asset).expect("asset registration error");
+        let (key, asset) =
+            group.create_asset("icon.svg", ".", svg_decl).expect("asset creation error");
+        group.register_asset(key, asset).expect("asset registration error");
+        let mut tt = tinytemplate::TinyTemplate::new();
+        tt.add_formatter("import_assets_formatter", import_assets_formatter);
+        tt.add_formatter("extend_assets_formatter", extend_assets_formatter);
+        tt.add_template(
+            "scss",
+            r#"{assets | import_assets_formatter}
+            {assets | extend_assets_formatter}"#,
+        )
+        .expect("bad template");
+        let result = tt.render("scss", &group).expect("template rendering error");
+        assert!(result.starts_with("@import \""));
+        assert!(result.ends_with(
+            ".base-class-icon {\n    @extend .base-class;\n    background-image: \
+             url('icon.svg');\n}\n"
+        ));
     }
 }

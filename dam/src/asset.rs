@@ -208,15 +208,19 @@ impl AssetDeclaration {
         let file_name = file_name.as_ref();
         let source_dir = source_dir.as_ref();
         let source_path = source_dir.join(file_name);
-
-        let file_stem = source_path
-            .file_stem()
-            .ok_or_else(|| AssetError::std_io("Missing file stem"))?
-            .to_str()
-            .ok_or_else(|| AssetError::std_io("Invalid file stem"))?;
-
-        let asset_name = self.name.as_ref().map_or_else(|| file_stem, |s| s.as_str());
-        let path_str = self.href.as_ref().map_or_else(|| asset_name, |s| s.as_str());
+        let asset_name = if let Some(ref name) = self.name {
+            name.clone()
+        } else {
+            source_path
+                .file_stem()
+                .ok_or_else(|| AssetError::std_io("Missing file stem"))?
+                .to_str()
+                .ok_or_else(|| AssetError::std_io("Invalid file stem"))?
+                .chars()
+                .map(|c| if c == '-' { '_' } else { c })
+                .collect()
+        };
+        let path_str = self.href.as_ref().map_or_else(|| asset_name.as_str(), |s| s.as_str());
 
         let (target_path, work_path) = if self.flags.iter().any(|v| v == "hash") {
             let bytes = std::fs::read(&source_path)
@@ -267,7 +271,7 @@ impl AssetDeclaration {
         let extends = self.extends.clone();
 
         Ok((
-            asset_name.to_string(),
+            asset_name,
             Asset {
                 serial_number,
                 source_path,
@@ -321,7 +325,7 @@ mod tests {
     use crate::tests::{create_dummy_asset, asset_from_spec};
 
     #[test]
-    fn test_serial_number() {
+    fn serial_number() {
         let mut ser_no = create_dummy_asset().serial_number;
         for _ in 0..43 {
             let new_ser_no = create_dummy_asset().serial_number;
@@ -331,7 +335,14 @@ mod tests {
     }
 
     #[test]
-    fn test_dotted_file_stem() {
+    fn dashed_file_stem() {
+        let (stem, asset) = asset_from_spec("dashed-file-name.ext", "work_dir", "");
+        assert_eq!(stem.as_str(), "dashed_file_name");
+        assert_eq!(asset.target_url.as_str(), "dashed_file_name.ext");
+    }
+
+    #[test]
+    fn dotted_file_stem() {
         let (stem, asset) = asset_from_spec("dotted.file.name.ext", "work_dir", "");
         assert_eq!(stem.as_str(), "dotted.file.name");
         assert_eq!(asset.target_url.as_str(), "dotted.file.name.ext");

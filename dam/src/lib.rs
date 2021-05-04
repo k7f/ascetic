@@ -56,7 +56,7 @@ impl Collection {
 
         let name = format!("{}-element-{}", tag, self.elements.num_assets());
         let (key, asset) = self.elements.create_asset(name, ".", decl)?;
-        self.elements.register_asset(key, asset);
+        self.elements.register_asset(key, asset)?;
 
         Ok(self)
     }
@@ -155,7 +155,7 @@ impl Collection {
             let decl: AssetDeclaration = toml::from_str("tags = [\"link\"]")?;
             let (key, asset) = decl.into_asset(scss_file_name, context.work_dir(), "")?;
             let key = format!("scss_from_tt::{}", key);
-            context.register_asset(key, asset);
+            context.register_asset(key, asset)?;
         }
 
         let out_path = out_path.as_ref();

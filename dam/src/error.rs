@@ -17,6 +17,7 @@ macro_rules! detailed_error {
 enum InnerError {
     IO(std::io::Error),
     TT(tinytemplate::error::Error),
+    AssetKeyClash(String),
     FlagClash(String),
     TagClash(String),
     TagUnrenderable(String),
@@ -65,6 +66,9 @@ impl std::fmt::Display for InnerError {
         match self {
             IO(err) => write!(f, "IO error {:?}", err),
             TT(err) => write!(f, "TT error {:?}", err),
+            AssetKeyClash(key) => {
+                write!(f, "Key `{}` can't identify multiple assets in the same group", key)
+            }
             FlagClash(flag) => {
                 write!(f, "Multiple copies of flag `{}` can't belong to a single asset", flag)
             }
@@ -91,6 +95,10 @@ pub struct AssetError {
 }
 
 impl AssetError {
+    pub(crate) fn asset_key_clash<S: AsRef<str>>(key: S) -> Self {
+        InnerError::AssetKeyClash(key.as_ref().to_string()).into()
+    }
+
     pub(crate) fn flag_clash<S: AsRef<str>>(flag: S) -> Self {
         InnerError::FlagClash(flag.as_ref().to_string()).into()
     }

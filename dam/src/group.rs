@@ -243,9 +243,19 @@ impl AssetGroup {
         decl.into_asset(file_name.as_ref(), source_dir, work_dir)
     }
 
-    pub fn register_asset<S: AsRef<str>>(&mut self, key: S, asset: Asset) {
-        self.assets.insert(key.as_ref().to_string(), asset);
-        self.sort();
+    pub fn register_asset<S: AsRef<str>>(
+        &mut self,
+        key: S,
+        asset: Asset,
+    ) -> Result<(), AssetError> {
+        let key = key.as_ref();
+
+        if self.assets.insert(key.to_string(), asset).is_some() {
+            Err(AssetError::asset_key_clash(key))
+        } else {
+            self.sort();
+            Ok(())
+        }
     }
 
     #[inline]
@@ -389,26 +399,26 @@ mod tests {
     use crate::tests::declaration_from_spec;
 
     #[test]
-    fn test_group_title() {
+    fn group_title() {
         let group = AssetGroup::default().with_title("Test");
         let rendered = group.render_html_template(r#"{title}"#);
         assert_eq!(rendered.unwrap().as_str(), "Test");
     }
 
     #[test]
-    fn test_key_clash() {
+    fn key_clash() {
         let mut g1 = AssetGroup::default();
         let (_, asset) = g1
             .create_asset("file_name.ext", ".", declaration_from_spec(""))
             .expect("asset creation error");
-        g1.register_asset("test", asset);
+        g1.register_asset("test", asset).expect("asset registration error");
         g1.name = "g1".to_string();
 
         let mut g2 = AssetGroup::default();
         let (_, asset) = g2
             .create_asset("file_name.ext", ".", declaration_from_spec(""))
             .expect("asset creation error");
-        g2.register_asset("test", asset);
+        g2.register_asset("test", asset).expect("asset registration error");
         g2.name = "g2".to_string();
 
         let group = [g1, g2].as_group();
