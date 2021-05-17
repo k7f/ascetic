@@ -1,21 +1,23 @@
 [package]
 
 name = "ascetic_toy"
-version = "0.0.1-pre"
-description = "A playground for c-e structure animation"
+version = "0.0.3-pre"
+description = "Command-line tools for Ascesis"
 authors = ["k7f"]
 edition = "2018"
 license = "MIT"
 repository = "https://github.com/k7f/ascetic"
 readme = "README.md"
 
-[dependencies.minifb]
-
-version = "0.19"
-default-features = false
-features = ["x11"]
-
 [dependencies]
 
 log = "0.4"
-ascetic_vis = { path = "../vis" }
+clap = { version = "2.33", features = ["yaml"] }
+glob = "0.3"
+ascesis = { path = "../../ascesis" }
+# ascesis = "0.0.6"
+
+[[bin]]
+
+name = "ascesis"
+path = "src/main.rs"

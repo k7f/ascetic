@@ -3,7 +3,7 @@ extern crate log;
 
 use std::error::Error;
 use ascetic_vis::{Scene, Theme};
-use ascetic_toy::{Gui, ToyError, ToyLogger};
+use ascetic_boy::{Gui, BoyError, BoyLogger};
 
 #[derive(Debug)]
 struct App {
@@ -41,7 +41,7 @@ impl App {
             }
         }
 
-        ToyLogger::init(match verbosity {
+        BoyLogger::init(match verbosity {
             0 => log::Level::Warn,
             1 => log::Level::Info,
             _ => log::Level::Debug,
@@ -61,12 +61,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     loop {
         if let Err(err) = app.gui.update(&mut scene, &mut theme) {
             match err {
-                ToyError::Fatal(err) => {
+                BoyError::Fatal(err) => {
                     error!("{}", err);
                     return Err(err)
                 }
-                ToyError::PietFailure(err) => error!("{}", err),
-                ToyError::MinifbFailure(err) => error!("{}", err),
+                BoyError::PietFailure(err) => error!("{}", err),
+                BoyError::MinifbFailure(err) => error!("{}", err),
             }
         } else if app.gui.exit_confirmed() {
             return Ok(())

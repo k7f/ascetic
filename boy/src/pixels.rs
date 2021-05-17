@@ -1,6 +1,6 @@
 use std::{fmt, cmp::Ordering};
 use ascetic_vis::TranslateScale;
-use crate::ToyError;
+use crate::BoyError;
 
 pub struct Pixels {
     pixels:      Vec<u32>,
@@ -45,7 +45,7 @@ impl Pixels {
         }
     }
 
-    pub fn redraw(&mut self, source: &[u8], transform: TranslateScale) -> Result<(), ToyError> {
+    pub fn redraw(&mut self, source: &[u8], transform: TranslateScale) -> Result<(), BoyError> {
         // FIXME validate source size
         self.pixels.resize(self.width * self.height, 0);
 

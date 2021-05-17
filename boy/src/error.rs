@@ -2,15 +2,15 @@ use std::{fmt, error::Error};
 use ascetic_vis::piet;
 
 #[derive(Debug)]
-pub enum ToyError {
+pub enum BoyError {
     Fatal(Box<dyn Error>),
     PietFailure(piet::Error),
     MinifbFailure(minifb::Error),
 }
 
-impl fmt::Display for ToyError {
+impl fmt::Display for BoyError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use ToyError::*;
+        use BoyError::*;
 
         match self {
             Fatal(err) => err.fmt(f),
@@ -20,22 +20,22 @@ impl fmt::Display for ToyError {
     }
 }
 
-impl Error for ToyError {}
+impl Error for BoyError {}
 
-impl From<Box<dyn Error>> for ToyError {
+impl From<Box<dyn Error>> for BoyError {
     fn from(err: Box<dyn Error>) -> Self {
-        ToyError::Fatal(err)
+        BoyError::Fatal(err)
     }
 }
 
-impl From<piet::Error> for ToyError {
+impl From<piet::Error> for BoyError {
     fn from(err: piet::Error) -> Self {
-        ToyError::PietFailure(err)
+        BoyError::PietFailure(err)
     }
 }
 
-impl From<minifb::Error> for ToyError {
+impl From<minifb::Error> for BoyError {
     fn from(err: minifb::Error) -> Self {
-        ToyError::MinifbFailure(err)
+        BoyError::MinifbFailure(err)
     }
 }

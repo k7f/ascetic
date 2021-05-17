@@ -1,7 +1,7 @@
 use std::{iter::FromIterator, time::Duration};
 use minifb::{Key, Scale, Window, WindowOptions, ScaleMode};
 use ascetic_vis::{Scene, Theme};
-use crate::{Action, Scheduler, Renderer, Pixels, Pan, Zoom, Keyboard, Mouse, ToyError};
+use crate::{Action, Scheduler, Renderer, Pixels, Pan, Zoom, Keyboard, Mouse, BoyError};
 
 #[derive(Debug)]
 pub struct Gui {
@@ -23,7 +23,7 @@ impl Gui {
     const DEFAULT_RENDER_MARGIN: (f64, f64) = (10., 10.);
     const DEFAULT_UPDATE_WINDOW_PERIOD: Duration = Duration::from_millis(20);
 
-    pub fn new(win_width: usize, win_height: usize) -> Result<Self, ToyError> {
+    pub fn new(win_width: usize, win_height: usize) -> Result<Self, BoyError> {
         let window_options = WindowOptions {
             borderless: false,
             resize: true,
@@ -31,7 +31,7 @@ impl Gui {
             scale_mode: ScaleMode::UpperLeft,
             ..WindowOptions::default()
         };
-        let mut window = Window::new("ascetic toy", win_width, win_height, window_options)?;
+        let mut window = Window::new("ascetic playground", win_width, win_height, window_options)?;
 
         window.set_background_color(0x80, 0x80, 0x80);
         window.limit_update_rate(None);
@@ -88,7 +88,7 @@ impl Gui {
         }
     }
 
-    fn update_window(&mut self) -> Result<(), ToyError> {
+    fn update_window(&mut self) -> Result<(), BoyError> {
         if self.window.is_open() {
             let (new_width, new_height) = self.window.get_size();
 
@@ -105,7 +105,7 @@ impl Gui {
         Ok(())
     }
 
-    fn render_scene(&mut self, scene: &Scene, theme: &Theme) -> Result<(), ToyError> {
+    fn render_scene(&mut self, scene: &Scene, theme: &Theme) -> Result<(), BoyError> {
         let transform = self.zoom.as_transform();
 
         self.renderer.render(scene, theme, transform)?;
@@ -115,7 +115,7 @@ impl Gui {
         Ok(())
     }
 
-    fn redraw_contents(&mut self) -> Result<(), ToyError> {
+    fn redraw_contents(&mut self) -> Result<(), BoyError> {
         if let Some(buffer) = self.renderer.get_buffer() {
             let transform = self.pan.as_transform() * self.zoom.as_transform();
             let (pix_width, pix_height) = self.renderer.get_pix_size();
@@ -128,7 +128,7 @@ impl Gui {
         }
     }
 
-    fn modify_theme(&mut self, theme: &mut Theme) -> Result<(), ToyError> {
+    fn modify_theme(&mut self, theme: &mut Theme) -> Result<(), BoyError> {
         if self.is_dark {
             theme.use_original_variation();
             self.is_dark = false;
@@ -142,7 +142,7 @@ impl Gui {
         Ok(())
     }
 
-    fn update_keys(&mut self) -> Result<(), ToyError> {
+    fn update_keys(&mut self) -> Result<(), BoyError> {
         if self.keyboard.update(&self.window) {
             if self.keyboard.is_pressed(Key::Escape) {
                 self.scheduler.enroll(Action::Exit);
@@ -211,7 +211,7 @@ impl Gui {
         Ok(())
     }
 
-    fn update_mouse(&mut self) -> Result<(), ToyError> {
+    fn update_mouse(&mut self) -> Result<(), BoyError> {
         if self.mouse.update(&self.window) {
             let (dx, dy) = self.mouse.get_left_drag();
 
@@ -236,7 +236,7 @@ impl Gui {
         action: Action,
         scene: &mut Scene,
         theme: &mut Theme,
-    ) -> Result<(), ToyError> {
+    ) -> Result<(), BoyError> {
         match action {
             Action::UpdateWindow => {
                 self.update_window()?;
@@ -271,7 +271,7 @@ impl Gui {
         Ok(())
     }
 
-    pub fn update(&mut self, scene: &mut Scene, theme: &mut Theme) -> Result<(), ToyError> {
+    pub fn update(&mut self, scene: &mut Scene, theme: &mut Theme) -> Result<(), BoyError> {
         while let Some(action) = self.scheduler.next_eager() {
             self.process_action(action, scene, theme)?;
         }

@@ -1,13 +1,13 @@
-static mut TOY_LOGGER: ToyLogger = ToyLogger(log::Level::Warn);
+static mut BOY_LOGGER: BoyLogger = BoyLogger(log::Level::Warn);
 
-pub struct ToyLogger(log::Level);
+pub struct BoyLogger(log::Level);
 
-impl ToyLogger {
+impl BoyLogger {
     pub fn init(level: log::Level) {
         unsafe {
-            TOY_LOGGER.0 = level;
+            BOY_LOGGER.0 = level;
 
-            if let Err(err) = log::set_logger(&TOY_LOGGER) {
+            if let Err(err) = log::set_logger(&BOY_LOGGER) {
                 panic!("ERROR: {}", err)
             }
         }
@@ -16,7 +16,7 @@ impl ToyLogger {
     }
 }
 
-impl log::Log for ToyLogger {
+impl log::Log for BoyLogger {
     fn enabled(&self, metadata: &log::Metadata) -> bool {
         metadata.level() <= self.0
     }

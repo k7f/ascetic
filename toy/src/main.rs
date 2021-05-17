@@ -1,87 +1,78 @@
-#[macro_use]
-extern crate log;
+#![allow(clippy::toplevel_ref_arg)]
 
-use std::{path::PathBuf, error::Error};
-use ascetic_vis::{Scene, Theme};
-use ascetic_toy::{Gui, ToyError, ToyLogger};
+use ascesis::Logger;
+use ascetic_toy::{App, Solve, Go, Sample, Validate, AppError};
 
-#[derive(Debug)]
-struct App {
-    script_path: PathBuf,
-    gui:         Gui,
-    #[allow(dead_code)]
-    verbosity:   u32,
-}
+fn main() {
+    let ref cli_spec_str = include_str!("ascetic.cli");
 
-impl App {
-    const DEFAULT_SCRIPT_PATH: &'static str = "test.ces";
-    const DEFAULT_WIN_WIDTH: usize = 800;
-    const DEFAULT_WIN_HEIGHT: usize = 450;
+    let cli_spec = match clap::YamlLoader::load_from_str(cli_spec_str) {
+        Ok(spec) => spec,
+        Err(err) => {
+            let mut logger = Logger::new("ascetic_toy").with_console(log::LevelFilter::Debug);
+            logger.apply();
 
-    fn new() -> Result<Self, Box<dyn Error>> {
-        let mut script_path = None;
-        let mut win_width = Self::DEFAULT_WIN_WIDTH;
-        let mut win_height = Self::DEFAULT_WIN_HEIGHT;
-        let mut verbosity = 0;
+            AppError::report("Internal error in CLI specification..".into());
+            AppError::report(err.into());
 
-        for (prev_arg, next_arg) in std::env::args().zip(std::env::args().skip(1)) {
-            match next_arg.as_str() {
-                "-v" => verbosity += 1,
-                "-vv" => verbosity += 2,
-                "-vvv" => verbosity += 3,
-                "-w" | "-h" => {}
-                arg => {
-                    if arg.starts_with('-') {
-                        panic!("ERROR: Invalid CLI option \"{}\"", arg)
-                    } else {
-                        match prev_arg.as_str() {
-                            "-w" => win_width = next_arg.parse()?,
-                            "-h" => win_height = next_arg.parse()?,
-                            _ => script_path = Some(PathBuf::from(arg)),
-                        }
-                    }
+            std::process::exit(-1)
+        }
+    };
+    let cli_matches = clap::App::from_yaml(&cli_spec[0]);
+    let mut app = App::from_clap(cli_matches);
+
+    let mut command = match app.subcommand_name().unwrap_or("_") {
+        "_" => {
+            if app.is_present("START") {
+                if app.is_present("NUM_PASSES") {
+                    Sample::new_command(&mut app)
+                } else {
+                    Go::new_command(&mut app)
                 }
+            } else {
+                Solve::new_command(&mut app)
             }
         }
+        "validate" => Validate::new_command(&app),
+        unreachable => unreachable!("command \"{}\"", unreachable),
+    };
 
-        ToyLogger::init(match verbosity {
-            0 => log::Level::Warn,
-            1 => log::Level::Info,
-            _ => log::Level::Debug,
-        });
+    let console_level = command.console_level().unwrap_or(match app.occurrences_of("verbose") {
+        0 => log::LevelFilter::Warn,
+        1 => log::LevelFilter::Info,
+        2 => log::LevelFilter::Debug,
+        _ => log::LevelFilter::Trace,
+    });
 
-        let script_path = script_path.unwrap_or_else(|| {
-            let mut path = PathBuf::from(".");
-            path.push(Self::DEFAULT_SCRIPT_PATH);
-            if verbosity > 0 {
-                warn!("Unspecified input script path; using \"{}\".", path.display());
-            }
-            path
-        });
+    let mut logger = Logger::new(app.get_name()).with_console(console_level);
 
-        let gui = Gui::new(win_width, win_height)?;
-
-        Ok(App { script_path, gui, verbosity })
+    if let Some(dirname) = app.value_of("LOG_DIR") {
+        logger = logger.with_explicit_directory(dirname);
     }
-}
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let mut app = App::new()?;
-    let mut theme = Theme::simple_demo();
-    let mut scene = Scene::simple_demo(&theme);
-
-    loop {
-        if let Err(err) = app.gui.update(&mut scene, &mut theme) {
-            match err {
-                ToyError::Fatal(err) => {
-                    error!("{}", err);
-                    return Err(err)
-                }
-                ToyError::PietFailure(err) => error!("{}", err),
-                ToyError::MinifbFailure(err) => error!("{}", err),
-            }
-        } else if app.gui.exit_confirmed() {
-            return Ok(())
+    if app.is_present("log") || logger.get_directory().is_some() {
+        let mut file_level = match app.occurrences_of("log") {
+            0 | 1 => log::LevelFilter::Info,
+            2 => log::LevelFilter::Debug,
+            _ => log::LevelFilter::Trace,
+        };
+        if file_level < console_level {
+            file_level = console_level;
         }
+
+        logger = logger.with_file(command.name_of_log_file(), file_level);
+    }
+
+    logger.apply();
+
+    app.post_warnings();
+    app.check_selectors(&["SAT_ENCODING", "SAT_SEARCH", "SEMANTICS", "MAX_STEPS", "NUM_PASSES"]);
+
+    if let Err(err) = command.run() {
+        AppError::report(err);
+
+        std::process::exit(-1)
+    } else {
+        std::process::exit(0)
     }
 }

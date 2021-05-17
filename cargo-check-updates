@@ -1,25 +1,36 @@
 #!/bin/bash
 
-TOOL_CRATES="log clap glob"
+TOY_CRATES="log clap glob"
 PET_CRATES="roxmltree cssparser"
 VIS_CRATES="piet kurbo piet-cairo cairo-rs png"
-TOY_CRATES="minifb"
+BOY_CRATES="minifb"
 
 print_requested_version() {
     proj=${1}
     crate=${2}
 
-    version=$(grep -m 1 "^$crate = " ${proj}/Cargo.toml | cut -d\" -f2)
+    dir=${proj^^}_DIR
+    if [ -z ${!dir} ] ; then
+        if [ $proj == "_" ] ; then
+            manifest=Cargo.toml
+        else
+            manifest=${proj}/Cargo.toml
+        fi
+    else
+        manifest=${!dir}/Cargo.toml
+    fi
+
+    version=$(grep -m 1 "^$crate = " ${manifest} | cut -d\" -f2)
     if [ -z ${version} ] ; then
-        version=$(grep -m 1 -A 5 -e "\[\(.\+-\)\?dependencies\.${crate}\]" ${proj}/Cargo.toml | grep -m 1 "version" | cut -d\" -f2)
+        version=$(grep -m 1 -A 5 -e "\[\(.\+-\)\?dependencies\.${crate}\]" ${manifest} | grep -m 1 "version" | cut -d\" -f2)
     fi
 
     echo -n \"${version}\"
 }
 
-for proj in tool pet vis toy ; do
-    CRATES=${proj^^}_CRATES
-    for crate in ${!CRATES} ; do
+for proj in toy pet vis boy ; do
+    crates=${proj^^}_CRATES
+    for crate in ${!crates} ; do
         echo -n "$crate = "
         print_requested_version ${proj} ${crate}
         echo -n " -> "

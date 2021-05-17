@@ -1,6 +1,6 @@
 use std::fmt;
 use ascetic_vis::{Scene, Theme, CairoBitmapDevice, ImageFormat, TranslateScale};
-use crate::ToyError;
+use crate::BoyError;
 
 pub struct Renderer {
     buffer:   Option<Vec<u8>>,
@@ -39,7 +39,7 @@ impl Renderer {
         scene: &Scene,
         theme: &Theme,
         transform: TranslateScale,
-    ) -> Result<(), ToyError> {
+    ) -> Result<(), BoyError> {
         let (pix_width, pix_height) = self.get_pix_size();
         let pix_scale = transform.as_tuple().1;
         let mut device = CairoBitmapDevice::new(pix_width, pix_height, pix_scale)?;
