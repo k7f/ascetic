@@ -1,0 +1,23 @@
+#!/bin/bash
+
+inpath=$1
+
+if [ -z $inpath ] ; then
+    echo "USAGE: \"$0 <path-to-markdown-file>\""
+    exit
+fi
+
+text=$(sed -z 's/\n/\\n/g;s/"/\\"/g' $inpath) || exit
+outpath="/tmp/$RANDOM-$(basename -s .sh $0).html"
+
+echo "{\"text\":\"$text\",\"mode\":\"gfm\"}" | \
+    curl -s \
+         -X POST https://api.github.com/markdown \
+         -H "Accept: application/vnd.github.v3+json" \
+         --data @- > $outpath || exit
+
+if [[ $(head -1 $outpath) == "{" ]] ; then
+    cat $outpath
+else
+    xdg-open $outpath
+fi

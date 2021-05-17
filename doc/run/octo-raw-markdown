@@ -1,0 +1,22 @@
+#!/bin/bash
+
+inpath=$1
+
+if [ -z $inpath ] ; then
+    echo "USAGE: \"$0 <path-to-markdown-file>\""
+    exit
+fi
+
+outpath="/tmp/$RANDOM-$(basename -s .sh $0).html"
+
+curl -s \
+     -X POST https://api.github.com/markdown/raw \
+     -H "Accept: application/vnd.github.v3+json" \
+     -H "Content-Type: text/plain" \
+     --data "@$inpath" > $outpath || exit
+
+if [[ $(head -1 $outpath) == "{" ]] ; then
+    cat $outpath
+else
+    xdg-open $outpath
+fi

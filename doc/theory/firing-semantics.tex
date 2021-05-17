@@ -1,0 +1,1186 @@
+\documentclass [a4paper,12pt] {article}
+\usepackage{fullpage}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath, amssymb, amsthm, bm, mathtools, relsize, accents, cancel}
+\usepackage{wasysym}
+\usepackage{tikz, tabu}
+\usepackage{stackengine}
+\usepackage{enumitem}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{lemma}{Lemma}[section]
+
+\newcommand{\Forall}{}
+\DeclareRobustCommand{\Forall}{\displaystyle\mathop{\textstyle\mathlarger{\forall}}}
+\newcommand{\Exists}{}
+\DeclareRobustCommand{\Exists}{\displaystyle\mathop{\textstyle\mathlarger{\exists}}}
+\newcommand{\Qed}{}
+\DeclareRobustCommand{\Qed}{\tag*{\qed}}
+\newcommand{\inconflict}{}
+\DeclareRobustCommand{\inconflict}{\mathbin{\sharp}}
+\newcommand{\exconflict}{}
+\DeclareRobustCommand{\exconflict}{\mathbin{\natural}}
+\newcommand{\absorption}{}
+\DeclareRobustCommand{\absorption}{\mathbin{\flat}}
+\newcommand{\symdiff}{}
+\DeclareRobustCommand{\symdiff}{\mathbin{\triangle}}
+
+% FIXME superscript
+\newcommand{\domain}{}
+\DeclareRobustCommand{\domain}{\mathop{\textstyle\mathsmaller{\bf {Dom}}}}
+\newcommand{\image}{}
+\DeclareRobustCommand{\image}{\mathop{\textstyle\mathsmaller{\bf {Im}}}}
+\newcommand{\carrier}{}
+\DeclareRobustCommand{\carrier}{\mathop{\textstyle\mathsmaller{\bf {Car}}}}
+\newcommand{\relative}{}
+\DeclareRobustCommand{\relative}{\mathop{\textstyle\mathsmaller{\bf {Rel}}}}
+\newcommand{\negative}{}
+\DeclareRobustCommand{\negative}{\mathop{\textstyle\mathsmaller{\bf {Neg}}}}
+\newcommand{\scope}{}
+\DeclareRobustCommand{\scope}{\mathop{\textstyle\mathsmaller{\bf {Sco}}}}
+\newcommand{\uniform}{}
+\DeclareRobustCommand{\uniform}{\mathop{\textstyle\mathsmaller{\bf {Rep}}}}
+\newcommand{\move}{}
+\DeclareRobustCommand{\move}{\mathop{\textstyle\mathsmaller{\bf {Mov}}}}
+\newcommand{\shift}{}
+\DeclareRobustCommand{\shift}{\mathop{\textstyle\mathsmaller{\bf {Shi}}}}
+\newcommand{\scaling}{}
+\DeclareRobustCommand{\scaling}{\mathop{\textstyle\mathsmaller{\bf {Sca}}}}
+\newcommand{\composition}{}
+\DeclareRobustCommand{\composition}{\mathop{\textstyle\mathsmaller{\bf {Com}}}}
+
+\newcommand{\id}{}
+\DeclareRobustCommand{\id}{\mathop{\textstyle{\rm {id}}}}
+
+\DeclareMathAlphabet{\xmathbb}{U}{BOONDOX-ds}{m}{n}
+
+\newcommand{\uni}{}
+\DeclareRobustCommand{\uni}{{\textstyle\mathlarger{\mathfrak{u}}}}
+
+\newcommand{\preset}[1]{\prescript{\bullet}{}{\!#1}}
+\newcommand{\postset}[1]{#1^{\bullet}}
+
+\makeatletter
+\newcommand\c@rcle[2]{\mathbin{\ooalign{\hidewidth$#1#2$\hidewidth\crcr$#1\ocircle$}}}
+\newcommand\di@mond[2]{\mathbin{\ooalign{\hidewidth$#1#2$\hidewidth\crcr$#1$\raisebox{-0.06em}{$\Diamond$}}}}
+\newcommand\cr@ss[2]{\mathbin{\ooalign{\hidewidth$#1#2$\hidewidth\crcr$#1$\raisebox{0.13em}{$\times$}}}}
+\newcommand\bcr@ss[2]{\mathbin{\ooalign{\hidewidth$#1#2$\hidewidth\crcr$#1$\raisebox{0.09em}{$\bm{\times}$}}}}
+\newcommand\bc@rc[2]{\mathbin{\ooalign{\hidewidth$#1#2$\hidewidth\crcr$#1$\raisebox{0.27em}{$\mathsmaller{\bm{\circ}}$}}}}
+\newcommand{\oeq}{\mathbin{\mathpalette\c@rcle{\raisebox{0.08em}{$\mathsmaller{=}$}}}}
+\newcommand{\obullet}{\mathbin{\mathpalette\c@rcle{\raisebox{0.08em}{$\mathsmaller{\bullet}$}}}}
+\newcommand{\nbullet}{\mathbin{\raisebox{0.08em}{$\mathsmaller{\bullet}$}}}
+\newcommand{\wxp}{\mathbin{\mathpalette\c@rcle{\raisebox{0.035em}{$\mathsmaller{\triangledown}$}}}}
+\newcommand{\nxp}{\mathbin{\raisebox{0.035em}{$\mathsmaller{\triangledown}$}}}
+\newcommand{\wct}{\mathbin{\mathpalette\c@rcle{\raisebox{0.085em}{$\mathsmaller{\vartriangle}$}}}}
+\newcommand{\nct}{\mathbin{\raisebox{0.085em}{$\mathsmaller{\vartriangle}$}}}
+\newcommand{\wtimes}{\mathbin{\mathpalette\c@rcle{\raisebox{0.085em}{$\mathsmaller{\times}$}}}}
+\newcommand{\ntimes}{\mathbin{\mathpalette\di@mond{\raisebox{0.12em}{$\mathsmaller{\times}$}}}}
+\makeatother
+
+\begin {document}
+\title {Firing semantics\\(a draft)}
+\author {}
+\date {}
+\maketitle
+
+\section {Introduction}
+
+There is one aspect of the theory of extended cause-effect
+structures\footnote{Czaja L.\ [2019], {\em Cause-Effect Structures.
+    An Algebra of Nets with Examples of Applications}\/.} which is
+theoretically pleasing but disturbing in practice --- compositional
+properties of structural and behavioral description are deliberately
+separated.  However, it is reasonable to expect a practitioner to
+desire some form of behavioral transfer, which will allow to define
+composite behavior based on the already defined behavior of structural
+components.
+
+Intuitively, the behavior of a system manifests itself in the way
+system evolves through time in certain conditions.  In the simplest
+scenario one imposes initial conditions and observes unconstrained
+evolution --- a single ``run'' of a system.  In terms of cause-effect
+structures, Petri nets, vector addition systems, and other similar
+formalisms, single run is a sequence of {\em firings}\/, where a
+single firing is understood as an atomic event quantified as a
+discrete change of measurable state.
+
+Formally, state of an extended cause-effect structure, or a
+place-transition net, is represented as a function ${\mathbb
+  X}\rightarrow{\mathbb N}$, where the domain ${\mathbb X}$ is any
+non-empty countable set of points (variables, nodes, places, counters,
+coordinates, etc.)\ and ${\mathbb N}$ is the set of non-negative
+integers.  Hence, we may want to ground the structural description of
+behavior in a uniform foundation consisting of functions\footnote {We
+  prefer {\em not}\/ to call such functions ``signed multisets'' to
+  avoid confusion with popular understanding of the term.  For
+  instance, it is customary to constrain the membership in a multiset
+  to elements of support, assume that operations are defined only for
+  multisets sharing a common domain, etc.} from some set (or a subset
+of) ${\mathbb X}$ --- called the {\em universe}\/ --- to the set (or
+subset) of integers ${\mathbb Z}$.  We will assume that all these
+functions share a codomain and are total over domains which are,
+unless explicitly specified otherwise, unambiguously inferable subsets
+of the universe ${\mathbb X}$.  The codomain may be optionally
+extended with positive infinity, $\top$, to the set ${\mathbb
+  Z}_\infty = {\mathbb Z}\cup\{\top\}$.
+
+The requirements of totality and fixed codomain allow to safely
+identify functions with their graphs (sets of pairs).  As usual, the
+{\em restriction}\/ of a function $f \in V^X$ to some set $Y$ is the
+function $f{\restriction}_Y = \{(x, v) \in f \;|\; x \in Y\}$, so that
+the domains are $\domain{f} = X$ and $\domain{(f{\restriction}_Y)} = X
+\cap Y$.  In general, the restriction of a relation $R \subseteq X
+\times V$ to set $Y$ is the relation $R{\restriction}_Y = R \cap (Y
+\times V)$, and the restriction's domain is
+$\domain{(R{\restriction}_Y)} = \domain{R} \cap Y$.
+
+We write $\bm{0}$, $\bm{1}$, $\bm{-1}$, $\bm{2}$, $\bm{-2}$ (and so on
+up to $\bm{\top}$) to denote the constant functions mapping the entire
+universe to respective integers (or infinity), and we accept the
+existence of a single empty integer-valued function $\bm{\bot}$.  For
+notational convenience, if there is no danger of confusion, we may use
+the symbol $\bot$ as the placeholder for a missing value and, in the
+context of a fixed $X$, identify $f{\restriction}_{Y{\subseteq}X}$
+with $f{\restriction}_Y \cup \{(x, \bot) \;|\; x \in X \setminus Y\}$.
+
+FIXME (a remark on a possible reformulation in terms of any ordered
+ring)
+
+\section {Strands}
+
+FIXME rethink strand definition
+
+Let $\Theta_{\mathbb X} = \{f \in {\mathbb Z}_\infty^{\mathbb Y} \;|\;
+{\mathbb Y} \subseteq {\mathbb X}\}$ be the set of all integer-valued
+total functions defined on subsets of the universe.  For clarity and
+conciseness, the elements of $\Theta_{\mathbb X}$ will be called {\em
+  strands of}\/ ${\mathbb X}$.  We also introduce the mapping
+$\uni_{\mathbb X}\!: 2^{{\mathbb X} \times {\mathbb Z}_\infty}
+\rightarrow \Theta_{\mathbb X}$, which assigns a strand to any
+relation $r$ between points and integers in such a way, that
+$\domain{(\uni_{\mathbb X} r)} = \{x \in {\mathbb X} \;|\;
+|r{\restriction}_{\{x\}}| = 1\}$ and $\uni_{\mathbb X} r =
+r{\restriction}_{\domain{(\uni_{\mathbb X} r)}}$ --- the result being
+the {\em univalent part}\/ of $r$, i.e.\ the set $\{ (x, v) \in r
+\;|\; (x, w) \in r \implies w = v\}$.  Since we may safely identify
+the set $\Theta_{\mathbb X}$ with the set of fixpoints of
+$\uni_{\mathbb X}$, members of the set $2^{{\mathbb X} \times {\mathbb
+    Z}_\infty}$ will be called {\em prestrands of}\/ ${\mathbb X}$.
+
+Equality of strands is interpreted in the strict sense --- as equality
+of sets.  Similarly, comparison involves the entire universe: it is
+the partial order $\geq$ such that $f \geq g$ iff $\domain{f} =
+\domain{g}$ and $\forall_{x \in \domain{f}}\,fx \geq gx$. {\em
+  Dominance}\/, on the other hand, is defined by universal
+quantification over intersection of domains, i.e.\ $f \apprge g$ iff
+$x \in \domain{f} \cap \domain{g} \implies fx \geq gx$.  Similarly,
+{\em internal compatibility}\/ is the equality in the intersection of
+domains: $f \simeq g$ iff $f{\restriction}_{\domain{g}} =
+g{\restriction}_{\domain{f}}$.
+
+Two strands having the same domain are called {\em externally
+  compatible}\/.  A set of strands is (internally or externally)
+compatibile iff its elements are pairwise (internally or externally)
+compatible.  The definition of equality and compatibility (but not
+comparison, nor dominance) extends trivially to the set of prestrands,
+$2^{{\mathbb X} \times {\mathbb Z}_\infty}$.  Note, that dominance and
+internal (but not external) compatibility are intransitive.
+
+The notion of strand {\em maximality}\/ is understood as maximality of
+sets: a strand $f \in \Theta_{\mathbb X}$ is maximal iff $\domain{f} =
+{\mathbb X}$.  For instance, $\bm{0}$, $\bm{1}$ (and so on for any
+integer $v$) are maximal constant strands.  Similarly, it may be
+useful to talk about maximality of sets of strands: there are, for
+example, maximal sets of externally compatible strands, internally
+compatible strands, etc.
+
+The definition of dominance and internal compatibility of strands (but
+not prestrands) may be conveniently expressed in terms of operations
+which we are about to introduce: $f$ dominates $g$ iff $f = (f \wxp g)
+\nxp f$ and two strands are internally compatible iff their alignment
+is equal to their union.
+
+\subsection {Strand operations}
+
+Union, intersection, complement and symmetric difference of strands
+(prestrands, in general) are interpreted as set operations: $f \cup g
+= \{(x, v) \;|\; (x, v) \in f \vee (x, v) \in g\}$, $f \cap g = \{(x,
+v) \in f \;|\; (x, v) \in g\}$, $f \setminus g = \{(x, v) \in f \;|\;
+(x, v) \not\in g\}$, $f \symdiff g = (f \cup g) \setminus (f \cap g)$,
+where $f, g \subseteq {\mathbb X}\times{\mathbb Z}_\infty$.  We assume
+(by accepting the axiom of choice) that union and intersection of any
+countable set of prestrands are prestrands.
+
+\begin {definition}\label{def-alignment-and-conflict}
+Given a countable set $A$ of prestrands, the prestrand $\uni_{\mathbb
+  X}(\bigcup A)$ is the {\em alignment}\/ of $A$, the prestrand
+$\bigcup A \setminus \uni_{\mathbb X}(\bigcup A)$ is the {\em internal
+  conflict}\/ of $A$, and the prestrand $\uni_{\mathbb X}(\bigcup A)
+\setminus \bigcap A$ is the {\em external conflict}\/ of $A$.
+\end {definition}
+
+In words, the alignment of any number of prestrands is the univalent
+part of their union, their internal conflict is the complement of
+their alignment to the union, and their external conflict is the
+complement of intersection to the alignment.  Note, that a set of
+prestrands is (internally or externally) compatible iff its (internal
+or external) conflict is empty.
+
+For the binary case, we introduce infix notation: $f\oeq g =
+\uni_{\mathbb X}(f\cup g)$, $f \inconflict g = (f \cup g) \setminus (f
+\oeq g)$, and $f \exconflict g = (f \oeq g) \setminus (f \cap g)$ are
+the alignment, internal conflict and external conflict of prestrands
+$f$ and $g$.  Equivalently,
+%
+\begin {align*}
+  f \inconflict g &= \{ (x, v) \in f \cup g \;|\; \Exists_{w \neq v}
+  (x, w) \in f \cup g\},\\
+  %
+  f \exconflict g &= f{\restriction}_{{\mathbb X}\setminus
+    \domain{g}}\, \cup\, g{\restriction}_{{\mathbb X}\setminus
+    \domain{f}}.
+\end {align*}
+
+FIXME (revisit and assess which operations are actually useful) We
+also define strand operations of: {\em absorption}\/,
+%
+\begin {align*}
+  f \absorption g &= \{ (x, v+w) \;|\; \{(x, v), (x, w)\} \subseteq f
+  \cup g \wedge vw < 0\},
+\end {align*}
+%
+{\em wide}\/ and {\em narrow separation}\footnote{Symbol $\wtimes$
+  suggests preservation of opposite (``orthogonal'') strands.}\/,
+%
+\begin {align*}
+  f \wtimes g &= \{ (x, v) \in f \symdiff g \;|\; (x, w) \in f
+  \symdiff g \implies w = v \vee vw < 0\},\\
+  %
+  f \ntimes g &= (f \wtimes g) \setminus (f \exconflict g),
+\end {align*}
+%
+{\em wide}\/ and {\em narrow synchronicity}\/,
+%
+\begin {align*}
+  f \obullet g &= \uni_{\mathbb X}(f \cup g) \cup (f \wtimes g),\\
+  %
+  f \nbullet g &= (f \obullet g) \setminus (f \exconflict g),
+\end {align*}
+%
+{\em wide}\/ and {\em narrow expansion}\/,
+%
+\begin {align*}
+  f \wxp g &= \{ (x, v) \in f \cup g \;|\; (x, w) \in f \cup g
+  \implies v^2 \geq vw \geq 0\},\\
+  %
+  f \nxp g &= (f \wxp g) \setminus (f \exconflict g),
+\end {align*}
+%
+and {\em wide}\/ and {\em narrow contraction}\/,
+%
+\begin {align*}
+  f \wct g &= \{ (x, v) \in f \cup g \;|\; (x, w) \in f \cup g
+  \implies v^2 \leq vw\},\\
+%
+f \nct g &= (f \wct g) \setminus (f \exconflict g).
+\end {align*}
+
+Other operations on strands are lifted pointwise from the addition,
+subtraction and multiplication of integers and each comes in two
+variants: {\em narrow}\/ (denoted $+$, $-$, $\cdot$), defined over
+intersection of domains of operands, and {\em wide}\/ (denoted
+$\oplus$, $\ominus$, $\odot$), defined over union of domains by
+combining the narrow result with external conflict --- so for example
+$f \oplus g = (f + g) \cup (f \exconflict g)$.  Negation preserves the
+domain: it is a unary operation defined in terms of narrow subtraction
+by the identity $-f = \bm{0} - f$.  In general, we define the
+multiplication of a strand by an integer $v$ and the addition of an
+integer $v$ to a strand as the narrow multiplication by, or addition
+of, the constant strand $v + \bm{0} = \{(x, v) \;|\; x \in {\mathbb
+  X}\}$.
+
+\subsection {Non-algebraic properties of strand operations}
+
+FIXME introduce notion of fusibility (compatibility with
+multiplication of fcs).
+
+Note, that set operations potentially ``fracture'' or ``poison'' the
+result --- where by ``fracturing'' we mean that some elements of
+intersection of operand domains are removed from domain of the result,
+and by ``poisoning'' we mean that the result overlaps with internal
+conflict, and thus isn't a member of $\Theta_{\mathbb X}$ --- being a
+prestrand, but not a strand.  Therefore, we will also need modified
+variants of set operations to ``erase'' any fractured or poisoned
+result by replacing it with the empty strand, $\bm{\bot}$\footnote{One
+  may want to construct a generic ``erasure'' device --- a functor
+  which returns a modified operation given a strand operation and a
+  predicate.}.
+
+The notions such as ``fracturing, ``poisoning'', ``wide'', ``narrow'',
+etc., represent some of the ``non-algebraic'' properties of strand
+operations.  They are spelled out formally in the following
+definition.
+
+\begin {definition}\label{def-strand-operations}
+  An operation $\circ\!: \Theta_{\mathbb X}\times\Theta_{\mathbb
+    X}\rightarrow2^{{\mathbb X} \times {\mathbb Z}_\infty}$ --- a
+  mapping from pairs of strands to prestrands ---
+  %
+  \begin {itemize}
+  \item is {\em wide}\/ iff $\Forall_{f, g \in \Theta_{\mathbb X}} (f
+    \circ g){\restriction}_{\domain{f}\symdiff\domain{g}} = f
+    \exconflict g$;
+    %
+  \item is {\em narrow}\/ iff $\Forall_{f, g \in \Theta_{\mathbb X}}
+    \domain{(f \circ g)} \subseteq (\domain{f} \cap \domain{g})$;
+    %
+  \item {\em fractures}\/ strand $f$ by strand $g$ in point $x \in
+    {\mathbb X}$ iff $\domain{f} \cap \domain{g} \ni x \not\in
+    \domain{(f \circ g)}\linebreak \neq \emptyset$;
+    %
+    \item {\em poisons}\/ strand $f$ by strand $g$ in point $x \in
+      {\mathbb X}$ iff $f \circ g \ni (x, v) \neq (x, w) \in f \circ
+      g$ for some $v, w \in {\mathbb Z}_\infty$;
+    %
+    \item is {\em safe}\/ iff it is total in $\Theta_{\mathbb X}$
+      (which means that the set $\Theta_{\mathbb X}$ is closed under
+      it) and there is no $f, g \in \Theta_{\mathbb X}$ such that
+      $\circ$ fractures $f$ by $g$ in any $x \in {\mathbb X}$.
+  \end {itemize}
+    
+  We say that an operation $\bullet\!: \Theta_{\mathbb
+    X}\times\Theta_{\mathbb X}\rightarrow\Theta_{\mathbb X}$ is an
+  {\em anti-fracturing erasure}\/ (resp.\ {\em anti-poisoning
+    erasure}\/) of an operation $\circ\!: \Theta_{\mathbb
+    X}\times\Theta_{\mathbb X}\rightarrow2^{{\mathbb X} \times
+    {\mathbb Z}_\infty}$ iff given $f, g \in \Theta_{\mathbb X}$:
+    %
+    \begin {itemize}
+      \item if there is an $x \in {\mathbb X}$ such that operation
+        $\circ$ fractures (resp.\ poisons) $f$ by $g$ in $x$, then
+        $f \bullet g = \bot$,
+        %
+      \item otherwise $f \bullet g = f \circ g$.\qed
+    \end {itemize}
+\end {definition}
+
+We denote an erasure of an operator $\circ$ using the notation
+$\lfloor\circ\rfloor$ subscripted with a conventional symbol of a
+particular predicate: $F$ for anti-fracturing and $P$ for
+anti-poisoning.  For instance, $\lfloor\!\oeq\!\rfloor_{\!{}_F}$ is
+the anti-fracturing of alignment, and
+$\lfloor\!\cup\!\rfloor_{\!{}_P}$ --- anti-poisoning of union.  Note,
+that $f\lfloor\!\circ\!\rfloor_{\!{}_{P}}g \subseteq \uni_{\mathbb
+  X}(f\circ g) \subseteq f\circ g$ for all $f, g \in \Theta_{\mathbb
+  X}$ and any strand operation $\circ$.
+
+Apart from set operations, also alignment and absorption are
+fracturing FIXME list poisoning ops and safe ops.
+
+\subsection {Algebraic properties of strand operations}
+
+Elementary algebraic properties of specific strand operations are
+described below.
+%
+\begin {description}
+\item[Totality] The operations that aren't total in $\Theta_{\mathbb
+  X}$, unless composed with $\uni_{\mathbb X}$, are: internal
+  conflict, wide and narrow separation, union, and symmetric
+  difference.  The remaining strand operations defined so far are
+  total in $\Theta_{\mathbb X}$.
+  %
+\item[Associativity] Alignment, FIXME, isn't associative.  For
+  example, if $fx \neq gx$ and $gx \neq hx$, then $((f \oeq g) \oeq
+  h)x = hx$ but $(f \oeq (g \oeq h))x = fx$.  In general, any
+  idempotent fracturing wide operation isn't associative, because if
+  such an operation $\circ$ fractures $f$ by $g$ in $x$ for some point
+  $x \in \domain{f} \cap \domain{g}$ and strands $f, g \in
+  \Theta_{\mathbb X}$, then $((f \circ g) \circ g) x = gx \neq \bot =
+  (f \circ (g \circ g)) x$.
+  %
+\item[Commutativity] All are commutative, except for complement and
+  arithmetic difference (narrow and wide).
+  %
+\item[Idempotency] All are idempotent, except for external conflict,
+  complement and arithmetic operations (narrow and wide).
+  %
+\item[Identity] Some have a neutral element:
+  %
+  \begin {itemize}
+  \item $\bm{\bot}$ is the identity of alignment and all wide
+    operations: expansion, contraction, addition, subtraction;
+    %
+  \item $\bm{0}$ is the identity of narrow: expansion, contraction,
+    addition;
+  \end {itemize}
+  %
+  other are not:
+  %
+  \begin {itemize}
+  \item complement and narrow subtraction have only right identity,
+    $\bm{0}$;
+    %
+  \item intersection and external conflict have no identity.
+  \end {itemize}
+  %
+\item[Invertibility] FIXME Alignment admits inverses of all strands,
+  however they are nowhere unique, except for $\bm{\bot}$.
+  %
+\item[Distributivity] FIXME
+  %
+\item[Derivation] FIXME
+\end {description}
+
+\[f \oeq (g \cap h) = \{(x, v) \in f \cup (g \cap h) \;|\; (x, w) \in f \cup (g \cap h) \implies w = v\}\]
+%
+It is easy to check that
+%
+\[f \cap (g \oeq h) = \{(x, v) \in f \cap (g \cup h) \;|\; (x, w) \in g \cup h \implies w = v\},\]
+%
+and thus if $fx = gx \neq hx$ for some $x \in \domain{f} \cap
+\domain{g} \cap \domain{h}$, then $x \not\in \domain{(f \cap (g \oeq
+  h))}$, but $x \in \domain{((f \cap g) \oeq (f \cap h))}$.
+
+FIXME duality of narrow and wide operations, e.g.\ $\bm{0}$ and
+$\bm{\bot}$ are either neutral or anihilating under addition, etc.
+
+\section {Transitions}
+
+We now introduce two equivalent descriptions of context-free state
+transitions.  The transitions are ``context-free'' in the sense that
+the variables are modified independently of each other (they are also
+``memory-less'' in the sense that the next state is a function of the
+current state only).  As usual, we assume that a universe of
+variables, a non-empty countable set ${\mathbb X}$, is given.
+
+\begin {definition}\label{def-free-move}
+  A {\em free move over}\/ ${\mathbb X}$ is any function from the set
+  of integers to a set of externally compatible strands over ${\mathbb
+    X}$.  The {\em carrier}\/ of a free move is the common domain of
+  all its strands.
+
+  Given a free move $\mu$ and a point $x$ in the carrier of $\mu$, let
+  $\mu_x$ denote a function ${\mathbb Z} \rightarrow {\mathbb Z}$,
+  called a {\em projection}\/, such that $\mu_x v = (\mu v) x$ for any
+  $v \in {\mathbb Z}$.  We say that $\mu$ is
+  %
+  \begin {itemize}
+  \item {\em reversible}\/ iff $\mu_x$ is injective, i.e.\ $\mu_x v =
+    \mu_x w \implies v = w$, in particular that it is
+    %
+  \item {\em affine}\/ iff $\mu_x v - \mu_x w \propto v - w$, and in
+    particular that it is
+    %
+  \item {\em rigid}\/ iff $\mu_x v - \mu_x w = v - w$,
+  \end {itemize}
+  %
+  for any two integers $v$ and $w$, and any element $x$ of the
+  carrier.  If a free move $\mu$ is affine, then the strand $\mu 0$ is
+  called its {\em shift}\/, and the strand $\mu 1 - \mu 0$ is called
+  its {\em scaling}\/.
+
+  The {\em bottom free move}\/, ${\xmathbb 0}$, maps all integers to
+  the empty strand.  The {\em null free move}\/, ${\xmathbb 1}$, maps
+  any integer $v$ to the maximal constant strand $v + \bm{0}$.\qed
+\end {definition}
+
+We also define two unary operations,
+%
+\begin {align*}
+  (\relative{\mu})v &= \mu v - v,\\
+  (\negative{\mu})v &= \mu (-v),
+\end {align*}
+%
+where $\mu$ is any free move and $v$ is any integer. $\relative$ and
+$\negative$ are bijections in the set of all free moves.
+Specifically, $\negative^{-1} = \negative = \relative . \negative
+. \relative$, and $\relative^{-1} = \negative . \relative
+. \negative$.
+
+All safe strand operations directly translate to {\em absolute}\/ free
+move operations by applying an operation separately to all
+corresponding strands of the operand moves.  With any absolute free
+move operation there is associated the {\em relative}\/ counterpart.
+For instance, given an absolute binary free move operation $\bullet$,
+the corresponding relative free move operation $\circ$ is defined so
+that for any two free moves $\mu$ and $\nu$,
+%
+\[\mu \circ \nu = {\relative}^{-1}{(\relative{\mu} \bullet
+  \relative{\nu})}.\]
+
+We may picture a free move as an integer matrix, which rows are
+indexed by the set of integers and columns are indexed by the carrier.
+Column vectors are projections, row vectors are strands.  A free move
+induces state transition deterministically up to the carrier: if the
+current value of a variable $x$ is $v$, then (if $x$ is in the
+carrier) we read the next value from the matrix entry in column $x$
+and row $v$.
+
+Evolution of state may also be captured, perhaps more explicitly, by
+the equivalent notion of a ``free shot''.
+
+\begin {definition}\label{def-free-shot}
+  A map $\tau\!: \Theta_{\mathbb X} \rightarrow \Theta_{\mathbb X}$ is
+  a {\em free shot over}\/ ${\mathbb X}$ iff there is a set ${\mathbb
+    Y} \subseteq {\mathbb X}$, called the {\em carrier}\/ of $\tau$,
+  such that
+  %
+  \begin {enumerate}
+  \item $\domain{(\tau f)} = \domain{f} \cap {\mathbb Y}$ for any $f
+    \in \Theta_{\mathbb X}$, and
+    %
+  \item $fx = gx$ implies $(\tau f)x = (\tau g)x$ for any $f, g \in
+    \Theta_{\mathbb X}$ and $x \in \domain{f} \cap \domain{g} \cap
+          {\mathbb Y}$.
+  \end {enumerate}
+
+  Given a free shot $\tau$ and a point $x$ in the carrier of $\tau$,
+  let $\tau_x$ denote a function ${\mathbb Z} \rightarrow {\mathbb
+    Z}$, called a {\em projection}\/, such that $\tau_x v = (\tau (v +
+  \bm{0})) x$ for any $v \in {\mathbb Z}$.  We say that $\tau$ is
+  %
+  \begin {itemize}
+  \item {\em reversible}\/ iff $\tau_x$ is injective, i.e.\ $\tau_x v
+    = \tau_x w \implies v = w$, in particular that it is
+    %
+  \item {\em affine}\/ iff $\tau_x v - \tau_x w \propto v - w$, and in
+    particular that it is
+    %
+  \item {\em rigid}\/ iff $\tau_x v - \tau_x w = v - w$,
+  \end {itemize}
+  %
+  for any two integers $v$ and $w$, and any element $x$ of the
+  carrier.  If a free shot $\tau$ is affine, then the strand
+  $\tau\bm{0}$ is called its {\em shift}\/, and the strand $\tau\bm{1}
+  - \tau\bm{0}$ is called its {\em scaling}\/.  The {\em bottom free
+    shot}\/ is the constant mapping of all strands to the empty
+  strand.\qed
+\end {definition}
+
+Obviously, there is a projection-preserving isomorphism between the
+set of all free shots with the carrier ${\mathbb Y}$ and the set of
+all free moves ${\mathbb Z} \rightarrow {\mathbb Z}^{\mathbb Y}$.
+Given a free move $\mu$, the corresponding free shot is written as
+$[\mu\rangle$.  For convenience, the bottom and identity free shots
+  are denoted by the symbols ${\xmathbb 0}$ and ${\xmathbb 1}$,
+  respectively, instead of $[{\xmathbb 0}\rangle$ and $[{\xmathbb
+        1}\rangle$.
+
+It is easy to check that a free shot $\tau$ is affine iff $\tau f =
+(\tau\bm{1} - \tau\bm{0}) \cdot f + \tau\bm{0}$, and it is rigid iff
+$\tau f = f + \tau\bm{0}$, for any strand $f$.  From the last identity
+we can derive $\tau_x (\tau_x v) = \tau_x (v + \tau_x 0) = v + 2\tau_x
+0$, and similarly, $\tau_x^{-1} (\tau_x^{-1} v) = \tau_x^{-1} (v -
+\tau_x 0) = v - 2\tau_x 0$, for any $x$ in the carrier and any integer
+$v$.  In general, $\tau_x^k v = v + k\tau_x 0$, and after setting
+$\tau^0 = {\xmathbb 1}$ we may express the evolution of a maximal
+constant strand by the formula
+%
+\[\tau^k f = f + k\tau\bm{0}\]
+%
+where $\tau$ is any rigid free shot and $k, v$ are any integers.
+
+Another easily derived property of rigid free shots is
+``transadditivity''.  If $f$ and $g$ are externally compatible
+strands, then for any rigid $\tau$, FIXME (replace subtraction with
+scaling)
+%
+\begin {align*}
+  \tau (f + g) &= \tau f + \tau g - \tau\bm{0}\textrm {, and}\\
+  %
+  \tau (f - g) &= \tau f - \tau g + \tau\bm{0}.
+\end {align*}
+
+Next, we introduce a globally constrained move, enabled in some
+states, but disabled in others --- a simple form of
+context-dependence.
+
+\begin {definition}\label{def-motion}
+  A {\em motion over}\/ ${\mathbb X}$ is any set ${\cal M}$, together
+  with three functions, $\carrier$, $\scope$ and $\move$, of which
+  ${\cal M}$ is the domain, where for any $a \in {\cal M}$
+  %
+  \begin {itemize}
+  \item $\carrier{a} \subseteq {\mathbb X}$ is a subset of the
+    universe called the {\em carrier}\/ of $a$,
+    %
+  \item $\scope{a} \subseteq \Theta_{\mathbb X}$ is a set of strands
+    called the {\em scope}\/ of $a$, and
+    %
+  \item $\move{a}\!: {\mathbb Z} \rightarrow {\mathbb
+    Z}^{\carrier{a}}$ is a free move,
+  \end {itemize}
+  %
+  and such that ${\cal M}$ is closed under narrow addition, defined as
+  $\carrier{(a + b)} = \carrier{a} \cap \carrier{b}$, $\scope{(a + b)}
+  = \scope{a} \cap \scope{b}$, $\move{(a + b)} = \move{a} + \move{b}$,
+  and under multiplication by an integer constant, defined as
+  $\carrier{(va)} = \carrier{a}$, $\scope{(va)} = \scope{a}$,
+  $\move{(va)} = v\move{a}$.  We say that ${\cal M}$ is {\em
+    formed}\/ by the functions $\carrier$, $\scope$ and $\move$.
+
+  Elements of a motion are called {\em steps}\/.  A step $a$ is
+  reversible (resp.\ affine, resp.\ rigid) iff $\move{a}$ is
+  reversible (resp.\ affine, resp.\ rigid).  If $a$ is affine, then
+  its {\em shift}\/ is denoted $\shift{a} = (\move{a}) 0$ and its {\em
+    scaling}\/ is denoted $\scaling{a} = (\move{a}) 1 - (\move{a}) 0$.
+
+  The {\em uniform representation}\/ of a step $a \in {\cal M}$ is the
+  tripple $\uniform{a} = (\carrier{a}, \scope{a}, \move{a})$.  A {\em
+    bottom step}\/ is any step whose uniform representation is
+  $(\emptyset, \emptyset, {\xmathbb 0})$ and a {\em null step}\/ is a
+  step whose uniform representation is $({\mathbb X}, {\mathbb
+    Z}^{\mathbb X}, {\xmathbb 1})$.
+
+  Given any step $a$, the {\em shot}\/ of $a$ is the mapping
+  $[a\rangle\!: \scope{a} \rightarrow {\mathbb Z}^{\carrier{a}}$, such
+    that $({[a\rangle}s)x = (\move{a})_x(sx)$ for all $x \in
+      \carrier{a}$ and $s \in \scope{a}$.  Given a set of steps ${\cal
+        N} \subseteq {\cal M}$, the corresponding set of shots is
+      $[{\cal N}\rangle = \{[a\rangle \;|\; a \in {\cal N}\}$.
+
+  An {\em antishot}\/ of $a \in {\cal M}$ is any mapping
+  $f\!:\image{[a\rangle} \rightarrow {\mathbb Z}^{\carrier{a}}$
+    satisfying $f({[a\rangle}s) = s{\restriction}_{\carrier{a}}$ for
+      all $s \in \scope{a}$.\qed
+\end {definition}
+
+FIXME (should this be an axiom? do we want it) Given any motion ${\cal
+  M}$, there is a bijection between ${\cal M}$ and the set
+$\uniform{{\cal M}} = \{\uniform{a} \;|\; a \in {\cal M}\}$.
+Therefore, $\uniform{{\cal M}}$ is also a motion FIXME formed by
+$\uniform^{-1}\carrier{{\cal M}}$, $\scope$ and $\move$ of ${\cal M}$.
+FIXME at most one bottom and one null step.
+
+The shot of the bottom step is empty, and so is the antishot.  The
+equality of shot and antishot is also true for the null step, and in
+general, $[({\mathbb X}, S, {\xmathbb 1})\rangle = \langle({\mathbb
+    X}, S, {\xmathbb 1})] = \id_S$ for any $S \subseteq {\mathbb
+  Z}^{\mathbb X}$.
+
+If step $a$ is reversible, then it has exactly one antishot, denoted
+$\langle a]$.  Let, for example, $\uniform{a} = (\{x\}, \{\{(x, 1)\},
+    \{(x, 2)\}\}, \mu)$.  If $\mu 1 = \{(x, 2)\}$ and $\mu 2 = \{(x,
+    1)\}$, then $\langle a] = \{(\{(x, 1)\}, \{(x, 2)\}), (\{(x, 2)\},
+  \{(x, 1)\})\}$, but if $\mu 1 = \mu 2$, then $a$ has no antishot.
+
+FIXME $\langle a](\move{a})_x(sx) = sx$
+
+For a rigid step $a$, maximal strands $s_1, s_2 \in \scope{a}$, and $x
+\in \carrier{a}$, we obtain from transadditivity property,
+%
+\begin {align*}
+  {[a\rangle}(s_1 + s_2) &= {[a\rangle}s_1 +
+      {[a\rangle}s_2 - \shift{a}\textrm{, and}\\
+        %
+  {[a\rangle}(s_1 - s_2) &= {[a\rangle}s_1 -
+      {[a\rangle}s_2 + \shift{a}.
+\end {align*}
+
+On the other hand, $({[a\rangle}s_1)x - ({[a\rangle}s_2)x =
+    ((\move{a})(s_1x))x - ((\move{a})(s_2x))x = s_1x - s_2x$, and thus
+    ${[a\rangle}s_1 - {[a\rangle}s_2 = (s_1 -
+        s_2){\restriction}_{\carrier{a}}$.  In particular, since
+        ${[a\rangle}\bm{0} = \shift{a}$, we have ${[a\rangle}s -
+            \shift{a} = (s - \bm{0}){\restriction}_{\carrier{a}} =
+            s{\restriction}_{\carrier{a}}$, and finally
+%
+\[\shift{a} = {[a\rangle}s - s.\]
+%
+for any rigid step $a$ and maximal strand $s$.  We may now rewrite
+transadditivity formulae as
+%
+\begin {align*}
+  {[a\rangle}(s_1 + s_2) &= {[a\rangle}s_1 +
+      s_2 = s_1 + {[a\rangle}s_2\textrm{, and}\\
+        %
+  {[a\rangle}(s_1 - s_2) &= {[a\rangle}s_1 - s_2,
+\end {align*}
+%
+or --- after deriving ${\langle a]}(s + \shift{a}) =
+    s{\restriction}_{\carrier{a}}$ for antishot --- as FIXME recheck
+%
+\begin {align*}
+  {[a\rangle}(s_1 + s_2) &= {\langle a]}({[a\rangle}s_1
+    + {[a\rangle}s_2)\textrm{, and}\\
+      %
+  {[a\rangle}(s_1 - s_2) &= {\langle a]}({[a\rangle}s_1
+    - {[a\rangle}s_2).
+\end {align*}
+
+FIXME introduce delta.
+
+\begin {definition}\label{def-step}
+  A scope that is a hyperinterval (a box) is called a {\em slice}\/.
+
+  A {\em sliced rigid move over}\/ ${\mathbb X}$ is any triple of
+  strands $(\beta, \gamma, \delta) \in {\mathbb Z}^{\mathbb
+    Y}\!\times\!{\mathbb Z}_\infty^{\mathbb Y}\!\times\!{\mathbb
+    Z}^{\mathbb Y}$, such that ${\mathbb Y} \subseteq {\mathbb X}$ and
+  $\beta \leq \gamma$.  The common domain of component strands,
+  i.e.\ the set $\carrier{\sigma} = {\mathbb Y} = \domain{\beta} =
+  \domain{\gamma} = \domain{\delta}$, is called the {\em carrier}\/ of
+  a sliced rigid move $\sigma = (\beta, \gamma, \delta)$, and the set
+  of maximal strands $\scope{\sigma} = \{s \in {\mathbb Z}^{\mathbb X}
+  \;|\; \beta \apprle s \apprle \gamma\}$ is called the {\em scope
+    of}\/ $\sigma$ (we say that a strand $s$ is {\em in scope of}\/
+  $\sigma$ iff $s \in \scope{\sigma}$).
+
+  The {\em shot}\/ of $\sigma$, where $\sigma = (\beta, \gamma,
+  \delta)$ is any sliced rigid move over ${\mathbb X}$, is the mapping
+  $[\sigma\rangle\!: \scope{\sigma} \rightarrow {\mathbb Z}^{\mathbb
+      X}$, such that ${[\sigma\rangle}s = s \oplus \delta$.
+
+  A {\em firing step over}\/ ${\mathbb X}$, or just {\em step}\/, is a
+  sliced rigid move over ${\mathbb X}$ for which $\beta \geq -\delta$.
+  The set of all non-bottom firing steps over ${\mathbb X}$ is denoted
+  $\Sigma_{\mathbb X}$.
+\end {definition}
+
+FIXME The triple $(\bm{\bot}, \bm{\bot}, \bm{\bot})$ is the bottom
+step.  The set of all steps is $\Sigma_{\mathbb X} \cup \{(\bm{\bot},
+\bm{\bot}, \bm{\bot})\}$.
+
+For instance, the triple $(\bm{0}, \bm{0}, \bm{0})$ is a step and so
+is $(\bm{1}, \bm{1}, \bm{1})$, $(\bm{0}, \bm{0}, \bm{1})$, and
+$(\bm{1}, \bm{1}, \bm{-1})$, but none of $(\bm{\bot}, \bm{0},
+\bm{0})$, $(\bm{1}, \bm{0}, \bm{1})$ and $(\bm{0}, \bm{1}, \bm{-1})$
+is --- the last one being a sliced rigid move.  The shot of the bottom
+step is empty, $[(\bm{0}, \bm{0}, \bm{0})\rangle = \{(\bm{0},
+  \bm{0})\}$, $[(\bm{0}, \bm{1}, \bm{1})\rangle = \{(\bm{0}, \bm{1}),
+    (\bm{1}, \bm{2})\}$, $[(\bm{1}, \bm{1}, \bm{-1})\rangle =
+      \{(\bm{1}, \bm{0})\}$, $[(\bm{0}, \bm{\top}, \bm{0})\rangle =
+        \{(\bm{0}, \bm{0}), (\bm{1}, \bm{1}), (\bm{2}, \bm{2}),
+        \ldots\}$, etc.
+
+Note, that if $\sigma \in \Sigma_{\mathbb X}$ and $s \in
+\scope{\sigma}$, then $\bm{0} \leq [{\sigma\rangle}s \leq \bm{0}
+  \oplus (\gamma + \delta)$.  Note also, that $\Sigma_{\mathbb X}$ is
+  infinite in any universe: $|\Sigma_{\mathbb X}| = |{\mathbb N}|$ if
+  ${\mathbb X}$ is finite and $|\Sigma_{\mathbb X}| = |{\mathbb R}|$
+  otherwise.
+
+FIXME a function ${\mathbb Z} \times \carrier{\sigma} \rightarrow
+{\mathbb Z}$, such that FIXME $\delta_\sigma \in {\mathbb Z}^{{\mathbb
+    Z} \times \carrier{\sigma}}$.
+
+Note that all rigid shots are injective (${\mathbb Z}^{\mathbb X}$
+forms a group under $\oplus$).  Therefore, we may introduce the {\em
+  antishot}\/ of $\sigma$, $\langle\sigma]$
+
+FIXME analyze $\Sigma_{\mathbb X}$ as a poset under scope inclusion.
+
+FIXME translation to and from VAS.
+
+\begin {definition}\label{def-step-operation}
+  We declare, that if any relation $R$ is defined for strands, then it
+  is also defined for steps,
+  %
+  \[R((\beta_1, \gamma_1, \delta_1), (\beta_2, \gamma_2, \delta_2)) \iff
+  R(\beta_1, \beta_2) \wedge R(\gamma_1, \gamma_2) \wedge R(\delta_1, \delta_2).\]
+  %
+  Any such $R$ is called a~{\em step relation}\/.  Moreover, if
+  $\circ$ is an operation total in $\Theta_{\mathbb X}$, then it
+  extends to a {\em step operation}\/ in the following way:
+  %
+  \[(\beta_1, \gamma_1, \delta_1) \circ (\beta_2, \gamma_2, \delta_2) =
+  ((\beta_1 \circ \beta_2){\restriction}_{\carrier}, (\gamma_1 \circ
+  \gamma_2){\restriction}_{\carrier}, (\delta_1 \circ
+  \delta_2){\restriction}_{\carrier}),\]
+  %
+  where $\carrier = \domain{(\beta_1 \circ \beta_2)} \cap
+  \domain{(\gamma_1 \circ \gamma_2)} \cap \domain{(\delta_1 \circ
+    \delta_2)}$ is the carrier of the result.
+\end {definition}
+
+FIXME $(\beta_1, \gamma_1, \delta_1) \obullet (\beta_2, \gamma_2,
+\delta_2) = ((\beta_1 \wct \beta_2){\restriction}_{\carrier},
+(\gamma_1 \wxp \gamma_2){\restriction}_{\carrier}, (\delta_1 \oeq
+\delta_2){\restriction}_{\carrier})$
+
+Union and internal conflict are not step operations.
+
+FIXME algebraic structure of alignment, conflict, expansion of steps.
+
+FIXME dominance and compatibility.
+
+\begin {definition}\label{def-layers}
+  For any step $\sigma = (\beta, \gamma, \delta) \in \Sigma_{\mathbb
+    X}$ we define a partition of the universe into up to six disjoint
+  subsets,
+  %
+\begin {align*}
+  {\cal A}(\sigma) &\;=\; \{x \in \carrier{\sigma} \;|\; \beta x > 0
+  \wedge \delta x = 0\},\\
+  %
+  {\cal B}(\sigma) &\;=\; \{x \in \carrier{\sigma} \;|\; \beta x =
+  \gamma x = \delta x = 0\},\\
+  %
+  {\cal C}(\sigma) &\;=\; \{x \in \carrier{\sigma} \;|\; \delta x <
+  0\},\\
+  %
+  {\cal D}(\sigma) &\;=\; \{x \in \carrier{\sigma} \;|\; \beta x =
+  \delta x = 0 \wedge \gamma x > 0\},\\
+  %
+  {\cal E}(\sigma) &\;=\; \{x \in \carrier{\sigma} \;|\; \delta x >
+  0\},\\
+  %
+  {\cal F}(\sigma) &\;=\; {\mathbb X} \setminus \carrier{\sigma},
+\end {align*}
+%
+called, in order: {\em activators}\/, {\em inhibitors}\/, {\em
+  sources}\/, {\em dummies}\/, {\em sinks}\/ and {\em residue}\/.  By
+applying appropriate restrictions to component strands of $\sigma$
+we get {\em activating layer}\/ $\sigma{\restriction}_{\cal A}\;=\;
+(\beta{\restriction}_{\cal A}, \gamma{\restriction}_{\cal A},
+\delta{\restriction}_{\cal A})$, and similarly, {\em blocking}\/
+($\sigma{\restriction}_{\cal B}$), {\em contracting}\/
+($\sigma{\restriction}_{\cal C}$), {\em dummy}\/
+($\sigma{\restriction}_{\cal D}$) and {\em expanding}\/
+($\sigma{\restriction}_{\cal E}$) {\em layers of}\/ $\sigma$.\qed
+\end {definition}
+
+Two important examples of strands are the capacity and weight
+functions of extended c-e structures.  Since capacity is defined for a
+specific structure $U$, the domain of a capacity strand $\widehat{U}$
+is the carrier of $U$.  Similarly, the domain of a weight strand
+$\widetilde{Q}_U$, where $U$ is some structure and $Q$ is one if its
+firing components, is the carrier of $Q$: the set $\preset{Q} \cup
+\postset{Q}$.  If we apply definition~\ref{def-layers} to extended c-e
+structures, then ${\cal A}$ will be the set of activators (zero-weight
+members of the pre-set), ${\cal B}$ --- the set of inhibitors
+($\omega$-weight members of the pre-set), ${\cal C} = \preset{Q}
+\setminus ({\cal A}\cup{\cal B})$ will be the set of sources, ${\cal
+  D}$ --- the set of dummies (zero-weight members of the post-set),
+${\cal E} = \postset{Q}\setminus {\cal D}$ will be the set of sinks
+(positive-weight members of the post-set), and ${\cal F}={\mathbb
+  X}\setminus({\cal A}\cup{\cal B}\cup{\cal C}\cup{\cal D}\cup{\cal
+  E})$ --- the set of isolated nodes.
+
+\begin {definition}\label{def-step-of-fc}
+  Let $Q$ be a firing component of a c-e structure $U$ over ${\mathbb
+    X}$.  The {\em firing step of}\/ $Q$ {\em in}\/ $U$ is the natural
+  step $(\beta_Q, \gamma_Q, \delta_Q)$ such that
+  %
+\begin {align*}
+  \beta_Q &\;=\; \bm{0}{\restriction}_{{\cal B} \cup {\cal E}}
+  \;\cup\; \bm{1}{\restriction}_{\cal A} \;\cup\;
+  \widetilde{Q}_U{\restriction}_{\cal C},\\
+  %
+  \gamma_Q &\;=\; \bm{0}{\restriction}_{\cal B} \;\cup\;
+  \widehat{U}{\restriction}_{{\cal A} \cup {\cal C}} \;\cup\;
+  (\widehat{U} \ominus \widetilde{Q}_U){\restriction}_{\cal E},\\
+  %
+  \delta_Q &\;=\; \bm{0}{\restriction}_{{\cal A} \cup {\cal B}} \;\cup\;
+  \widetilde{Q}_U{\restriction}_{\cal E} \;\cup\;
+  -\widetilde{Q}_U{\restriction}_{\cal C}.\Qed
+\end {align*}
+\end {definition}
+
+FIXME reverse mapping from steps to capacity, weight and polarity.
+Rules for delta zero disambiguation: inhibitor, activator, or
+anihilator?
+
+\section {Causality}
+
+Behavioral description of systems in terms of moves, steps and shots,
+however useful for simulation, doesn't sufficiently capture all
+compositional aspects.  For an adequate rendering of the combined
+behavior of multiple systems we need a detailed knowledge about causal
+structure of individual components.
+
+\begin {definition}\label{def-causal-component}
+  A {\em move-labeled}\/ (resp.\ {\em step-labeled}\/) {\em firing
+    graph over}\/ ${\mathbb X}$ is a pair $(\nu, \eta)$
+  (resp.\ $(\sigma, \eta)$), where $\nu$ is a move (resp.\ $\sigma$ is
+  a step) over ${\mathbb X}$ and $\eta$ is an edge set of a simple
+  undirected graph $G$, such that $\carrier{\nu}$
+  (resp.\ $\carrier{\sigma}$) is exactly the vertex set of $G$.  The
+  pair $({\xmathbb 0}, \emptyset)$ is called the {\em bottom graph}\/.
+  A firing graph is {\em causal}\/ iff $G$ is bipartite, and a
+  non-bottom causal graph is called a {\em causal component}\/ iff $G$
+  is connected.  $\Gamma(\Omega_{\mathbb X})$ and
+  $\Gamma(\Sigma_{\mathbb X})$ are the sets of all move-labeled and
+  all step-labeled causal components over ${\mathbb X}$.
+
+  The shot of a firing graph is the shot of its move or step.  The
+  shot notation is extended to firing graphs: $[(\nu, \eta)\rangle =
+    [\nu\rangle$ and $[(\sigma, \eta)\rangle = [\sigma\rangle$.
+
+  FIXME causal operations\qed
+\end {definition}
+
+\begin {definition}\label{def-grill}
+  A {\em grill over}\/ ${\mathbb X}$ is a finite set of causal
+  components --- a finite subset of $\Gamma(\Omega_{\mathbb X})$ or
+  $\Gamma(\Sigma_{\mathbb X})$.  The set of all grills is
+  $\bm{\Omega}_{\mathbb X} = \bigcup_{n\in{\mathbb
+      N}}\binom{\Gamma(\Omega_{\mathbb X})}{n}$ --- move-labeled ---
+  or $\bm{\Sigma}_{\mathbb X} = \bigcup_{n\in{\mathbb
+      N}}\binom{\Gamma(\Sigma_{\mathbb X})}{n}$ --- step-labeled.
+
+  FIXME moveset of $\bm{a}$.
+
+  A {\em grill product}\/ is any operation $\bm{\circ}\!:
+  \bm{\Omega}_{\mathbb X} \times \bm{\Omega}_{\mathbb X} \rightarrow
+  \bm{\Omega}_{\mathbb X}$ for which there is a causal operation
+  $\circ$, such that FIXME $\bm{a} \bm{\circ} \bm{b} = (\bigcup_{(g,h)
+    \in \bm{a} \times \bm{b}}g\circ h) \setminus \{({\xmathbb 0},
+  \emptyset)\}$ for all $\bm{a}, \bm{b} \in \bm{\Omega}_{\mathbb
+    X}$.\qed
+\end {definition}
+
+FIXME infinity class of $\bm{\Omega}_{\mathbb X}$.
+
+We denote a grill product operator by the same symbol (if there is
+any) as the corresponding step operator, but typeset in bold face.
+Hence there are, for example: {\em grill $\bm{\obullet}$-product}\/,
+{\em grill $\bm{\oeq}$-product}\/, etc.
+
+\begin {definition}\label{def-shell}
+  Let $\bm{a} \in \bm{\Omega}_{\mathbb X}$ (or $\bm{a} \in
+  \bm{\Sigma}_{\mathbb X}$) be a grill over ${\mathbb X}$.  The
+  $\cup$\,-{\em shell}\/, or {\em union-shell}\/ in words
+  (resp.\ $\cap$\,-{\em shell}\/ or {\em intersection-shell}\/) of
+  $\bm{a}$ is the union (resp.\ intersection) of all shots of causal
+  components in $\bm{a}$:
+  %
+  \begin {align*}
+    [\bm{a}\rangle_\cup &= \bigcup_{a \in \bm{a}}[a\rangle = \{(s, t)
+        \in \Theta_{\mathbb X}\!\times\!\Theta_{\mathbb X} \;|\;
+        \Exists_{a \in \bm{a}}[a\rangle s = t\},\\
+    %
+    [\bm{a}\rangle_\cap &= \bigcap_{a \in \bm{a}}[a\rangle = \{(s, t)
+        \in \Theta_{\mathbb X}\!\times\!\Theta_{\mathbb X} \;|\;
+        \Forall_{a \in \bm{a}}[a\rangle s = t\}.
+  \end {align*}
+
+  A strand relation $\bm{s} \subseteq \Theta_{\mathbb X} \times
+  \Theta_{\mathbb X}$ is called a {\em firing shell over}\/ ${\mathbb
+    X}$ iff it is the union-shell of some grill $\bm{a}$ over
+  ${\mathbb X}$: $\bm{s} = [\bm{a}\rangle_\cup$.\qed
+\end {definition}
+
+FIXME clans of union-shells.
+
+\section {Expressions}
+
+FIXME homomorphism problem: does sum/product of any two extended
+polynomials reduce to the sum/product of reduced component
+polynomials?  Is any extended polynomial constructible/normalizable?
+
+The set $\mathfrak{R}_{\mathbb X}$ of firing expressions over
+${\mathbb X}$ is defined recursively along with the labelset function
+$\lambda$, mapping firing expressions to subsets of ${\mathbb Z}_+$,
+and the composition function $\composition$, mapping firing
+expressions to sets of firing expressions.
+
+\begin {definition}\label{def-expression}
+  A {\em firing expression} $\bm{r}$ over ${\mathbb X}$, its {\em
+    labelset}\/ $\lambda\bm{r}$ and {\em composition}\/
+  $\composition\bm{r}$ are one of the following:
+  %
+  \begin {enumerate}
+  \item any grill, with empty labelset and empty composition,
+    i.e.\ $\lambda{\bm{r}} = \emptyset$ and $\composition{\bm{r}} =
+    \emptyset$ for any $\bm{r} \in \bm{\Sigma}_{\mathbb X} \subset
+    \mathfrak{R}_{\mathbb X}$;
+    %
+  \item any triple $\bm{r} = (\bm{p}, \bm{q}, k)$, with labelset
+    $\lambda{\bm{r}} = \lambda\bm{p} \cup \lambda\bm{q} \cup \{k\}$,
+    and composition $\composition{\bm{r}} = \composition\bm{p} \cup
+    \composition\bm{q} \cup \{\bm{r}\}$, where $k$ is a positive
+    integer and $\bm{p}$ and $\bm{q}$ are firing expressions over
+    ${\mathbb X}$ --- not necessarily different, but such that
+    %
+    \begin {enumerate}
+    \item neither is an empty grill, and
+      %
+    \item $\Forall_{\bm{o} \in
+      \composition\bm{p}\,\cup\,\composition\bm{q}} \bm{p} \in
+      \composition\bm{o} \iff \bm{p} = \bm{o} \,\wedge\, \bm{q} \in
+      \composition\bm{o} \iff \bm{q} = \bm{o}$.
+    \end {enumerate}
+  \end {enumerate}
+  %
+  There are no more firing expressions over ${\mathbb X}$.  The {\em
+    extent}\/ of a firing expression $\bm{r}$ is the number
+  $|\lambda\bm{r}|$.\qed
+\end {definition}
+
+The relation ``is composed of'' defined below, a partial order in the
+set of firing expressions, follows in a natural way from the
+composition function.  Note, however, that firing expressions aren't
+composed of grills --- by definition, composition contains only
+``composite'' expressions.  Therefore, we also introduce a slightly
+broader notion of ``subexpression''.
+
+\begin {definition}\label{def-subexpression}
+  Given two firing expressions $\bm{r}, \bm{q} \in
+  \mathfrak{R}_{\mathbb X}$, we say that $\bm{r}$ {\em is composed
+    of}\/ $\bm{q}$ iff $\bm{q} \in \composition{\bm{r}}$, and we say
+  that $\bm{q}$ is a {\em proper subexpression}\/ of $\bm{r}$ iff
+  $\bm{r}$ is composed of a firing expression $(\bm{q}, \bm{p}, k)$ or
+  $(\bm{p}, \bm{q}, k)$ for some firing expression $\bm{p}$ and
+  integer $k$.  A {\em subexpression}\/ of $\bm{r}$ is any proper
+  subexpression of $\bm{r}$, or the $\bm{r}$ itself.\qed
+\end {definition}
+
+The set $\mathfrak{R}_{\mathbb X}$ may be described as a set of nodes
+of a directed graph, where each node has an uncountable set of
+incoming edges, and either two outgoing edges, or none.  There is a
+directed path from node $\bm{r}$ to node $\bm{q}$ iff firing
+expression $\bm{r}$ has a subexpression $\bm{q}$.  The directed graph
+is acyclic: condition 2b.\ of definition~\ref{def-expression}
+guarantees that no firing expression is a proper subexpression of
+itself.
+
+Obviously, the underlying undirected graph isn't acyclic: every
+expression is a subexpression in multiple ``instances'' (more
+formally, for every expression there is another expression, such that
+the two are connected via multiple paths).  However, the structure of
+$\mathfrak{R}_{\mathbb X}$ may be ``unfolded'' into a tree by
+assigning nodes to individual instances.
+
+Similarly, a subgraph induced by a single firing expression and all
+its subexpressions may be unfoled into a tree.  Any such tree is
+finite and binary, with internal nodes labeled by positive integers
+and with non-empty grills in leaves.
+
+FIXME the need for syntactic equivalence, root expression vs
+subexpressions.
+
+\begin {definition}\label{def-e-expression}
+  A {\em canonical labelset}\/ is an empty set or any interval $[1,
+    e]$, where $e \in {\mathbb Z}_+$.  A firing expression $\bm{q}$ is
+  {\em canonical}\/ iff $\lambda\bm{q}$ is a canonical labelset.  A
+  canonical firing expression of extent $e$ is called an
+  $e$-expression.  The set of all $e$-expressions over ${\mathbb X}$
+  is denoted $\mathfrak{R}_{\mathbb X}^e \subset \mathfrak{R}_{\mathbb
+    X}$.\qed
+\end {definition}
+
+Note, that a canonical firing expression may have non-canonical
+subexpressions.
+
+\begin {definition}\label{def-relabeling}
+  Given a firing expression $\bm{r} \in \mathfrak{R}_{\mathbb X}$ and
+  a function $f\!: \lambda\bm{r} \rightarrow {\mathbb Z_+}$, the {\em
+    $f$-relabeling}\/ of $\bm{r}$ is the firing expression $\bm{r}^f
+  \in \mathfrak{R}_{\mathbb X}$ such that
+  %
+  \begin {enumerate}
+    \item if $\bm{r} \in \bm{\Sigma}_{\mathbb X}$, then $\bm{r}^f =
+      \bm{r}$;
+      %
+    \item if $\bm{r} = (\bm{p}, \bm{q}, k)$, then $\bm{r}^f =
+      (\bm{p}^f, \bm{q}^f, fk)$.
+  \end {enumerate}
+
+  Two firing expressions $\bm{r}, \bm{q} \in \mathfrak{R}_{\mathbb X}$
+  are {\em isomorphic}\/ (or {\em syntactically equivalent}\/),
+  symbolically $\bm{r} \cong \bm{q}$, iff there is an order preserving
+  bijection $f\!: \lambda\bm{r} \rightarrow \lambda\bm{q}$, such that
+  $\bm{q}$ is the $f$-relabeling of $\bm{r}$.\qed
+\end {definition}
+
+Note, that for any $\bm{r} \in \mathfrak{R}_{\mathbb X}$ there is
+exactly one isomorphic canonical firing expression $\bm{q} \in
+\mathfrak{R}_{\mathbb X}^{|\lambda\bm{r}|}$.  FIXME explain (exactly
+one order preserving bijection).
+
+\begin {definition}\label{def-intent}
+  A canonical firing expression $\bm{q} \in \mathfrak{R}_{\mathbb
+    X}^{|\lambda\bm{q}|}$ is the {\em intent}\/ of a firing expression
+  $\bm{r}$ iff $\bm{q} \cong \bm{r}$. FIXME function $\eta\bm{r}$
+  isomorphic to $\bm{r}$\qed
+\end {definition}
+
+Speaking informally, the set of firing expressions over ${\mathbb X}$
+is ``free'' in the sense that there are no transformation rules
+pre-imposed on the set of firing expressions (FIXME except
+relabeling).  $\mathfrak{R}_{\mathbb X}$ is not of a ``specific
+variety'', but instead, we expect that semantically induced
+equivalences between firing expressions will lead to several algebraic
+structures awaiting investigation --- transformation rules being a
+consequence of particular semantic choices.  Next section clarifies
+our understanding of {\em semantic equivalence}\/ of firing
+expressions.
+
+\subsection {Firing semantics}
+
+\begin {definition}\label{def-semantics}
+  A {\em firing semantics over}\/ ${\mathbb X}$ is any mapping
+  $\bm{\varphi}$ associating a grill to every firing expression over
+  ${\mathbb X}$, such that
+  %
+  \begin {enumerate}
+  \item $\bm{r} \cong \bm{q} \implies \bm{\varphi}\bm{r} =
+    \bm{\varphi}\bm{q}$,
+    %
+  \item $\bm{\varphi}\emptyset = \emptyset$, and
+    %
+  \item $\bm{\varphi}\{\sigma\} = [\sigma\rangle$ for all $\sigma \in
+    \Sigma_{\mathbb X}$.
+  \end {enumerate}
+  %
+  Two firing expressions $\bm{r}, \bm{q} \in \mathfrak{R}_{\mathbb X}$
+  are $\bm{\varphi}$-equivalent iff $\bm{\varphi}\bm{r} =
+  \bm{\varphi}\bm{q}$.\qed
+\end {definition}
+
+\begin {definition}\label{def-evaluation}
+  Let ${\cal O}$ be a set of grill product operators and $\xi$ --- a
+  function ${\mathbb Z}_{[1,z]} \rightarrow {\cal O}$ (called {\em
+    substitution}\/), where $z = |\!\domain{\xi}|$ is some
+  non-negative integer.  For any universe ${\mathbb X}$ we define the
+  {\em $\xi$-evaluation}\/ as the mapping $\bm{\xi}$ that takes a
+  firing expression $\bm{r} \in \mathfrak{R}_{\mathbb X}$ and gives a
+  grill from $\bm{\Sigma}_{\mathbb X}$ such that
+  %
+  \begin {enumerate}
+    \item if $\bm{r} \in \bm{\Sigma}_{\mathbb X}$, then
+      $\bm{\xi}\bm{r} = \bm{r}$;
+      %
+    \item if $\bm{r} = (\bm{p}, \bm{q}, k)$ and $k \leq z$, then
+      $\bm{\xi}\bm{r} = \bm{\xi}\bm{p} \bm{\circ} \bm{\xi}\bm{q}$,
+      where $\bm{\circ} = \xi k$;
+      %
+    \item if $\bm{r} = (\bm{p}, \bm{q}, k)$ and $k > z$, then
+      $\bm{\xi}\bm{r} = \bm{\xi}\bm{p} \cup \bm{\xi}\bm{q}$.
+  \end {enumerate}
+
+  FIXME relabeling
+
+  The {\em $\xi$-semantics over}\/ ${\mathbb X}$ is the mapping of
+  firing expressions to $\cup$\,-shells of grills obtained by
+  $\xi$-evaluation.  The number $|\!\domain{\xi}|$ is called the {\em
+    rank}\/ of $\xi$-semantics.\qed
+\end {definition}
+
+It is easy to check that, for any $\xi$ and any ${\mathbb X}$, the
+$\xi$-semantics over ${\mathbb X}$ satisfies all three conditions
+imposed on firing semantics in definition~\ref{def-semantics}.
+
+\section {Final remarks}
+
+FIXME Three guiding applications:
+%
+\begin {itemize}
+\item parallel firing of multiple transitions with overlapping
+  support: shouldn't this be solved through composition? note, that
+  parallel firing of disjoint transitions is equivalent to
+  interleaving (is it?);
+
+\item composition: by exclusive choice (inclusive choice is xor of
+  par and xor), parallel composition, sequential composition;
+
+\item specifying weights.
+\end {itemize}
+
+FIXME sequential composition is implicit.
+
+FIXME crn, sdf
+
+\end {document}
