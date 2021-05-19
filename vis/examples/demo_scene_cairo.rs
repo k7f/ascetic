@@ -8,6 +8,13 @@ use std::{
 use piet::ImageFormat;
 use ascetic_vis::{Scene, Theme, CairoBitmapDevice};
 
+#[inline]
+fn done_in_micros(start_time: Option<std::time::Instant>) {
+    if let Some(elapsed) = start_time.map(|t| t.elapsed().as_micros()) {
+        eprintln!(" Done ({} us).", elapsed);
+    }
+}
+
 #[derive(Debug)]
 struct App {
     png_path:         PathBuf,
@@ -99,16 +106,27 @@ impl App {
         })
     }
 
+    #[inline]
+    fn start(&self, message: &str) -> Option<std::time::Instant> {
+        if self.verbosity > 0 {
+            eprint!("{}", message);
+            Some(std::time::Instant::now())
+        } else {
+            None
+        }
+    }
+
     fn render_to_svg(&self, scene: &Scene, theme: &Theme) -> Result<Option<&Path>, Box<dyn Error>> {
         if let Some(ref svg_path) = self.svg_path {
-            if self.verbosity > 0 {
-                eprint!("Saving scene to \"{}\"...", svg_path.display());
-            }
-
+            let start_time = self.start("Rendering to svg...");
             let svg = scene.to_svg(theme, self.out_size, self.out_margin)?;
-            let mut svg_file = File::create(svg_path)?;
+            done_in_micros(start_time);
 
+            let start_time =
+                self.start(format!("Saving scene to \"{}\"...", svg_path.display()).as_str());
+            let mut svg_file = File::create(svg_path)?;
             svg_file.write_all(&svg.into_bytes())?;
+            done_in_micros(start_time);
 
             Ok(Some(svg_path.as_path()))
         } else {
@@ -117,24 +135,20 @@ impl App {
     }
 
     fn render_to_png(&self, scene: &Scene, theme: &Theme) -> Result<&Path, Box<dyn Error>> {
+        let start_time = self.start("Rendering to cairo...");
         let out_width = self.out_size.0.round() as usize;
         let out_height = self.out_size.1.round() as usize;
         let mut device = CairoBitmapDevice::new(out_width, out_height, 1.)?;
         let mut rc = device.render_context();
 
         scene.render(theme, self.out_size, self.out_margin, &mut rc)?;
-
-        if self.verbosity > 0 {
-            eprintln!("Finished rendering.");
-        }
+        done_in_micros(start_time);
 
         self.save_bitmap_image(device)
     }
 
     fn save_bitmap_image(&self, device: CairoBitmapDevice) -> Result<&Path, Box<dyn Error>> {
-        if self.verbosity > 0 {
-            eprint!("Writing image data to \"{}\"...", self.png_path.display());
-        }
+        let start_time = self.start("Rendering to bitmap...");
 
         if self.png_color_type != png::ColorType::RGBA || self.png_bit_depth != png::BitDepth::Eight
         {
@@ -142,9 +156,12 @@ impl App {
         }
 
         let pixels = device.into_raw_pixels(ImageFormat::RgbaPremul)?;
+        done_in_micros(start_time);
+
+        let start_time = self
+            .start(format!("Writing image data to \"{}\"...", self.png_path.display()).as_str());
         let png_file = File::create(&self.png_path)?;
         let mut buf_writer = BufWriter::new(png_file);
-
         let out_width = self.out_size.0.round() as u32;
         let out_height = self.out_size.1.round() as u32;
         let mut encoder = png::Encoder::new(&mut buf_writer, out_width, out_height);
@@ -152,8 +169,8 @@ impl App {
         encoder.set_depth(self.png_bit_depth);
         encoder.set_compression(self.png_compression.clone());
         encoder.set_filter(self.png_filter);
-
         encoder.write_header()?.write_image_data(pixels.as_slice())?;
+        done_in_micros(start_time);
 
         Ok(self.png_path.as_path())
     }
@@ -184,33 +201,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         eprintln!("\n{:?}", theme);
     }
 
-    match app.render_to_svg(&scene, &theme) {
-        Ok(None) => {}
-        Ok(_) => {
-            if app.verbosity > 0 {
-                eprintln!(" Done.")
-            }
-        }
-        Err(err) => {
-            if app.verbosity > 0 {
-                eprintln!(" Failed: {}.", err)
-            }
-        }
-    }
+    app.render_to_svg(&scene, &theme)?;
 
-    match app.render_to_png(&scene, &theme) {
-        Ok(path) => {
-            if app.verbosity > 0 {
-                eprintln!(" Done.");
-            }
-            println!("{}", path.display());
-            Ok(())
-        }
-        Err(err) => {
-            if app.verbosity > 0 {
-                eprintln!(" Failed: {}.", err);
-            }
-            Err(err)
-        }
-    }
+    let path = app.render_to_png(&scene, &theme)?;
+    println!("{}", path.display());
+
+    Ok(())
 }

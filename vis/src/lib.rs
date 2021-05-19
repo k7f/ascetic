@@ -1,5 +1,3 @@
-#![feature(clamp)]
-
 mod crumb;
 mod group;
 mod style;
@@ -34,6 +32,10 @@ pub trait Vis {
     );
 }
 
+pub trait WriteSvg {
+    fn write_svg<W: io::Write>(&self, svg: W) -> io::Result<()>;
+}
+
 pub trait WriteSvgWithStyle {
     fn write_svg_with_style<W: io::Write>(
         &self,
@@ -44,10 +46,35 @@ pub trait WriteSvgWithStyle {
     ) -> io::Result<()>;
 }
 
-pub trait WriteSvg {
-    fn write_svg<W: io::Write>(&self, svg: W) -> io::Result<()>;
-}
-
 pub trait WriteSvgWithName {
     fn write_svg_with_name<W: io::Write, S: AsRef<str>>(&self, svg: W, name: S) -> io::Result<()>;
+}
+
+pub trait AsUsvgNodeWithStyle {
+    fn as_usvg_node_with_style(
+        &self,
+        ts: TranslateScale,
+        style_id: Option<StyleId>,
+        theme: &Theme,
+    ) -> usvg::NodeKind;
+}
+
+pub trait AsUsvgNodeWithName {
+    fn as_usvg_node_with_name<S: AsRef<str>>(&self, name: S) -> usvg::NodeKind;
+}
+
+pub trait AsUsvgStyle {
+    fn as_usvg(&self) -> (Option<usvg::Fill>, Option<usvg::Stroke>);
+}
+
+pub trait AsUsvgStroke {
+    fn as_usvg(&self) -> usvg::Stroke;
+}
+
+pub trait AsUsvgFill {
+    fn as_usvg(&self) -> usvg::Fill;
+}
+
+pub trait AsUsvgStop {
+    fn as_usvg(&self) -> usvg::Stop;
 }

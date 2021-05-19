@@ -1,9 +1,10 @@
 use std::{slice, io::Write, error::Error};
 use piet::RenderContext;
 use kurbo::{Line, Rect, RoundedRect, Circle, TranslateScale, Size};
+use usvg::NodeExt;
 use crate::{
-    Vis, WriteSvgWithStyle, WriteSvgWithName, Crumb, CrumbId, CrumbItem, Group, GroupId, GroupItem,
-    StyleId, Theme,
+    Vis, WriteSvgWithStyle, WriteSvgWithName, AsUsvgNodeWithStyle, AsUsvgNodeWithName, Crumb,
+    CrumbId, CrumbItem, Group, GroupId, GroupItem, StyleId, Theme,
 };
 
 #[derive(Clone, Default, Debug)]
@@ -272,6 +273,53 @@ impl Scene {
         );
 
         scene
+    }
+
+    pub fn as_usvg_tree<S, M>(
+        &self,
+        theme: &Theme,
+        out_size: S,
+        out_margin: M,
+    ) -> usvg::Tree
+    where
+        S: Into<Size>,
+        M: Into<Size>,
+    {
+        let out_size = out_size.into();
+        let out_margin = out_margin.into();
+        let out_scale = ((out_size.width - 2. * out_margin.width) / self.size.width)
+            .min((out_size.height - 2. * out_margin.height) / self.size.height);
+        let root_ts =
+            TranslateScale::translate(out_margin.to_vec2()) * TranslateScale::scale(out_scale);
+
+        let svg_size = usvg::Size::new(out_size.width.round(), out_size.height.round()).unwrap();
+        let mut rtree = usvg::Tree::create(usvg::Svg {
+            size:     svg_size,
+            view_box: usvg::ViewBox {
+                rect:   svg_size.to_rect(0.0, 0.0),
+                aspect: usvg::AspectRatio::default(),
+            },
+        });
+
+        for (name, spec) in theme.get_named_gradspecs() {
+            let node = spec.as_usvg_node_with_name(name);
+
+            rtree.append_to_defs(node);
+        }
+
+        theme.append_background_to_usvg_tree(&mut rtree);
+
+        for CrumbItem(crumb_id, ts, style_id) in self.all_crumbs(root_ts) {
+            if let Some(crumb) = self.crumbs.get(crumb_id.0) {
+                let node = crumb.as_usvg_node_with_style(ts, style_id, theme);
+                rtree.root().append_kind(node);
+            } else {
+                // FIXME
+                panic!()
+            }
+        }
+
+        rtree
     }
 }
 
