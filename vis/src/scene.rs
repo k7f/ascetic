@@ -1,9 +1,9 @@
-use std::{slice, io::Write, error::Error};
+use std::{slice, error::Error};
 use piet::RenderContext;
 use kurbo::{Line, Rect, RoundedRect, Circle, TranslateScale, Size};
 use usvg::NodeExt;
 use crate::{
-    Vis, WriteSvgWithStyle, WriteSvgWithName, AsUsvgNodeWithStyle, AsUsvgNodeWithName, Crumb,
+    Vis, AsUsvgNodeWithStyle, AsUsvgNodeWithName, Crumb,
     CrumbId, CrumbItem, Group, GroupId, GroupItem, StyleId, Theme,
 };
 
@@ -18,6 +18,16 @@ pub struct Scene {
 impl Scene {
     pub fn new<S: Into<Size>>(size: S) -> Self {
         Scene { size: size.into(), ..Default::default() }
+    }
+
+    #[inline]
+    pub fn get_size(&self) -> &Size {
+        &self.size
+    }
+
+    #[inline]
+    pub fn get_crumb(&self, crumb_id: CrumbId) -> Option<&Crumb> {
+        self.crumbs.get(crumb_id.0)
     }
 
     pub fn add_line(&mut self, line: Line) -> CrumbId {
@@ -131,63 +141,6 @@ impl Scene {
         rc.finish()?;
 
         Ok(())
-    }
-
-    pub fn to_svg<S, M>(
-        &self,
-        theme: &Theme,
-        out_size: S,
-        out_margin: M,
-    ) -> Result<String, Box<dyn Error>>
-    where
-        S: Into<Size>,
-        M: Into<Size>,
-    {
-        let out_size = out_size.into();
-        let out_margin = out_margin.into();
-        let out_scale = ((out_size.width - 2. * out_margin.width) / self.size.width)
-            .min((out_size.height - 2. * out_margin.height) / self.size.height);
-        let root_ts =
-            TranslateScale::translate(out_margin.to_vec2()) * TranslateScale::scale(out_scale);
-
-        let mut svg = Vec::new();
-
-        writeln!(&mut svg, "<!DOCTYPE html>")?;
-        writeln!(&mut svg, "<html>")?;
-        writeln!(&mut svg, "<body>")?;
-        writeln!(
-            &mut svg,
-            "<svg width=\"{}\" height=\"{}\">",
-            out_size.width.round(),
-            out_size.height.round()
-        )?;
-        writeln!(&mut svg, "  <defs>")?;
-        for (name, spec) in theme.get_named_gradspecs() {
-            spec.write_svg_with_name(&mut svg, name)?;
-        }
-        writeln!(&mut svg, "  </defs>")?;
-
-        let bg_color = theme.get_bg_color();
-        write!(&mut svg, "  <rect width=\"100%\" height=\"100%\" ")?;
-        bg_color.write_svg_with_name(&mut svg, "fill")?;
-        writeln!(&mut svg, " />")?;
-
-        for CrumbItem(crumb_id, ts, style_id) in self.all_crumbs(root_ts) {
-            if let Some(crumb) = self.crumbs.get(crumb_id.0) {
-                crumb.write_svg_with_style(&mut svg, ts, style_id, theme)?;
-            } else {
-                // FIXME
-                panic!()
-            }
-        }
-
-        writeln!(&mut svg, "</svg>")?;
-        writeln!(&mut svg, "</body>")?;
-        writeln!(&mut svg, "</html>")?;
-
-        let svg = String::from_utf8(svg)?;
-
-        Ok(svg)
     }
 
     fn push_crumbs_of_a_group<'a>(

@@ -1,7 +1,6 @@
-use std::io;
 use piet::RenderContext;
 use kurbo::{Shape, Line, Rect, RoundedRect, Circle, TranslateScale};
-use crate::{Vis, WriteSvgWithStyle, AsUsvgNodeWithStyle, Theme, StyleId, WriteSvg};
+use crate::{Vis, AsUsvgNodeWithStyle, Theme, StyleId};
 
 #[derive(Clone, Copy, Debug)]
 pub struct CrumbId(pub usize);
@@ -43,23 +42,6 @@ impl Vis for Crumb {
     }
 }
 
-impl WriteSvgWithStyle for Crumb {
-    fn write_svg_with_style<W: io::Write>(
-        &self,
-        mut svg: W,
-        ts: TranslateScale,
-        style_id: Option<StyleId>,
-        theme: &Theme,
-    ) -> io::Result<()> {
-        match self {
-            Crumb::Line(line) => line.write_svg_with_style(&mut svg, ts, style_id, theme),
-            Crumb::Rect(rect) => rect.write_svg_with_style(&mut svg, ts, style_id, theme),
-            Crumb::RoundedRect(rr) => rr.write_svg_with_style(&mut svg, ts, style_id, theme),
-            Crumb::Circle(circ) => circ.write_svg_with_style(&mut svg, ts, style_id, theme),
-        }
-    }
-}
-
 impl AsUsvgNodeWithStyle for Crumb {
     fn as_usvg_node_with_style(
         &self,
@@ -94,29 +76,6 @@ impl Vis for Line {
         {
             rc.stroke(ts * *self, stroke.get_brush(), stroke.get_width());
         }
-    }
-}
-
-impl WriteSvgWithStyle for Line {
-    fn write_svg_with_style<W: io::Write>(
-        &self,
-        mut svg: W,
-        ts: TranslateScale,
-        style_id: Option<StyleId>,
-        theme: &Theme,
-    ) -> io::Result<()> {
-        let p0 = ts * self.p0;
-        let p1 = ts * self.p1;
-
-        write!(svg, "  <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" ", p0.x, p0.y, p1.x, p1.y)?;
-
-        if let Some(stroke) =
-            theme.get_stroke(style_id).or_else(|| theme.get_default_style().get_stroke())
-        {
-            stroke.write_svg(&mut svg)?;
-        }
-
-        writeln!(svg, "/>")
     }
 }
 
@@ -169,33 +128,6 @@ impl Vis for Rect {
         if let Some(border) = style.get_stroke() {
             rc.stroke(rect, border.get_brush(), border.get_width());
         }
-    }
-}
-
-impl WriteSvgWithStyle for Rect {
-    fn write_svg_with_style<W: io::Write>(
-        &self,
-        mut svg: W,
-        ts: TranslateScale,
-        style_id: Option<StyleId>,
-        theme: &Theme,
-    ) -> io::Result<()> {
-        let rect = ts * *self;
-
-        write!(
-            svg,
-            "  <rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" ",
-            rect.x0,
-            rect.y0,
-            rect.width(),
-            rect.height()
-        )?;
-
-        if let Some(style) = theme.get_style(style_id) {
-            style.write_svg(&mut svg)?;
-        }
-
-        writeln!(svg, "/>")
     }
 }
 
@@ -274,35 +206,6 @@ impl Vis for RoundedRect {
     }
 }
 
-impl WriteSvgWithStyle for RoundedRect {
-    fn write_svg_with_style<W: io::Write>(
-        &self,
-        mut svg: W,
-        ts: TranslateScale,
-        style_id: Option<StyleId>,
-        theme: &Theme,
-    ) -> io::Result<()> {
-        let rr = ts * *self;
-        let rect = &rr.rect();
-
-        write!(
-            svg,
-            "  <rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" rx=\"{}\" ",
-            rect.x0,
-            rect.y0,
-            rect.width(),
-            rect.height(),
-            rr.radius()
-        )?;
-
-        if let Some(style) = theme.get_style(style_id) {
-            style.write_svg(&mut svg)?;
-        }
-
-        writeln!(svg, "/>")
-    }
-}
-
 impl AsUsvgNodeWithStyle for RoundedRect {
     fn as_usvg_node_with_style(
         &self,
@@ -369,27 +272,6 @@ impl Vis for Circle {
         if let Some(border) = style.get_stroke() {
             rc.stroke(circ, border.get_brush(), border.get_width());
         }
-    }
-}
-
-impl WriteSvgWithStyle for Circle {
-    fn write_svg_with_style<W: io::Write>(
-        &self,
-        mut svg: W,
-        ts: TranslateScale,
-        style_id: Option<StyleId>,
-        theme: &Theme,
-    ) -> io::Result<()> {
-        let center = ts * self.center;
-        let radius = ts.as_tuple().1 * self.radius;
-
-        write!(svg, "  <circle cx=\"{}\" cy=\"{}\" r=\"{}\" ", center.x, center.y, radius)?;
-
-        if let Some(style) = theme.get_style(style_id) {
-            style.write_svg(&mut svg)?;
-        }
-
-        writeln!(svg, "/>")
     }
 }
 

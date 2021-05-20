@@ -6,7 +6,7 @@ use std::{
     error::Error,
 };
 use piet::ImageFormat;
-use ascetic_vis::{Scene, Theme, CairoBitmapDevice};
+use ascetic_vis::{Scene, Theme, backend::cairo::BitmapDevice, backend::svg::ToSvg};
 
 #[inline]
 fn done_in_micros(start_time: Option<std::time::Instant>) {
@@ -138,7 +138,7 @@ impl App {
         let start_time = self.start("Rendering to cairo...");
         let out_width = self.out_size.0.round() as usize;
         let out_height = self.out_size.1.round() as usize;
-        let mut device = CairoBitmapDevice::new(out_width, out_height, 1.)?;
+        let mut device = BitmapDevice::new(out_width, out_height, 1.)?;
         let mut rc = device.render_context();
 
         scene.render(theme, self.out_size, self.out_margin, &mut rc)?;
@@ -147,7 +147,7 @@ impl App {
         self.save_bitmap_image(device)
     }
 
-    fn save_bitmap_image(&self, device: CairoBitmapDevice) -> Result<&Path, Box<dyn Error>> {
+    fn save_bitmap_image(&self, device: BitmapDevice) -> Result<&Path, Box<dyn Error>> {
         let start_time = self.start("Rendering to bitmap...");
 
         if self.png_color_type != png::ColorType::RGBA || self.png_bit_depth != png::BitDepth::Eight

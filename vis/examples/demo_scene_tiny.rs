@@ -5,7 +5,7 @@ use std::{
     io::Write,
     error::Error,
 };
-use ascetic_vis::{Scene, Theme};
+use ascetic_vis::{Scene, Theme, backend::svg::ToSvg};
 
 #[inline]
 fn done_in_micros(start_time: Option<std::time::Instant>) {

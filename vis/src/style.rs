@@ -1,35 +1,12 @@
-use std::io;
 use piet::{Color, UnitPoint, GradientStop};
 use kurbo::Rect;
 use crate::{
-    Variation, Tweener, WriteSvg, WriteSvgWithName, AsUsvgNodeWithName, AsUsvgStyle, AsUsvgStroke,
+    Variation, Tweener, AsUsvgNodeWithName, AsUsvgStyle, AsUsvgStroke,
     AsUsvgFill, AsUsvgStop,
 };
 
 #[derive(Clone, Copy, Debug)]
 pub struct StyleId(pub usize);
-
-impl WriteSvgWithName for Color {
-    fn write_svg_with_name<W: io::Write, S: AsRef<str>>(
-        &self,
-        mut svg: W,
-        name: S,
-    ) -> io::Result<()> {
-        let rgba = self.as_rgba_u32();
-        let name = name.as_ref();
-        let stem = name.find('-').and_then(|pos| name.get(..pos)).unwrap_or(name);
-
-        write!(
-            svg,
-            "{}=\"#{:06x}\" {}-opacity=\"{:.*}\"",
-            name,
-            rgba >> 8,
-            stem,
-            3, // FIXME precision
-            (rgba & 0x0ff) as f64 / 255.,
-        )
-    }
-}
 
 #[derive(Clone, Debug)]
 pub struct Stroke {
@@ -105,13 +82,6 @@ impl AsUsvgStroke for Stroke {
     }
 }
 
-impl WriteSvg for Stroke {
-    fn write_svg<W: io::Write>(&self, mut svg: W) -> io::Result<()> {
-        self.brush.write_svg_with_name(&mut svg, "stroke")?;
-        write!(svg, " stroke-width=\"{}\"", self.width)
-    }
-}
-
 impl AsUsvgStop for GradientStop {
     fn as_usvg(&self) -> usvg::Stop {
         let (red, green, blue, alpha) = self.color.as_rgba8();
@@ -128,55 +98,6 @@ impl AsUsvgStop for GradientStop {
 pub enum GradSpec {
     Linear(UnitPoint, UnitPoint, Vec<GradientStop>),
     Radial(f64, Vec<GradientStop>),
-}
-
-impl WriteSvgWithName for GradSpec {
-    fn write_svg_with_name<W: io::Write, S: AsRef<str>>(
-        &self,
-        mut svg: W,
-        name: S,
-    ) -> io::Result<()> {
-        match self {
-            GradSpec::Linear(start, end, stops) => {
-                let start = start.resolve(Rect::new(0., 0., 100., 100.));
-                let end = end.resolve(Rect::new(0., 0., 100., 100.));
-
-                writeln!(
-                    svg,
-                    "    <linearGradient id=\"{}\" x1=\"{}%\" y1=\"{}%\" x2=\"{}%\" y2=\"{}%\">",
-                    name.as_ref(),
-                    start.x,
-                    start.y,
-                    end.x,
-                    end.y
-                )?;
-
-                for stop in stops.iter() {
-                    write!(svg, "      <stop offset=\"{}\" ", stop.pos)?;
-                    stop.color.write_svg_with_name(&mut svg, "stop-color")?;
-                    writeln!(svg, "/>")?;
-                }
-
-                writeln!(svg, "    </linearGradient>")
-            }
-            GradSpec::Radial(radius, stops) => {
-                writeln!(
-                    svg,
-                    "    <radialGradient id=\"{}\" r=\"{}%\">",
-                    name.as_ref(),
-                    radius * 100.
-                )?;
-
-                for stop in stops.iter() {
-                    write!(svg, "      <stop offset=\"{}\" ", stop.pos)?;
-                    stop.color.write_svg_with_name(&mut svg, "stop-color")?;
-                    writeln!(svg, "/>")?;
-                }
-
-                writeln!(svg, "    </radialGradient>")
-            }
-        }
-    }
 }
 
 impl AsUsvgNodeWithName for GradSpec {
@@ -248,16 +169,6 @@ impl AsUsvgFill for Fill {
             usvg::Fill { paint, ..Default::default() }
         } else {
             usvg::Fill { paint, opacity: (alpha as f64 / 255.0).into(), ..Default::default() }
-        }
-    }
-}
-
-impl WriteSvg for Fill {
-    fn write_svg<W: io::Write>(&self, mut svg: W) -> io::Result<()> {
-        match self {
-            Fill::Color(ref color) => color.write_svg_with_name(&mut svg, "fill"),
-            Fill::Linear(ref name) => write!(svg, "fill=\"url(#{})\"", name),
-            Fill::Radial(ref name) => write!(svg, "fill=\"url(#{})\"", name),
         }
     }
 }
@@ -463,20 +374,5 @@ impl AsUsvgStyle for Style {
     #[inline]
     fn as_usvg(&self) -> (Option<usvg::Fill>, Option<usvg::Stroke>) {
         (self.fill.as_ref().map(|f| f.as_usvg()), self.stroke.as_ref().map(|s| s.as_usvg()))
-    }
-}
-
-impl WriteSvg for Style {
-    fn write_svg<W: io::Write>(&self, mut svg: W) -> io::Result<()> {
-        if let Some(ref stroke) = self.stroke {
-            stroke.write_svg(&mut svg)?;
-            write!(svg, " ")?;
-        }
-
-        if let Some(ref fill) = self.fill {
-            fill.write_svg(&mut svg)
-        } else {
-            write!(svg, "fill=\"none\"")
-        }
     }
 }
