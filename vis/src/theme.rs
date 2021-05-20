@@ -3,8 +3,7 @@ use std::{
     iter::FromIterator,
 };
 use piet::{Color, LinearGradient, RadialGradient, UnitPoint, GradientStops};
-use usvg::NodeExt;
-use crate::{Style, StyleId, Stroke, Fill, GradSpec, AsUsvgStyle, AsUsvgStroke, AsUsvgFill};
+use crate::{Style, StyleId, Stroke, Fill, GradSpec};
 
 const DEFAULT_NAME: &str = "default";
 const SCENE_NAME: &str = "scene";
@@ -407,27 +406,6 @@ impl Theme {
     #[inline]
     pub fn get_named_gradspecs(&self) -> hash_map::Iter<String, GradSpec> {
         self.named_gradspecs.iter()
-    }
-
-    #[inline]
-    pub fn get_style_as_usvg(&self, style_id: Option<StyleId>) -> (Option<usvg::Fill>, Option<usvg::Stroke>) {
-        self.get_style(style_id).map(|style| style.as_usvg()).unwrap_or((None, None))
-    }
-
-    #[inline]
-    pub fn get_stroke_as_usvg(&self, style_id: Option<StyleId>) -> Option<usvg::Stroke> {
-        self.get_stroke(style_id)
-            .or_else(|| self.get_default_style().get_stroke())
-            .map(|s| s.as_usvg())
-    }
-
-    #[inline]
-    pub fn append_background_to_usvg_tree(&self, rtree: &mut usvg::Tree) {
-        let size = rtree.svg_node().size;
-        let fill = Fill::Color(self.get_bg_color()).as_usvg();
-        let path_data = usvg::PathData::from_rect(size.to_rect(0.0, 0.0));
-        let path = usvg::Path { fill: Some(fill), data: std::rc::Rc::new(path_data), ..Default::default() };
-        rtree.root().append_kind(usvg::NodeKind::Path(path));
     }
 
     pub fn simple_demo() -> Self {

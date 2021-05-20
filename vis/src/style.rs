@@ -1,9 +1,5 @@
 use piet::{Color, UnitPoint, GradientStop};
-use kurbo::Rect;
-use crate::{
-    Variation, Tweener, AsUsvgNodeWithName, AsUsvgStyle, AsUsvgStroke,
-    AsUsvgFill, AsUsvgStop,
-};
+use crate::{Variation, Tweener};
 
 #[derive(Clone, Copy, Debug)]
 pub struct StyleId(pub usize);
@@ -61,84 +57,10 @@ impl Stroke {
     }
 }
 
-impl AsUsvgStroke for Stroke {
-    fn as_usvg(&self) -> usvg::Stroke {
-        let (red, green, blue, alpha) = self.brush.as_rgba8();
-
-        if alpha == 0xff {
-            usvg::Stroke {
-                paint: usvg::Paint::Color(usvg::Color::new(red, green, blue)),
-                width: self.width.into(),
-                ..Default::default()
-            }
-        } else {
-            usvg::Stroke {
-                paint: usvg::Paint::Color(usvg::Color::new(red, green, blue)),
-                opacity: (alpha as f64 / 255.0).into(),
-                width: self.width.into(),
-                ..Default::default()
-            }
-        }
-    }
-}
-
-impl AsUsvgStop for GradientStop {
-    fn as_usvg(&self) -> usvg::Stop {
-        let (red, green, blue, alpha) = self.color.as_rgba8();
-
-        usvg::Stop {
-            offset:  usvg::StopOffset::new(self.pos.into()),
-            color:   usvg::Color::new(red, green, blue),
-            opacity: if alpha == 0xff { 1.0.into() } else { (alpha as f64 / 255.0).into() },
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 pub enum GradSpec {
     Linear(UnitPoint, UnitPoint, Vec<GradientStop>),
     Radial(f64, Vec<GradientStop>),
-}
-
-impl AsUsvgNodeWithName for GradSpec {
-    fn as_usvg_node_with_name<S: AsRef<str>>(&self, name: S) -> usvg::NodeKind {
-        match self {
-            GradSpec::Linear(start, end, stops) => {
-                let start = start.resolve(Rect::new(0., 0., 1., 1.));
-                let end = end.resolve(Rect::new(0., 0., 1., 1.));
-
-                usvg::NodeKind::LinearGradient(usvg::LinearGradient {
-                    id:   name.as_ref().into(),
-                    x1:   start.x,
-                    y1:   start.y,
-                    x2:   end.x,
-                    y2:   end.y,
-                    base: usvg::BaseGradient {
-                        units:         usvg::Units::ObjectBoundingBox,
-                        transform:     usvg::Transform::default(),
-                        spread_method: usvg::SpreadMethod::Pad,
-                        stops:         stops.iter().map(|stop| stop.as_usvg()).collect(),
-                    },
-                })
-            }
-            GradSpec::Radial(radius, stops) => {
-                usvg::NodeKind::RadialGradient(usvg::RadialGradient {
-                    id:   name.as_ref().into(),
-                    r:    (*radius).into(),
-                    cx:   0.5,
-                    cy:   0.5,
-                    fx:   0.5,
-                    fy:   0.5,
-                    base: usvg::BaseGradient {
-                        units:         usvg::Units::ObjectBoundingBox,
-                        transform:     usvg::Transform::default(),
-                        spread_method: usvg::SpreadMethod::Pad,
-                        stops:         stops.iter().map(|stop| stop.as_usvg()).collect(),
-                    },
-                })
-            }
-        }
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -151,25 +73,6 @@ pub enum Fill {
 impl Default for Fill {
     fn default() -> Self {
         Fill::Color(Color::WHITE)
-    }
-}
-
-impl AsUsvgFill for Fill {
-    fn as_usvg(&self) -> usvg::Fill {
-        let (paint, alpha) = match self {
-            Fill::Color(color) => {
-                let (red, green, blue, alpha) = color.as_rgba8();
-
-                (usvg::Paint::Color(usvg::Color::new(red, green, blue)), alpha)
-            }
-            Fill::Linear(name) | Fill::Radial(name) => (usvg::Paint::Link(name.into()), 0xff),
-        };
-
-        if alpha == 0xff {
-            usvg::Fill { paint, ..Default::default() }
-        } else {
-            usvg::Fill { paint, opacity: (alpha as f64 / 255.0).into(), ..Default::default() }
-        }
     }
 }
 
@@ -367,12 +270,5 @@ impl Style {
             Some(Fill::Linear(ref name)) | Some(Fill::Radial(ref name)) => Some(name.as_str()),
             _ => None,
         }
-    }
-}
-
-impl AsUsvgStyle for Style {
-    #[inline]
-    fn as_usvg(&self) -> (Option<usvg::Fill>, Option<usvg::Stroke>) {
-        (self.fill.as_ref().map(|f| f.as_usvg()), self.stroke.as_ref().map(|s| s.as_usvg()))
     }
 }
