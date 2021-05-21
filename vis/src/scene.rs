@@ -123,7 +123,7 @@ impl Scene {
         let root_ts =
             TranslateScale::translate(out_margin.to_vec2()) * TranslateScale::scale(out_scale);
 
-        rc.clear(theme.get_bg_color());
+        rc.clear(None, theme.get_bg_color());
 
         for CrumbItem(crumb_id, ts, style_id) in self.all_crumbs(root_ts) {
             if let Some(crumb) = self.crumbs.get(crumb_id.0) {

@@ -2,7 +2,7 @@
 
 TOY_CRATES="log clap glob"
 PET_CRATES="roxmltree cssparser"
-VIS_CRATES="piet kurbo piet-cairo cairo-rs png"
+VIS_CRATES="kurbo piet png usvg resvg tiny-skia piet-cairo cairo-rs"
 BOY_CRATES="minifb"
 
 print_requested_version() {

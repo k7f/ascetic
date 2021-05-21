@@ -104,6 +104,16 @@ impl AsUsvgNodeWithStyle for Line {
     }
 }
 
+fn rect_data(rect: Rect) -> usvg::PathData {
+    usvg::PathData(vec![
+        usvg::PathSegment::MoveTo { x: rect.x0, y: rect.y0 },
+        usvg::PathSegment::LineTo { x: rect.x1, y: rect.y0 },
+        usvg::PathSegment::LineTo { x: rect.x1, y: rect.y1 },
+        usvg::PathSegment::LineTo { x: rect.x0, y: rect.y1 },
+        usvg::PathSegment::ClosePath,
+    ])
+}
+
 impl AsUsvgNodeWithStyle for Rect {
     fn as_usvg_node_with_style(
         &self,
@@ -111,36 +121,28 @@ impl AsUsvgNodeWithStyle for Rect {
         style_id: Option<StyleId>,
         theme: &Theme,
     ) -> usvg::NodeKind {
-        let rect = ts * *self;
         let (fill, stroke) = theme.get_style_as_usvg(style_id);
-        let segments = vec![
-            usvg::PathSegment::MoveTo { x: rect.x0, y: rect.y0 },
-            usvg::PathSegment::LineTo { x: rect.x1, y: rect.y0 },
-            usvg::PathSegment::LineTo { x: rect.x1, y: rect.y1 },
-            usvg::PathSegment::LineTo { x: rect.x0, y: rect.y1 },
-            usvg::PathSegment::ClosePath,
-        ];
-        let data = std::rc::Rc::new(usvg::PathData(segments));
+        let data = std::rc::Rc::new(rect_data(ts * *self));
 
         usvg::NodeKind::Path(usvg::Path { fill, stroke, data, ..Default::default() })
     }
 }
 
-fn rr_data(x: f64, y: f64, width: f64, height: f64, rx: f64, ry: f64) -> usvg::PathData {
+fn rr_data(rect: Rect, rx: f64, ry: f64) -> usvg::PathData {
     let mut path = usvg::PathData::with_capacity(10);
-    path.push_move_to(x + rx, y);
+    path.push_move_to(rect.x0 + rx, rect.y0);
 
-    path.push_line_to(x + width - rx, y);
-    path.push_arc_to(rx, ry, 0.0, false, true, x + width, y + ry);
+    path.push_line_to(rect.x1 - rx, rect.y0);
+    path.push_arc_to(rx, ry, 0.0, false, true, rect.x1, rect.y0 + ry);
 
-    path.push_line_to(x + width, y + height - ry);
-    path.push_arc_to(rx, ry, 0.0, false, true, x + width - rx, y + height);
+    path.push_line_to(rect.x1, rect.y1 - ry);
+    path.push_arc_to(rx, ry, 0.0, false, true, rect.x1 - rx, rect.y1);
 
-    path.push_line_to(x + rx, y + height);
-    path.push_arc_to(rx, ry, 0.0, false, true, x, y + height - ry);
+    path.push_line_to(rect.x0 + rx, rect.y1);
+    path.push_arc_to(rx, ry, 0.0, false, true, rect.x0, rect.y1 - ry);
 
-    path.push_line_to(x, y + ry);
-    path.push_arc_to(rx, ry, 0.0, false, true, x + rx, y);
+    path.push_line_to(rect.x0, rect.y0 + ry);
+    path.push_arc_to(rx, ry, 0.0, false, true, rect.x0 + rx, rect.y0);
 
     path.push_close_path();
 
@@ -154,18 +156,13 @@ impl AsUsvgNodeWithStyle for RoundedRect {
         style_id: Option<StyleId>,
         theme: &Theme,
     ) -> usvg::NodeKind {
-        let rr = ts * *self;
-        let rect = &rr.rect();
-        let radius = rr.radius();
         let (fill, stroke) = theme.get_style_as_usvg(style_id);
-        let data = std::rc::Rc::new(rr_data(
-            rect.x0,
-            rect.y0,
-            rect.width(),
-            rect.height(),
-            radius,
-            radius,
-        ));
+        let rr = ts * *self;
+        let data = std::rc::Rc::new(if let Some(radius) = rr.radii().as_single_radius() {
+            rr_data(rr.rect(), radius, radius)
+        } else {
+            rect_data(rr.rect())
+        });
 
         usvg::NodeKind::Path(usvg::Path { fill, stroke, data, ..Default::default() })
     }
@@ -513,34 +510,37 @@ impl RenderContext for BitmapDevice {
         Fill::Color(color)
     }
 
-    fn gradient(&mut self, gradient: impl Into<FixedGradient>) -> Result<Self::Brush, piet::Error> {
+    fn gradient(
+        &mut self,
+        _gradient: impl Into<FixedGradient>,
+    ) -> Result<Self::Brush, piet::Error> {
         Ok(Fill::Color(Color::WHITE))
     }
 
-    fn clear(&mut self, color: Color) {}
+    fn clear(&mut self, _region: impl Into<Option<Rect>>, _color: Color) {}
 
-    fn stroke(&mut self, shape: impl Shape, brush: &impl IntoBrush<Self>, width: f64) {}
+    fn stroke(&mut self, _shape: impl Shape, _brush: &impl IntoBrush<Self>, _width: f64) {}
 
     fn stroke_styled(
         &mut self,
-        shape: impl Shape,
-        brush: &impl IntoBrush<Self>,
-        width: f64,
-        style: &StrokeStyle,
+        _shape: impl Shape,
+        _brush: &impl IntoBrush<Self>,
+        _width: f64,
+        _style: &StrokeStyle,
     ) {
     }
 
-    fn fill(&mut self, shape: impl Shape, brush: &impl IntoBrush<Self>) {}
+    fn fill(&mut self, _shape: impl Shape, _brush: &impl IntoBrush<Self>) {}
 
-    fn fill_even_odd(&mut self, shape: impl Shape, brush: &impl IntoBrush<Self>) {}
+    fn fill_even_odd(&mut self, _shape: impl Shape, _brush: &impl IntoBrush<Self>) {}
 
-    fn clip(&mut self, shape: impl Shape) {}
+    fn clip(&mut self, _shape: impl Shape) {}
 
     fn text(&mut self) -> &mut Self::Text {
         &mut self.text
     }
 
-    fn draw_text(&mut self, layout: &Self::TextLayout, pos: impl Into<Point>) {}
+    fn draw_text(&mut self, _layout: &Self::TextLayout, _pos: impl Into<Point>) {}
 
     fn save(&mut self) -> Result<(), piet::Error> {
         Ok(())
@@ -554,36 +554,40 @@ impl RenderContext for BitmapDevice {
         Ok(())
     }
 
-    fn transform(&mut self, transform: Affine) {}
+    fn transform(&mut self, _transform: Affine) {}
 
     fn make_image(
         &mut self,
-        width: usize,
-        height: usize,
-        buf: &[u8],
-        format: ImageFormat,
+        _width: usize,
+        _height: usize,
+        _buf: &[u8],
+        _format: ImageFormat,
     ) -> Result<Self::Image, piet::Error> {
         Ok(NullImage)
     }
 
     fn draw_image(
         &mut self,
-        image: &Self::Image,
-        dst_rect: impl Into<Rect>,
-        interp: InterpolationMode,
+        _image: &Self::Image,
+        _dst_rect: impl Into<Rect>,
+        _interp: InterpolationMode,
     ) {
     }
 
     fn draw_image_area(
         &mut self,
-        image: &Self::Image,
-        src_rect: impl Into<Rect>,
-        dst_rect: impl Into<Rect>,
-        interp: InterpolationMode,
+        _image: &Self::Image,
+        _src_rect: impl Into<Rect>,
+        _dst_rect: impl Into<Rect>,
+        _interp: InterpolationMode,
     ) {
     }
 
-    fn blurred_rect(&mut self, rect: Rect, blur_radius: f64, brush: &impl IntoBrush<Self>) {}
+    fn capture_image_area(&mut self, _src_rect: impl Into<Rect>) -> Result<Self::Image, Error> {
+        Ok(NullImage)
+    }
+
+    fn blurred_rect(&mut self, _rect: Rect, _blur_radius: f64, _brush: &impl IntoBrush<Self>) {}
 
     fn current_transform(&self) -> Affine {
         Affine::default()

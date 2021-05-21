@@ -18,13 +18,13 @@ svg = []
 
 [dependencies]
 
-kurbo = "0.7"
-piet = "0.3"
+kurbo = "0.8"
+piet = "0.4"
 png = "0.16"
 usvg = { version = "0.14", optional = true }
 resvg = { version = "0.14", optional = true }
 tiny-skia = { version = "0.5", optional = true }
-piet-cairo = { version = "0.3", optional = true }
+piet-cairo = { version = "0.4", optional = true }
 cairo-rs = { version = "0.9", optional = true }
 
 [[example]]

@@ -197,16 +197,26 @@ impl WriteSvgWithStyle for RoundedRect {
     ) -> std::io::Result<()> {
         let rr = ts * *self;
         let rect = &rr.rect();
-
-        write!(
-            svg,
-            "  <rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" rx=\"{}\" ",
-            rect.x0,
-            rect.y0,
-            rect.width(),
-            rect.height(),
-            rr.radius()
-        )?;
+        if let Some(radius) = rr.radii().as_single_radius() {
+            write!(
+                svg,
+                "  <rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" rx=\"{}\" ",
+                rect.x0,
+                rect.y0,
+                rect.width(),
+                rect.height(),
+                radius,
+            )?;
+        } else {
+            write!(
+                svg,
+                "  <rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" ",
+                rect.x0,
+                rect.y0,
+                rect.width(),
+                rect.height(),
+            )?;
+        }
 
         if let Some(style) = theme.get_style(style_id) {
             style.write_svg(&mut svg)?;
@@ -238,7 +248,11 @@ impl WriteSvgWithStyle for Circle {
 }
 
 pub trait WriteSvgWithName {
-    fn write_svg_with_name<W: std::io::Write, S: AsRef<str>>(&self, svg: W, name: S) -> std::io::Result<()>;
+    fn write_svg_with_name<W: std::io::Write, S: AsRef<str>>(
+        &self,
+        svg: W,
+        name: S,
+    ) -> std::io::Result<()>;
 }
 
 impl WriteSvgWithName for Color {
