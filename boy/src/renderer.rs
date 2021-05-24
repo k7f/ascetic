@@ -1,9 +1,12 @@
 use std::fmt;
-use ascetic_vis::{Scene, Theme, CairoBitmapDevice, ImageFormat, TranslateScale};
+use ascetic_vis::{
+    Scene, Theme, ImageFormat, TranslateScale,
+    backend::usvg::{Tree, Pixmap, FitTo, AsUsvgTree, render_to_pixmap},
+};
 use crate::BoyError;
 
 pub struct Renderer {
-    buffer:   Option<Vec<u8>>,
+    pixmap:   Option<Pixmap>,
     size:     (f64, f64),
     margin:   (f64, f64),
     is_dirty: bool,
@@ -11,7 +14,9 @@ pub struct Renderer {
 
 impl Renderer {
     pub fn new(size: (f64, f64), margin: (f64, f64)) -> Self {
-        Renderer { buffer: None, size, margin, is_dirty: true }
+        let pixmap = Pixmap::new(size.0.round() as u32, size.1.round() as u32);
+
+        Renderer { pixmap, size, margin, is_dirty: true }
     }
 
     pub fn set_size(&mut self, size: (f64, f64)) {
@@ -26,7 +31,7 @@ impl Renderer {
 
     #[inline]
     pub fn get_buffer(&self) -> Option<&[u8]> {
-        self.buffer.as_deref()
+        self.pixmap.as_ref().map(|p| p.data())
     }
 
     #[inline]
@@ -40,26 +45,37 @@ impl Renderer {
         theme: &Theme,
         transform: TranslateScale,
     ) -> Result<(), BoyError> {
-        let (pix_width, pix_height) = self.get_pix_size();
-        let pix_scale = transform.as_tuple().1;
-        let mut device = CairoBitmapDevice::new(pix_width, pix_height, pix_scale)?;
-        let mut rc = device.render_context();
+        if let Some(ref mut pixmap) = self.pixmap.as_mut() {
+            let rtree = scene.as_usvg_tree(theme, self.size, self.margin);
+            let (_pix_translate, pix_scale) = transform.as_tuple();
 
-        scene.render(theme, self.size, self.margin, &mut rc)?;
+            // FIXME
+            let result = if let Some(zoom) = if pix_scale < 0.001 {
+                Some(0.001)
+            } else if pix_scale > 1000.0 {
+                Some(1000.0)
+            } else if (pix_scale - 1.0).abs() < 0.001 {
+                None
+            } else {
+                Some(pix_scale as f32)
+            } {
+                render_to_pixmap(&rtree, FitTo::Zoom(zoom), pixmap.as_mut())
+            } else {
+                render_to_pixmap(&rtree, FitTo::Original, pixmap.as_mut())
+            };
 
-        match device.into_raw_pixels(ImageFormat::RgbaPremul) {
-            Ok(buffer) => {
-                self.buffer = Some(buffer);
+            if result.is_some() {
                 self.is_dirty = false;
 
                 Ok(())
-            }
-            Err(err) => {
-                self.buffer = None;
+            } else {
                 self.is_dirty = true;
 
-                Err(err.into())
+                Err(BoyError::PixmapRenderingFailure)
             }
+        } else {
+            self.is_dirty = true;
+            Err(BoyError::MissingPixmap)
         }
     }
 }

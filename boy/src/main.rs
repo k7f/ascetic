@@ -79,6 +79,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 }
                 BoyError::PietFailure(err) => error!("{}", err),
                 BoyError::MinifbFailure(err) => error!("{}", err),
+                err => error!("{}", err),
             }
         } else if app.gui.exit_confirmed() {
             return Ok(())

@@ -8,6 +8,10 @@ use piet::{
 use usvg::NodeExt;
 use crate::{Scene, Theme, Style, StyleId, Stroke, Fill, GradSpec, Crumb, CrumbItem};
 
+pub use usvg::{Tree, FitTo};
+pub use tiny_skia::Pixmap;
+pub use resvg::render as render_to_pixmap;
+
 pub trait AsUsvgTree {
     fn as_usvg_tree<S, M>(&self, theme: &Theme, out_size: S, out_margin: M) -> usvg::Tree
     where

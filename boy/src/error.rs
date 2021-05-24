@@ -6,6 +6,8 @@ pub enum BoyError {
     Fatal(Box<dyn Error>),
     PietFailure(piet::Error),
     MinifbFailure(minifb::Error),
+    MissingPixmap,
+    PixmapRenderingFailure,
 }
 
 impl fmt::Display for BoyError {
@@ -16,6 +18,8 @@ impl fmt::Display for BoyError {
             Fatal(err) => err.fmt(f),
             PietFailure(err) => err.fmt(f),
             MinifbFailure(err) => err.fmt(f),
+            MissingPixmap => write!(f, "Missing pixmap"),
+            PixmapRenderingFailure => write!(f, "Pixmap rendering failed"),
         }
     }
 }
