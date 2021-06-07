@@ -3,7 +3,7 @@
 TOY_CRATES="log clap glob"
 PET_CRATES="roxmltree cssparser"
 VIS_CRATES="kurbo piet png usvg resvg tiny-skia piet-cairo cairo-rs"
-BOY_CRATES="minifb"
+RUT_CRATES="tracing tracing-subscriber tracing-log pixels winit"
 
 print_requested_version() {
     proj=${1}
@@ -28,7 +28,7 @@ print_requested_version() {
     echo -n \"${version}\"
 }
 
-for proj in toy pet vis boy ; do
+for proj in toy pet vis rut ; do
     crates=${proj^^}_CRATES
     for crate in ${!crates} ; do
         echo -n "$crate = "

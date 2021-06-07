@@ -5,6 +5,7 @@ use std::{
     time::{Instant, Duration},
     thread,
 };
+use tracing::trace;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Action {
@@ -110,6 +111,7 @@ impl Scheduler {
 
     #[inline]
     pub fn enroll(&mut self, action: Action) -> bool {
+        trace!("enroll action {:?}", action);
         if let Some(debouncer) = self.debouncers.get_mut(action as usize) {
             debouncer.start();
         }
@@ -118,13 +120,25 @@ impl Scheduler {
     }
 
     #[inline]
-    pub fn is_pending(&self, action: Action) -> bool {
-        self.actions.contains(&action)
+    pub fn is_pending(&mut self, action: Action, do_remove: bool) -> bool {
+        self.actions.contains(&action) && {
+            if do_remove {
+                self.actions.remove(&action)
+            } else {
+                true
+            }
+        }
     }
 
     #[inline]
-    pub fn is_ready(&mut self, action: Action) -> bool {
-        self.sleep_period(action).is_none() && self.actions.remove(&action)
+    pub fn is_ready(&mut self, action: Action, do_remove: bool) -> bool {
+        self.sleep_period(action).is_none() && {
+            if do_remove {
+                self.actions.remove(&action)
+            } else {
+                self.actions.contains(&action)
+            }
+        }
     }
 
     #[inline]
@@ -133,21 +147,22 @@ impl Scheduler {
     }
 
     pub fn next_eager(&mut self) -> Option<Action> {
-        if self.is_ready(Action::UpdateWindow) {
+        // FIXME use a better way of enforcing priorities.
+        if self.is_ready(Action::UpdateWindow, true) {
             Some(Action::UpdateWindow)
-        } else if self.is_ready(Action::RenderScene) {
+        } else if self.is_ready(Action::RenderScene, true) {
             Some(Action::RenderScene)
-        } else if self.is_ready(Action::RedrawContents) {
+        } else if self.is_ready(Action::RedrawContents, true) {
             Some(Action::RedrawContents)
-        } else if self.is_ready(Action::ModifyTheme) {
+        } else if self.is_ready(Action::ModifyTheme, true) {
             Some(Action::ModifyTheme)
-        } else if self.is_ready(Action::Pan) {
+        } else if self.is_ready(Action::Pan, true) {
             Some(Action::Pan)
-        } else if self.is_ready(Action::Zoom) {
+        } else if self.is_ready(Action::Zoom, true) {
             Some(Action::Zoom)
-        } else if self.is_ready(Action::UpdateKeys) {
+        } else if self.is_ready(Action::UpdateKeys, true) {
             Some(Action::UpdateKeys)
-        } else if self.is_ready(Action::UpdateMouse) {
+        } else if self.is_ready(Action::UpdateMouse, true) {
             Some(Action::UpdateMouse)
         } else {
             None

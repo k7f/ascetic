@@ -1,9 +1,8 @@
-use std::fmt;
+use tracing::trace;
 use ascetic_vis::{
     Scene, Theme, ImageFormat, TranslateScale,
     backend::usvg::{Tree, Pixmap, FitTo, AsUsvgTree, render_to_pixmap},
 };
-use crate::BoyError;
 
 pub struct Renderer {
     pixmap:   Option<Pixmap>,
@@ -25,8 +24,8 @@ impl Renderer {
     }
 
     #[inline]
-    pub fn get_pix_size(&self) -> (usize, usize) {
-        (self.size.0.round() as usize, self.size.1.round() as usize)
+    pub fn get_pix_size(&self) -> (u32, u32) {
+        (self.size.0.round() as u32, self.size.1.round() as u32)
     }
 
     #[inline]
@@ -44,7 +43,8 @@ impl Renderer {
         scene: &Scene,
         theme: &Theme,
         transform: TranslateScale,
-    ) -> Result<(), BoyError> {
+    ) -> Result<(), crate::Error> {
+        trace!("renderer::render scene into pixmap");
         if let Some(ref mut pixmap) = self.pixmap.as_mut() {
             let rtree = scene.as_usvg_tree(theme, self.size, self.margin);
             let (_pix_translate, pix_scale) = transform.as_tuple();
@@ -71,17 +71,17 @@ impl Renderer {
             } else {
                 self.is_dirty = true;
 
-                Err(BoyError::PixmapRenderingFailure)
+                Err(crate::Error::PixmapRenderingFailure)
             }
         } else {
             self.is_dirty = true;
-            Err(BoyError::MissingPixmap)
+            Err(crate::Error::MissingPixmap)
         }
     }
 }
 
-impl fmt::Debug for Renderer {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl std::fmt::Debug for Renderer {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.debug_tuple("Renderer").field(&format_args!("..")).finish()
     }
 }
