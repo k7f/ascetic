@@ -56,15 +56,16 @@ impl App {
             }
         }
 
-        let _ = Logger::create(
+        let mut logger = Logger::new("error")?;
+        logger.set_crate_filter(
             match verbosity {
                 0 => "warn",
                 1 => "info",
                 2 => "debug",
                 _ => "trace",
             },
-            "error",
         )?;
+        logger.install()?;
 
         let tracing_span = tracing::info_span!("main");
         let _tracing_guard = tracing_span.enter();

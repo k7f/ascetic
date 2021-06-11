@@ -17,6 +17,8 @@ pub enum Action {
     ModifyTheme,
     Pan,
     Zoom,
+    FullscreenToggle,
+    FullscreenOff,
     Exit,
     DoNothing,
 }
@@ -28,10 +30,6 @@ struct Debouncer {
 }
 
 impl Debouncer {
-    fn new(period: Duration) -> Self {
-        Debouncer { anchor: None, period }
-    }
-
     #[inline]
     fn set_period(&mut self, period: Duration) {
         self.period = period;
@@ -54,6 +52,7 @@ impl Debouncer {
         }
     }
 
+    #[allow(dead_code)]
     #[inline]
     fn is_started(&self) -> bool {
         self.anchor.is_some()
@@ -160,6 +159,10 @@ impl Scheduler {
             Some(Action::Pan)
         } else if self.is_ready(Action::Zoom, true) {
             Some(Action::Zoom)
+        } else if self.is_ready(Action::FullscreenOff, true) {
+            Some(Action::FullscreenOff)
+        } else if self.is_ready(Action::FullscreenToggle, true) {
+            Some(Action::FullscreenToggle)
         } else if self.is_ready(Action::UpdateKeys, true) {
             Some(Action::UpdateKeys)
         } else if self.is_ready(Action::UpdateMouse, true) {

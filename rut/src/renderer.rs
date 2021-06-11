@@ -1,7 +1,7 @@
 use tracing::trace;
 use ascetic_vis::{
-    Scene, Theme, ImageFormat, TranslateScale,
-    backend::usvg::{Tree, Pixmap, FitTo, AsUsvgTree, render_to_pixmap},
+    Scene, Theme, TranslateScale,
+    backend::usvg::{Pixmap, FitTo, AsUsvgTree, render_to_pixmap},
 };
 
 pub struct Renderer {

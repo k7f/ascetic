@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use tracing::trace;
+use tracing::{error, trace};
 use ascetic_vis::TranslateScale;
 
 pub struct Raster {
@@ -64,14 +64,30 @@ impl Raster {
         transform: TranslateScale,
     ) -> Result<(), crate::Error> {
         trace!("raster::redraw rendered pixmap into buffer");
-        // FIXME validate source size
+
+        if (source.len() as u32) < (source_width * source_height) * 4 {
+            return Err(crate::Error::RasterSourceUnderflow)
+        }
+
         self.buffer.resize((self.width * self.height) as usize, 0);
 
         let x_offset = transform.as_tuple().0.x.round() as i64;
         let y_offset = transform.as_tuple().0.y.round() as i64;
 
+        match y_offset.cmp(&0) {
+            Ordering::Greater => {
+                error!("FIXME vertical shift")
+            }
+            Ordering::Less => {
+                error!("FIXME vertical shift")
+            }
+            Ordering::Equal => {}
+        }
+
         match x_offset.cmp(&0) {
             Ordering::Greater => {
+                error!("FIXME horizontal shift");
+
                 let pix_offset = x_offset as u32;
 
                 if pix_offset < self.width {
@@ -108,6 +124,8 @@ impl Raster {
             }
 
             Ordering::Less => {
+                error!("FIXME horizontal shift");
+
                 let pix_offset = -x_offset as u32;
 
                 if pix_offset < self.width {
@@ -133,81 +151,84 @@ impl Raster {
             }
 
             Ordering::Equal => {
-                if source_width > self.width {
-                    let mut source_iter = source.chunks(4);
-                    let mut dest_iter = self.buffer.iter_mut();
-                    let mut x_pos = 0;
-                    let mut y_pos = 0;
-                    for pixel in &mut dest_iter {
-                        if x_pos < self.width {
-                            x_pos += 1;
-                        } else if y_pos < self.height {
-                            x_pos = 1;
-                            y_pos += 1;
-                            if let Err(offset) =
-                                source_iter.advance_by((source_width - self.width) as usize)
-                            {
+                match source_width.cmp(&self.width) {
+                    Ordering::Greater => {
+                        let mut source_iter = source.chunks(4);
+                        let mut dest_iter = self.buffer.iter_mut();
+                        let mut x_pos = 0;
+                        let mut y_pos = 0;
+                        for pixel in &mut dest_iter {
+                            if x_pos < self.width {
+                                x_pos += 1;
+                            } else if y_pos < self.height {
+                                x_pos = 1;
+                                y_pos += 1;
+                                if let Err(_offset) =
+                                    source_iter.advance_by((source_width - self.width) as usize)
+                                {
+                                    *pixel = 0;
+                                    break
+                                }
+                            } else {
                                 *pixel = 0;
                                 break
                             }
-                        } else {
-                            *pixel = 0;
-                            break
-                        }
 
-                        if let Some(chunk) = source_iter.next() {
+                            if let Some(chunk) = source_iter.next() {
+                                let (r, g, b) = (chunk[0] as u32, chunk[1] as u32, chunk[2] as u32);
+
+                                *pixel = (r << 16) | (g << 8) | b;
+                            } else {
+                                *pixel = 0;
+                                break
+                            }
+                        }
+                        for pixel in dest_iter {
+                            *pixel = 0;
+                        }
+                    }
+                    Ordering::Less => {
+                        let mut source_iter = source.chunks(4);
+                        let mut x_pos = 0;
+                        let mut y_pos = 0;
+                        for pixel in self.buffer.iter_mut() {
+                            if x_pos < source_width {
+                                x_pos += 1;
+                            } else if x_pos < self.width {
+                                x_pos += 1;
+                                *pixel = 0;
+                                continue
+                            } else if y_pos < self.height {
+                                x_pos = 1;
+                                y_pos += 1;
+                            } else {
+                                *pixel = 0;
+                                break
+                            }
+
+                            if let Some(chunk) = source_iter.next() {
+                                let (r, g, b) = (chunk[0] as u32, chunk[1] as u32, chunk[2] as u32);
+
+                                *pixel = (r << 16) | (g << 8) | b;
+                            } else if y_pos < self.height {
+                                *pixel = 0;
+                            } else {
+                                // FIXME error
+                                *pixel = 0;
+                                break
+                            }
+                        }
+                    }
+                    Ordering::Equal => {
+                        let mut dest_iter = self.buffer.iter_mut();
+                        for (pixel, chunk) in (&mut dest_iter).zip(source.chunks(4)) {
                             let (r, g, b) = (chunk[0] as u32, chunk[1] as u32, chunk[2] as u32);
 
                             *pixel = (r << 16) | (g << 8) | b;
-                        } else {
-                            *pixel = 0;
-                            break
                         }
-                    }
-                    for pixel in dest_iter {
-                        *pixel = 0;
-                    }
-                } else if source_width < self.width {
-                    let mut source_iter = source.chunks(4);
-                    let mut dest_iter = self.buffer.iter_mut();
-                    let mut x_pos = 0;
-                    let mut y_pos = 0;
-                    for pixel in self.buffer.iter_mut() {
-                        if x_pos < source_width {
-                            x_pos += 1;
-                        } else if x_pos < self.width {
-                            x_pos += 1;
+                        for pixel in dest_iter {
                             *pixel = 0;
-                            continue
-                        } else if y_pos < self.height {
-                            x_pos = 1;
-                            y_pos += 1;
-                        } else {
-                            *pixel = 0;
-                            break
                         }
-
-                        if let Some(chunk) = source_iter.next() {
-                            let (r, g, b) = (chunk[0] as u32, chunk[1] as u32, chunk[2] as u32);
-
-                            *pixel = (r << 16) | (g << 8) | b;
-                        } else if y_pos < self.height {
-                            *pixel = 0;
-                        } else {
-                            // FIXME error
-                            *pixel = 0;
-                            break
-                        }
-                    }
-                } else {
-                    let mut dest_iter = self.buffer.iter_mut();
-                    for (pixel, chunk) in (&mut dest_iter).zip(source.chunks(4)) {
-                        let (r, g, b) = (chunk[0] as u32, chunk[1] as u32, chunk[2] as u32);
-
-                        *pixel = (r << 16) | (g << 8) | b;
-                    }
-                    for pixel in dest_iter {
-                        *pixel = 0;
                     }
                 }
             }

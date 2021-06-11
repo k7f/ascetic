@@ -1,11 +1,11 @@
-use std::{iter::FromIterator, time::Duration};
-use tracing::{trace, debug, warn, error};
+use std::time::Duration;
+use tracing::{trace, debug};
 use winit::{
-    dpi::{PhysicalPosition, PhysicalSize},
-    event::{ElementState, Event, KeyboardInput, ModifiersState, VirtualKeyCode, WindowEvent},
-    event_loop::{ControlFlow, EventLoop},
-    platform::unix::EventLoopExtUnix,
+    dpi::PhysicalSize,
+    event::{Event, ModifiersState, VirtualKeyCode, WindowEvent},
+    event_loop::EventLoop,
     window::{Fullscreen, WindowBuilder, Window},
+    monitor::MonitorHandle,
 };
 use pixels::wgpu;
 use ascetic_vis::{Scene, Theme};
@@ -13,20 +13,21 @@ use crate::{Action, Scheduler, Renderer, Raster, Frame, Pan, Zoom, Keyboard, Mou
 
 #[derive(Debug)]
 pub struct Gui {
-    scheduler:  Scheduler,
-    window:     Window,
-    win_width:  u32,
-    win_height: u32,
-    keyboard:   Keyboard,
-    mouse:      Mouse,
-    pan:        Pan,
-    zoom:       Zoom,
-    is_dark:    bool,
-    renderer:   Renderer,
-    raster:     Raster,
-    frame:      Frame,
-    need_resize: bool,
-    need_redraw: bool,
+    scheduler:          Scheduler,
+    window:             Window,
+    win_width:          u32,
+    win_height:         u32,
+    keyboard:           Keyboard,
+    mouse:              Mouse,
+    pan:                Pan,
+    zoom:               Zoom,
+    fullscreen_monitor: MonitorHandle,
+    is_dark:            bool,
+    renderer:           Renderer,
+    raster:             Raster,
+    frame:              Frame,
+    need_resize:        bool,
+    need_redraw:        bool,
 }
 
 impl Gui {
@@ -34,14 +35,19 @@ impl Gui {
     const DEFAULT_RENDER_MARGIN: (f64, f64) = (10., 10.);
     const DEFAULT_UPDATE_WINDOW_PERIOD: Duration = Duration::from_millis(20);
 
-    pub fn new(event_loop: &EventLoop<()>, window_builder: &WindowBuilder) -> Result<Self, crate::Error> {
-        let scheduler =
-            Scheduler::from_iter([Action::UpdateWindow, Action::RenderScene].iter().copied())
-                .with_debouncers(
-                    [(Action::UpdateWindow, Self::DEFAULT_UPDATE_WINDOW_PERIOD)].iter().copied(),
-                );
+    pub fn new(
+        event_loop: &EventLoop<()>,
+        window_builder: &WindowBuilder,
+    ) -> Result<Self, crate::Error> {
+        let scheduler = [Action::UpdateWindow, Action::RenderScene]
+            .iter()
+            .copied()
+            .collect::<Scheduler>()
+            .with_debouncers(
+                [(Action::UpdateWindow, Self::DEFAULT_UPDATE_WINDOW_PERIOD)].iter().copied(),
+            );
 
-        let fullscreen_monitor = event_loop.available_monitors().nth(0).unwrap();
+        let fullscreen_monitor = event_loop.available_monitors().next().unwrap();
         let window = window_builder.clone().build(event_loop).unwrap();
 
         let mut keyboard = Keyboard::new();
@@ -73,6 +79,7 @@ impl Gui {
             mouse,
             pan,
             zoom,
+            fullscreen_monitor,
             is_dark,
             renderer,
             raster,
@@ -143,32 +150,18 @@ impl Gui {
             if mods == ModifiersState::CTRL {
                 self.scheduler.enroll(Action::Exit);
             }
+        } else {
+            if self.keyboard.is_pressed(VirtualKeyCode::Escape).is_some() {
+                self.scheduler.enroll(Action::FullscreenOff);
+            }
+            if let Some(mods) = self.keyboard.is_pressed(VirtualKeyCode::F11) {
+                if mods == ModifiersState::CTRL {
+                    self.scheduler.enroll(Action::FullscreenToggle);
+                }
+            }
         }
-        // (VirtualKeyCode::Q, _) => {
-        //     if self.keyboard.modifiers == ModifiersState::CTRL {
-        //         *control_flow = ControlFlow::Exit;
-        //         return;
-        //     }
-        // }
-        // (VirtualKeyCode::Escape, ElementState::Pressed) => {
-        //     if window.fullscreen().is_some() {
-        //         self.window.set_fullscreen(None);
-        //     }
-        // }
-        // (VirtualKeyCode::F11, ElementState::Pressed) => {
-        //     if window.fullscreen().is_some() {
-        //         self.window.set_fullscreen(None);
-        //     } else {
-        //         self.window.set_fullscreen(Some(Fullscreen::Borderless(Some(
-        //             fullscreen_monitor.clone(),
-        //         ))));
-        //     }
-        // }
 
-        // if self.keyboard.update(&self.window) {
-        //     if self.keyboard.is_pressed(Key::Escape) {
-        //         self.scheduler.enroll(Action::Exit);
-        //     } else if self.keyboard.is_pressed(Key::LeftCtrl)
+        //     if self.keyboard.is_pressed(Key::LeftCtrl)
         //         || self.keyboard.is_pressed(Key::RightCtrl)
         //     {
         //         if self.keyboard.is_pressed(Key::Key0) {
@@ -228,7 +221,6 @@ impl Gui {
         //             self.scheduler.enroll(Action::ModifyTheme);
         //         }
         //     }
-        // }
 
         Ok(())
     }
@@ -278,6 +270,20 @@ impl Gui {
             Action::Zoom => {
                 self.render_scene(scene, theme)?;
             }
+            Action::FullscreenOff => {
+                if self.window.fullscreen().is_some() {
+                    self.window.set_fullscreen(None);
+                }
+            }
+            Action::FullscreenToggle => {
+                if self.window.fullscreen().is_some() {
+                    self.window.set_fullscreen(None);
+                } else {
+                    self.window.set_fullscreen(Some(Fullscreen::Borderless(Some(
+                        self.fullscreen_monitor.clone(),
+                    ))));
+                }
+            }
             Action::UpdateKeys => {
                 self.update_keys()?;
             }
@@ -300,7 +306,12 @@ impl Gui {
         true
     }
 
-    pub fn update(&mut self, event: Event<()>, scene: &mut Scene, theme: &mut Theme) -> Result<bool, crate::Error> {
+    pub fn update(
+        &mut self,
+        event: Event<()>,
+        scene: &mut Scene,
+        theme: &mut Theme,
+    ) -> Result<bool, crate::Error> {
         if self.scheduler.is_pending(Action::Exit, true) && self.exit_confirmed() {
             return Ok(true)
         }
@@ -317,43 +328,54 @@ impl Gui {
                 trace!("{:?}", event);
             }
             Event::RedrawRequested(_) => self.need_redraw = true,
-            Event::RedrawEventsCleared => if self.need_redraw {
-                self.need_redraw = false;
-                self.raster.apply(self.frame.get());
+            Event::RedrawEventsCleared => {
+                if self.need_redraw {
+                    self.need_redraw = false;
+                    self.raster.apply(self.frame.get());
 
-                if let Err(err) = self.frame.render() {
-                    match err {
-                        crate::Error::SwapChainFailure(wgpu::SwapChainError::Outdated)
+                    if let Err(err) = self.frame.render() {
+                        match err {
+                            crate::Error::SwapChainFailure(wgpu::SwapChainError::Outdated)
                             | crate::Error::SwapChainFailure(wgpu::SwapChainError::Lost) => {
                                 self.scheduler.enroll(Action::UpdateWindow);
                             }
-                        _ => {}
+                            _ => {}
+                        }
+                        return Err(err)
                     }
-                    return Err(err)
                 }
             }
-            Event::WindowEvent {
-                ref event,
-                window_id,
-            } if window_id == self.window.id() => {
+            Event::WindowEvent { ref event, window_id } if window_id == self.window.id() => {
+                use WindowEvent::*;
                 match event {
-                    WindowEvent::CloseRequested | WindowEvent::Destroyed => {
-                        return Ok(self.exit_confirmed())
+                    CloseRequested | Destroyed => return Ok(self.exit_confirmed()),
+                    ModifiersChanged(modifiers) => {
+                        self.keyboard.submit_modifiers(modifiers);
                     }
-                    WindowEvent::ModifiersChanged(ref modifiers) => {
-                        self.keyboard.set_modifiers(modifiers);
-                    }
-                    WindowEvent::KeyboardInput { ref input, .. } => {
-                        self.keyboard.add_key(input);
+                    KeyboardInput { input, .. } => {
+                        self.keyboard.submit_key(input);
                         self.scheduler.enroll(Action::UpdateKeys);
                     }
-                    WindowEvent::MouseInput { ref state, ref button, .. } => {
+                    MouseInput { state, button, .. } => {
+                        self.mouse.submit_button(button, state);
                         self.scheduler.enroll(Action::UpdateMouse);
                     }
-                    WindowEvent::Resized(_) => {
+                    CursorMoved { position, .. } => {
+                        self.mouse.submit_position(position);
+                    }
+                    CursorEntered { .. } => {
+                        self.mouse.submit_inside(true);
+                    }
+                    CursorLeft { .. } => {
+                        self.mouse.submit_inside(false);
+                    }
+                    MouseWheel { delta, phase, .. } => {
+                        self.mouse.submit_wheel(delta, phase);
+                    }
+                    Resized(_) => {
                         self.scheduler.enroll(Action::UpdateWindow);
                     }
-                    WindowEvent::ScaleFactorChanged { .. } => {
+                    ScaleFactorChanged { .. } => {
                         self.scheduler.enroll(Action::UpdateWindow);
                     }
                     _ => {}

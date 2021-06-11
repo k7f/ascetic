@@ -433,11 +433,11 @@ impl Steppable for Fill {
         match self {
             Fill::Color(c0) => match target {
                 Fill::Color(c1) => c0.step(c1, amount),
-                Fill::Linear(name) => {} // FIXME
-                Fill::Radial(name) => {} // FIXME
+                Fill::Linear(_name) => {} // FIXME
+                Fill::Radial(_name) => {} // FIXME
             },
-            Fill::Linear(name) => {} // FIXME
-            Fill::Radial(name) => {} // FIXME
+            Fill::Linear(_name) => {} // FIXME
+            Fill::Radial(_name) => {} // FIXME
         }
     }
 }

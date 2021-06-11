@@ -33,14 +33,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let _ = Logger::create(
+    let mut logger = Logger::new("error")?;
+    logger.set_crate_filter(
         match verbosity {
             0 => "warn",
             1 => "info",
             _ => "debug",
         },
-        "error",
-    );
+    )?;
+    logger.install()?;
 
     let event_loop: EventLoop<()> = EventLoop::new_x11().unwrap();
     let window_builder = WindowBuilder::new()

@@ -10,6 +10,7 @@ pub enum Error {
     PixelsFailure(pixels::Error),
     MissingPixmap,
     PixmapRenderingFailure,
+    RasterSourceUnderflow,
 }
 
 impl std::fmt::Display for Error {
@@ -24,6 +25,7 @@ impl std::fmt::Display for Error {
             PixelsFailure(err) => err.fmt(f),
             MissingPixmap => write!(f, "Missing pixmap"),
             PixmapRenderingFailure => write!(f, "Pixmap rendering failed"),
+            RasterSourceUnderflow => write!(f, "Raster source underflow"),
         }
     }
 }

@@ -363,8 +363,10 @@ impl AsUsvgStop for GradientStop {
 }
 
 pub struct BitmapDevice {
-    rtree: usvg::Tree,
-    text:  NullText,
+    rtree:     usvg::Tree,
+    #[allow(dead_code)]
+    transform: usvg::Transform,
+    text:      NullText,
 }
 
 impl BitmapDevice {
@@ -377,6 +379,7 @@ impl BitmapDevice {
                 aspect: usvg::AspectRatio::default(),
             },
         });
+        let transform = usvg::Transform::new_scale(pix_scale, pix_scale);
 
         for (name, spec) in theme.get_named_gradspecs() {
             let node = spec.as_usvg_node_with_name(name);
@@ -386,7 +389,14 @@ impl BitmapDevice {
 
         theme.append_background_to_usvg_tree(&mut rtree);
 
-        BitmapDevice { rtree, text: NullText }
+        BitmapDevice { rtree, transform, text: NullText }
+    }
+}
+
+impl std::fmt::Display for BitmapDevice {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.rtree.to_string(Default::default()))
     }
 }
 

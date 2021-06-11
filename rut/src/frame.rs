@@ -1,5 +1,5 @@
 use winit::{window::Window, dpi::PhysicalSize};
-use pixels::{wgpu, Pixels, SurfaceTexture};
+use pixels::{Pixels, SurfaceTexture};
 
 #[derive(Debug)]
 pub struct Frame {
@@ -9,7 +9,7 @@ pub struct Frame {
 impl Frame {
     pub fn new(window: &Window) -> Result<Self, crate::Error> {
         let PhysicalSize { width, height } = window.inner_size();
-        let mut pixels = {
+        let pixels = {
             let surface_texture = SurfaceTexture::new(width, height, window);
 
             Pixels::new(width, height, surface_texture)?
