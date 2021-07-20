@@ -36,7 +36,7 @@ impl Group {
         Group { crumbs, groups }
     }
 
-    pub fn from_crumb_ids<I>(crumbs: I) -> Self
+    pub fn from_crumbs<I>(crumbs: I) -> Self
     where
         I: IntoIterator<Item = (CrumbId, Option<StyleId>)>,
     {
@@ -46,7 +46,7 @@ impl Group {
         Group { crumbs, groups }
     }
 
-    pub fn from_group_ids<I>(groups: I) -> Self
+    pub fn from_groups<I>(groups: I) -> Self
     where
         I: IntoIterator<Item = GroupId>,
     {
@@ -66,12 +66,12 @@ impl Group {
         self
     }
 
-    pub fn with_crumb_id(mut self, crumb_id: CrumbId, style_id: Option<StyleId>) -> Self {
+    pub fn with_crumb(mut self, crumb_id: CrumbId, style_id: Option<StyleId>) -> Self {
         self.crumbs.push(CrumbItem(crumb_id, IDENTITY, style_id));
         self
     }
 
-    pub fn with_group_id(mut self, group_id: GroupId) -> Self {
+    pub fn with_group(mut self, group_id: GroupId) -> Self {
         self.groups.push(GroupItem(group_id, IDENTITY));
         self
     }
@@ -92,7 +92,7 @@ impl Group {
         self
     }
 
-    pub fn with_crumb_ids<I>(mut self, crumbs: I) -> Self
+    pub fn with_crumbs<I>(mut self, crumbs: I) -> Self
     where
         I: IntoIterator<Item = (CrumbId, Option<StyleId>)>,
     {
@@ -100,7 +100,7 @@ impl Group {
         self
     }
 
-    pub fn with_group_ids<I>(mut self, groups: I) -> Self
+    pub fn with_groups<I>(mut self, groups: I) -> Self
     where
         I: IntoIterator<Item = GroupId>,
     {

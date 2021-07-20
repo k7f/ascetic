@@ -14,7 +14,7 @@ pub enum Action {
     UpdateMouse,
     RenderScene,
     RedrawContents,
-    ModifyTheme,
+    ChangeThemeVariation,
     Pan,
     Zoom,
     FullscreenToggle,
@@ -153,8 +153,8 @@ impl Scheduler {
             Some(Action::RenderScene)
         } else if self.is_ready(Action::RedrawContents, true) {
             Some(Action::RedrawContents)
-        } else if self.is_ready(Action::ModifyTheme, true) {
-            Some(Action::ModifyTheme)
+        } else if self.is_ready(Action::ChangeThemeVariation, true) {
+            Some(Action::ChangeThemeVariation)
         } else if self.is_ready(Action::Pan, true) {
             Some(Action::Pan)
         } else if self.is_ready(Action::Zoom, true) {

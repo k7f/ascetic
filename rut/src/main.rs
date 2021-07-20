@@ -123,7 +123,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         *control_flow = ControlFlow::Exit;
                         return
                     }
-                    PietFailure(err) => error!("{}", err),
                     WinitFailure(err) => error!("{}", err),
                     SwapChainFailure(err) => error!("{}", err),
                     PixelsFailure(err) => error!("{}", err),

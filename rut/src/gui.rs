@@ -124,14 +124,17 @@ impl Gui {
             let transform = self.pan.as_transform() * self.zoom.as_transform();
             let (pix_width, pix_height) = self.renderer.get_pix_size();
 
-            self.raster.redraw(buffer, pix_width, pix_height, transform)
+            self.raster.redraw(buffer, pix_width, pix_height, transform)?;
+
+            self.window.request_redraw();
         } else {
             // FIXME
-            Ok(())
         }
+
+        Ok(())
     }
 
-    fn modify_theme(&mut self, theme: &mut Theme) -> Result<(), crate::Error> {
+    fn change_theme_variation(&mut self, theme: &mut Theme) -> Result<(), crate::Error> {
         if self.is_dark {
             theme.use_original_variation();
             self.is_dark = false;
@@ -151,33 +154,39 @@ impl Gui {
                 self.scheduler.enroll(Action::Exit);
             }
         } else {
+            if let Some(mods) = self.keyboard.is_pressed(VirtualKeyCode::V) {
+                if mods == ModifiersState::SHIFT | ModifiersState::CTRL {
+                    self.scheduler.enroll(Action::ChangeThemeVariation);
+                }
+            }
+
             if self.keyboard.is_pressed(VirtualKeyCode::Escape).is_some() {
                 self.scheduler.enroll(Action::FullscreenOff);
             }
-            if let Some(mods) = self.keyboard.is_pressed(VirtualKeyCode::F11) {
-                if mods == ModifiersState::CTRL {
-                    self.scheduler.enroll(Action::FullscreenToggle);
-                }
+
+            if self.keyboard.is_pressed(VirtualKeyCode::F11) == Some(ModifiersState::CTRL) {
+                self.scheduler.enroll(Action::FullscreenToggle);
+            }
+
+            if self.keyboard.is_pressed(VirtualKeyCode::Key0) == Some(ModifiersState::CTRL) {
+                self.zoom.reset();
+                self.scheduler.enroll(Action::Zoom);
+            }
+
+            if self.keyboard.is_pressed(VirtualKeyCode::Minus) == Some(ModifiersState::CTRL) {
+                self.zoom.step_out();
+                self.scheduler.enroll(Action::Zoom);
+            }
+
+            if self.keyboard.is_pressed(VirtualKeyCode::Equals) == Some(ModifiersState::CTRL) {
+                self.zoom.step_in();
+                self.scheduler.enroll(Action::Zoom);
             }
         }
 
         //     if self.keyboard.is_pressed(Key::LeftCtrl)
         //         || self.keyboard.is_pressed(Key::RightCtrl)
         //     {
-        //         if self.keyboard.is_pressed(Key::Key0) {
-        //             self.zoom.reset();
-        //             self.scheduler.enroll(Action::Zoom);
-        //         } else {
-        //             if self.keyboard.is_pressed(Key::Minus) {
-        //                 self.zoom.step_out();
-        //                 self.scheduler.enroll(Action::Zoom);
-        //             }
-        //             if self.keyboard.is_pressed(Key::Equal) {
-        //                 self.zoom.step_in();
-        //                 self.scheduler.enroll(Action::Zoom);
-        //             }
-        //         }
-
         //         if self.keyboard.is_pressed(Key::Left) {
         //             self.pan.step_left(2);
         //             self.scheduler.enroll(Action::Pan);
@@ -215,10 +224,6 @@ impl Gui {
         //         if self.keyboard.is_pressed(Key::Down) {
         //             self.pan.step_down(1);
         //             self.scheduler.enroll(Action::Pan);
-        //         }
-
-        //         if self.keyboard.is_pressed(Key::Space) {
-        //             self.scheduler.enroll(Action::ModifyTheme);
         //         }
         //     }
 
@@ -261,8 +266,8 @@ impl Gui {
             Action::RedrawContents => {
                 self.redraw_contents()?;
             }
-            Action::ModifyTheme => {
-                self.modify_theme(theme)?;
+            Action::ChangeThemeVariation => {
+                self.change_theme_variation(theme)?;
             }
             Action::Pan => {
                 self.redraw_contents()?;
@@ -322,13 +327,17 @@ impl Gui {
 
         match event {
             Event::LoopDestroyed => {
-                debug!("{:?}", event);
+                debug!("Event {:?}", event);
             }
             Event::MainEventsCleared => {
-                trace!("{:?}", event);
+                trace!("Event {:?}", event);
             }
-            Event::RedrawRequested(_) => self.need_redraw = true,
+            Event::RedrawRequested(_) => {
+                trace!("Event {:?}", event);
+                self.need_redraw = true;
+            }
             Event::RedrawEventsCleared => {
+                trace!("Event {:?} (need_redraw: {})", event, self.need_redraw);
                 if self.need_redraw {
                     self.need_redraw = false;
                     self.raster.apply(self.frame.get());

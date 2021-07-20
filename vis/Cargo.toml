@@ -34,5 +34,10 @@ required-features = ["tiny", "svg"]
 
 [[example]]
 
+name = "roundabout_tiny"
+required-features = ["tiny", "svg"]
+
+[[example]]
+
 name = "demo_scene_cairo"
 required-features = ["cairo", "svg"]

@@ -35,12 +35,13 @@ impl ToSvg for Scene {
 
         let mut svg = Vec::new();
 
-        writeln!(&mut svg, "<!DOCTYPE html>")?;
-        writeln!(&mut svg, "<html>")?;
-        writeln!(&mut svg, "<body>")?;
+        writeln!(&mut svg, "<svg version=\"1.1\" baseProfile=\"full\"")?;
+        writeln!(&mut svg, "     xmlns=\"http://www.w3.org/2000/svg\"")?;
+        writeln!(&mut svg, "     xmlns:xlink=\"http://www.w3.org/1999/xlink\"")?;
+        writeln!(&mut svg, "     xmlns:ev=\"http://www.w3.org/2001/xml-events\"")?;
         writeln!(
             &mut svg,
-            "<svg width=\"{}\" height=\"{}\">",
+            "     width=\"{}\" height=\"{}\">",
             out_size.width.round(),
             out_size.height.round()
         )?;
@@ -48,6 +49,11 @@ impl ToSvg for Scene {
         for (name, spec) in theme.get_named_gradspecs() {
             spec.write_svg_with_name(&mut svg, name)?;
         }
+        writeln!(&mut svg, "    <marker id=\"arrowhead1\" orient=\"auto\"")?;
+        writeln!(&mut svg, "            markerWidth=\"12\" markerHeight=\"7\"")?;
+        writeln!(&mut svg, "            refX=\"0\" refY=\"3.5\">")?;
+        writeln!(&mut svg, "      <path d=\"M0,0 V7 L6,3.5 Z\" fill=\"black\"/>")?;
+        writeln!(&mut svg, "    </marker>")?;
         writeln!(&mut svg, "  </defs>")?;
 
         let bg_color = theme.get_bg_color();
@@ -65,8 +71,6 @@ impl ToSvg for Scene {
         }
 
         writeln!(&mut svg, "</svg>")?;
-        writeln!(&mut svg, "</body>")?;
-        writeln!(&mut svg, "</html>")?;
 
         let svg = String::from_utf8(svg)?;
 
@@ -148,7 +152,13 @@ impl WriteSvgWithStyle for Line {
         let p0 = ts * self.p0;
         let p1 = ts * self.p1;
 
-        write!(svg, "  <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" ", p0.x, p0.y, p1.x, p1.y)?;
+        //write!(svg, "  <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" ", p0.x, p0.y, p1.x, p1.y)?;
+        //write!(svg, "  <line marker-end=\"url(#arrowhead)\" x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" ", p0.x, p0.y, p1.x, p1.y)?;
+        write!(
+            svg,
+            "  <path marker-end=\"url(#arrowhead1)\" d=\"M{},{} {},{}\" ",
+            p0.x, p0.y, p1.x, p1.y
+        )?;
 
         if let Some(stroke) =
             theme.get_stroke(style_id).or_else(|| theme.get_default_style().get_stroke())

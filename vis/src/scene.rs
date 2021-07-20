@@ -26,6 +26,11 @@ impl Scene {
         self.crumbs.get(crumb_id.0)
     }
 
+    #[inline]
+    pub fn get_group(&self, group_id: GroupId) -> Option<&Group> {
+        self.groups.get(group_id.0)
+    }
+
     pub fn add_line(&mut self, line: Line) -> CrumbId {
         let id = self.crumbs.len();
 
@@ -79,7 +84,16 @@ impl Scene {
         I: IntoIterator<Item = (Crumb, Option<StyleId>)>,
     {
         let crumbs = crumbs.into_iter().map(|(p, s)| (self.add_crumb(p), s));
-        let group = Group::from_crumb_ids(crumbs);
+        let group = Group::from_crumbs(crumbs);
+
+        self.add_group(group)
+    }
+
+    pub fn add_grouped_crumb_items<I>(&mut self, crumbs: I) -> GroupId
+    where
+        I: IntoIterator<Item = CrumbItem>,
+    {
+        let group = Group::from_crumb_items(crumbs.into_iter());
 
         self.add_group(group)
     }
@@ -89,7 +103,7 @@ impl Scene {
         I: IntoIterator<Item = (Line, Option<StyleId>)>,
     {
         let crumbs = lines.into_iter().map(|(l, s)| (self.add_line(l), s));
-        let group = Group::from_crumb_ids(crumbs);
+        let group = Group::from_crumbs(crumbs);
 
         self.add_group(group)
     }
@@ -189,7 +203,7 @@ impl Scene {
             (Line::new((250., 1000.), (250., 0.)), theme.get("line-2")),
         ]);
 
-        let rects = scene.add_group(Group::from_crumb_ids(vec![
+        let rects = scene.add_group(Group::from_crumbs(vec![
             (button, theme.get("rect-1")),
             (button, theme.get("rect-2")),
         ]));
@@ -197,11 +211,11 @@ impl Scene {
         let circle = scene.add_circle(Circle::new((133., 500.), 110.));
 
         let mixed_group = scene.add_group(
-            Group::from_group_ids(vec![lines, rects]).with_crumb_id(circle, theme.get("circ-1")),
+            Group::from_groups(vec![lines, rects]).with_crumb(circle, theme.get("circ-1")),
         );
 
         let triple_group = scene.add_group(
-            Group::from_group_ids(vec![mixed_group])
+            Group::from_groups(vec![mixed_group])
                 .with_group_item(GroupItem(
                     mixed_group,
                     0.5 * TranslateScale::translate((750., 0.).into()),
@@ -213,8 +227,8 @@ impl Scene {
         );
 
         scene.add_root(
-            Group::from_crumb_ids(vec![(border, theme.get("border"))])
-                .with_group_id(triple_group)
+            Group::from_crumbs(vec![(border, theme.get("border"))])
+                .with_group(triple_group)
                 .with_group_item(GroupItem(
                     triple_group,
                     TranslateScale::translate((500., 0.).into()),

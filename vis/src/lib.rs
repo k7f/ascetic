@@ -13,7 +13,7 @@ pub use scene::Scene;
 pub use theme::{Theme, Variation};
 pub use tweener::{Tweener, Tweenable, Steppable, LinearEasing};
 
-pub use piet::{self, Color, UnitPoint, ImageFormat};
+pub use piet::{Color, UnitPoint};
 pub use kurbo::{self, Line, Rect, RoundedRect, Circle, TranslateScale, Vec2};
 
 pub trait Vis {

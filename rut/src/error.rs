@@ -1,10 +1,8 @@
 use pixels::wgpu;
-use ascetic_vis::piet;
 
 #[derive(Debug)]
 pub enum Error {
     Fatal(Box<dyn std::error::Error>),
-    PietFailure(piet::Error),
     WinitFailure(winit::error::OsError),
     SwapChainFailure(wgpu::SwapChainError),
     PixelsFailure(pixels::Error),
@@ -19,7 +17,6 @@ impl std::fmt::Display for Error {
 
         match self {
             Fatal(err) => err.fmt(f),
-            PietFailure(err) => err.fmt(f),
             WinitFailure(err) => err.fmt(f),
             SwapChainFailure(err) => err.fmt(f),
             PixelsFailure(err) => err.fmt(f),
@@ -35,12 +32,6 @@ impl std::error::Error for Error {}
 impl From<Box<dyn std::error::Error>> for Error {
     fn from(err: Box<dyn std::error::Error>) -> Self {
         Error::Fatal(err)
-    }
-}
-
-impl From<piet::Error> for Error {
-    fn from(err: piet::Error) -> Self {
-        Error::PietFailure(err)
     }
 }
 
