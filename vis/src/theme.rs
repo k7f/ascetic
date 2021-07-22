@@ -3,7 +3,7 @@ use std::{
     iter::FromIterator,
 };
 use piet::{Color, LinearGradient, RadialGradient, UnitPoint, GradientStops};
-use crate::{Style, StyleId, Stroke, Fill, GradSpec};
+use crate::{Style, StyleId, Stroke, Fill, GradSpec, Marker};
 
 const DEFAULT_NAME: &str = "default";
 const SCENE_NAME: &str = "scene";
@@ -141,6 +141,7 @@ pub struct Theme {
     styles:           Vec<Style>,
     named_styles:     HashMap<String, StyleId>,
     named_gradspecs:  HashMap<String, GradSpec>,
+    named_markers:    HashMap<String, Marker>,
     linear_gradients: HashMap<String, LinearGradient>,
     radial_gradients: HashMap<String, RadialGradient>,
 }
@@ -157,6 +158,7 @@ impl Default for Theme {
             (SCENE_NAME.into(), Self::SCENE_STYLE_ID),
         ]);
         let named_gradspecs = HashMap::default();
+        let named_markers = HashMap::default();
         let linear_gradients = HashMap::default();
         let radial_gradients = HashMap::default();
 
@@ -165,6 +167,7 @@ impl Default for Theme {
             styles,
             named_styles,
             named_gradspecs,
+            named_markers,
             linear_gradients,
             radial_gradients,
         }
@@ -270,6 +273,18 @@ impl Theme {
 
         for style in self.styles.iter_mut() {
             style.resolve_initially(&self.original);
+        }
+
+        self
+    }
+
+    pub fn with_markers<S, I>(mut self, markers: I) -> Self
+    where
+        S: AsRef<str>,
+        I: IntoIterator<Item = (S, Marker)>,
+    {
+        for (name, marker) in markers.into_iter() {
+            self.named_markers.insert(name.as_ref().into(), marker);
         }
 
         self
@@ -389,6 +404,11 @@ impl Theme {
     }
 
     #[inline]
+    pub fn get_marker<S: AsRef<str>>(&self, name: S) -> Option<&Marker> {
+        self.named_markers.get(name.as_ref())
+    }
+
+    #[inline]
     pub fn get_bg_color(&self) -> Color {
         self.get_scene_style().get_fill_color().cloned().unwrap_or(Color::WHITE)
     }
@@ -406,6 +426,11 @@ impl Theme {
     #[inline]
     pub fn get_named_gradspecs(&self) -> hash_map::Iter<String, GradSpec> {
         self.named_gradspecs.iter()
+    }
+
+    #[inline]
+    pub fn get_named_markers(&self) -> hash_map::Iter<String, Marker> {
+        self.named_markers.iter()
     }
 
     pub fn simple_demo() -> Self {

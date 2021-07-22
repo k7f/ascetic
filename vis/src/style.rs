@@ -64,6 +64,70 @@ pub enum GradSpec {
 }
 
 #[derive(Clone, Debug)]
+pub struct Marker {
+    width:  f64,
+    height: f64,
+    refx:   f64,
+    refy:   f64,
+    orient: Option<f64>,
+}
+
+impl Default for Marker {
+    fn default() -> Self {
+        Marker {
+            width:  0.0,
+            height: 0.0,
+            refx:   0.0,
+            refy:   0.0,
+            orient: None,
+        }
+    }
+}
+
+impl Marker {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn with_size(mut self, width: f64, height: f64) -> Self {
+        self.width = width;
+        self.height = height;
+        self
+    }
+
+    pub fn with_refxy(mut self, refx: f64, refy: f64) -> Self {
+        self.refx = refx;
+        self.refy = refy;
+        self
+    }
+
+    #[inline]
+    pub fn get_width(&self) -> f64 {
+        self.width
+    }
+
+    #[inline]
+    pub fn get_height(&self) -> f64 {
+        self.height
+    }
+
+    #[inline]
+    pub fn get_refx(&self) -> f64 {
+        self.refx
+    }
+
+    #[inline]
+    pub fn get_refy(&self) -> f64 {
+        self.refy
+    }
+
+    #[inline]
+    pub fn get_orient(&self) -> Option<f64> {
+        self.orient
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum Fill {
     Color(Color),
     Linear(String),

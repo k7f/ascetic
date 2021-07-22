@@ -6,7 +6,7 @@ use std::{
     error::Error,
 };
 use ascetic_vis::{
-    Scene, Theme, Style, Stroke, Fill, Variation, Group, GroupId, Crumb, CrumbItem, Color,
+    Scene, Theme, Style, Stroke, Fill, Marker, Variation, Group, GroupId, Crumb, CrumbItem, Color,
     UnitPoint,
     kurbo::{Line, Rect, Circle},
     backend::{usvg::AsUsvgTree, svg::ToSvg},
@@ -30,6 +30,8 @@ fn roundabout_theme() -> Theme {
         ("token", 1., token_gradient_stops.as_slice()),
         ("token-dark", 1., token_dark_gradient_stops.as_slice()),
     ];
+
+    let markers = vec![("arrowhead1", Marker::new().with_size(12.0, 7.0).with_refxy(0.0, 3.5))];
 
     let strokes = vec![
         ("frame", Stroke::new().with_brush(Color::BLACK).with_width(0.5)),
@@ -66,6 +68,7 @@ fn roundabout_theme() -> Theme {
 
     Theme::new()
         .with_gradients(linear_gradients, radial_gradients)
+        .with_markers(markers)
         .with_strokes(strokes)
         .with_fills(fills)
         .with_variations(variations)
@@ -96,7 +99,8 @@ fn joint(
 
                         let dist = (end_p0 - start_p0) / (end_p0 - start_p0).hypot();
 
-                        let mut marker_len = 12.0;
+                        let mut marker_len =
+                            theme.get_marker("arrowhead1").map(|m| m.get_width()).unwrap_or(0.0);
                         if let Some(stroke) = theme.get_stroke_by_name("line-thin") {
                             marker_len += 2.0 * stroke.get_width();
                         }

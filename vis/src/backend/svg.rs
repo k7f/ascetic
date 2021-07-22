@@ -1,7 +1,7 @@
 use std::io::Write;
 use kurbo::{Line, Rect, RoundedRect, Circle, TranslateScale, Size};
 use piet::Color;
-use crate::{Scene, Theme, Style, StyleId, Stroke, Fill, GradSpec, Crumb, CrumbItem};
+use crate::{Scene, Theme, Style, StyleId, Stroke, Fill, GradSpec, Marker, Crumb, CrumbItem};
 
 pub trait ToSvg {
     fn to_svg<S, M>(
@@ -49,11 +49,9 @@ impl ToSvg for Scene {
         for (name, spec) in theme.get_named_gradspecs() {
             spec.write_svg_with_name(&mut svg, name)?;
         }
-        writeln!(&mut svg, "    <marker id=\"arrowhead1\" orient=\"auto\"")?;
-        writeln!(&mut svg, "            markerWidth=\"12\" markerHeight=\"7\"")?;
-        writeln!(&mut svg, "            refX=\"0\" refY=\"3.5\">")?;
-        writeln!(&mut svg, "      <path d=\"M0,0 V7 L6,3.5 Z\" fill=\"black\"/>")?;
-        writeln!(&mut svg, "    </marker>")?;
+        for (name, spec) in theme.get_named_markers() {
+            spec.write_svg_with_name(&mut svg, name)?;
+        }
         writeln!(&mut svg, "  </defs>")?;
 
         let bg_color = theme.get_bg_color();
@@ -333,5 +331,34 @@ impl WriteSvgWithName for GradSpec {
                 writeln!(svg, "    </radialGradient>")
             }
         }
+    }
+}
+
+impl WriteSvgWithName for Marker {
+    fn write_svg_with_name<W: std::io::Write, S: AsRef<str>>(
+        &self,
+        mut svg: W,
+        name: S,
+    ) -> std::io::Result<()> {
+        write!(&mut svg, "    <marker id=\"{}\" ", name.as_ref())?;
+        if let Some(orient) = self.get_orient() {
+            writeln!(&mut svg, "orient=\"{}\"", orient)?;
+        } else {
+            writeln!(&mut svg, "orient=\"auto\"")?;
+        }
+        writeln!(
+            &mut svg,
+            "            markerWidth=\"{}\" markerHeight=\"{}\"",
+            self.get_width(),
+            self.get_height()
+        )?;
+        writeln!(
+            &mut svg,
+            "            refX=\"{}\" refY=\"{}\">",
+            self.get_refx(),
+            self.get_refy()
+        )?;
+        writeln!(&mut svg, "      <path d=\"M0,0 V7 L6,3.5 Z\" fill=\"black\"/>")?;
+        writeln!(&mut svg, "    </marker>")
     }
 }

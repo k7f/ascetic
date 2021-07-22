@@ -8,7 +8,7 @@ pub mod backend;
 
 pub use crumb::{Crumb, CrumbId, CrumbItem};
 pub use group::{Group, GroupId, GroupItem};
-pub use style::{Style, StyleId, Stroke, Fill, GradSpec};
+pub use style::{Style, StyleId, Stroke, Fill, GradSpec, Marker};
 pub use scene::Scene;
 pub use theme::{Theme, Variation};
 pub use tweener::{Tweener, Tweenable, Steppable, LinearEasing};
