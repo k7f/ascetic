@@ -1,5 +1,5 @@
 use std::io::Write;
-use kurbo::{Line, Rect, RoundedRect, Circle, TranslateScale, Size};
+use kurbo::{Shape, Line, Rect, RoundedRect, Circle, Arc, BezPath, TranslateScale, Size};
 use piet::Color;
 use crate::{Scene, Theme, Style, StyleId, Stroke, Fill, GradSpec, Marker, Crumb, CrumbItem};
 
@@ -135,6 +135,8 @@ impl WriteSvgWithStyle for Crumb {
             Crumb::Rect(rect) => rect.write_svg_with_style(&mut svg, ts, style_id, theme),
             Crumb::RoundedRect(rr) => rr.write_svg_with_style(&mut svg, ts, style_id, theme),
             Crumb::Circle(circ) => circ.write_svg_with_style(&mut svg, ts, style_id, theme),
+            Crumb::Arc(arc) => arc.write_svg_with_style(&mut svg, ts, style_id, theme),
+            Crumb::Path(path) => path.write_svg_with_style(&mut svg, ts, style_id, theme),
         }
     }
 }
@@ -246,6 +248,41 @@ impl WriteSvgWithStyle for Circle {
         let radius = ts.as_tuple().1 * self.radius;
 
         write!(svg, "  <circle cx=\"{}\" cy=\"{}\" r=\"{}\" ", center.x, center.y, radius)?;
+
+        if let Some(style) = theme.get_style(style_id) {
+            style.write_svg(&mut svg)?;
+        }
+
+        writeln!(svg, "/>")
+    }
+}
+
+impl WriteSvgWithStyle for Arc {
+    fn write_svg_with_style<W: std::io::Write>(
+        &self,
+        svg: W,
+        ts: TranslateScale,
+        style_id: Option<StyleId>,
+        theme: &Theme,
+    ) -> std::io::Result<()> {
+        // FIXME use `A` path element
+        let path = BezPath::from_vec(self.path_elements(0.1).collect());
+
+        path.write_svg_with_style(svg, ts, style_id, theme)
+    }
+}
+
+impl WriteSvgWithStyle for BezPath {
+    fn write_svg_with_style<W: std::io::Write>(
+        &self,
+        mut svg: W,
+        ts: TranslateScale,
+        style_id: Option<StyleId>,
+        theme: &Theme,
+    ) -> std::io::Result<()> {
+        write!(svg, "  <path d=\"")?;
+        (ts * self.clone()).write_to(&mut svg)?;
+        write!(svg, "\" ")?;
 
         if let Some(style) = theme.get_style(style_id) {
             style.write_svg(&mut svg)?;

@@ -8,7 +8,7 @@ use std::{
 use ascetic_vis::{
     Scene, Theme, Style, Stroke, Fill, Marker, Variation, Group, GroupId, Crumb, CrumbItem, Color,
     UnitPoint,
-    kurbo::{Line, Rect, Circle},
+    kurbo::{Line, Rect, Circle, Arc, BezPath, PathEl},
     backend::{usvg::AsUsvgTree, svg::ToSvg},
 };
 
@@ -160,6 +160,46 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         (joint(&scene, theme, nodes, 11, 8).unwrap(), thin_style),
     ]);
 
+    let arcs = scene.add_grouped_crumbs([
+        (
+            Crumb::Arc(Arc {
+                center:      (500.0, 500.0).into(),
+                radii:       (500.0, 500.0).into(),
+                start_angle: 0.0,
+                sweep_angle: std::f64::consts::PI,
+                x_rotation:  0.0,
+            }),
+            thin_style,
+        ),
+        (
+            Crumb::Arc(Arc {
+                center:      (500.0, 500.0).into(),
+                radii:       (500.0, 500.0).into(),
+                start_angle: std::f64::consts::PI,
+                sweep_angle: std::f64::consts::PI,
+                x_rotation:  0.0,
+            }),
+            thin_style,
+        ),
+    ]);
+
+    let quads = scene.add_grouped_crumbs([
+        (
+            Crumb::Path(BezPath::from_vec(vec![
+                PathEl::MoveTo((0.0, 500.0).into()),
+                PathEl::QuadTo((500.0, 0.0).into(), (1000.0, 500.0).into()),
+            ])),
+            thin_style,
+        ),
+        (
+            Crumb::Path(BezPath::from_vec(vec![
+                PathEl::MoveTo((0.0, 500.0).into()),
+                PathEl::QuadTo((500.0, 1000.0).into(), (1000.0, 500.0).into()),
+            ])),
+            thin_style,
+        ),
+    ]);
+
     let token_style = theme.get("token");
     let tokens = scene.add_grouped_crumbs(
         token_positions
@@ -170,7 +210,7 @@ fn roundabout_scene(theme: &Theme) -> Scene {
     let frame = scene
         .add_grouped_crumbs([(Crumb::Rect(Rect::new(0., 0., 1000., 1000.)), theme.get("frame"))]);
 
-    scene.add_root(Group::from_groups([tokens, nodes, lines, frame]));
+    scene.add_root(Group::from_groups([tokens, nodes, lines, arcs, quads, frame]));
 
     scene
 }
