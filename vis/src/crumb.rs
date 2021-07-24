@@ -20,13 +20,13 @@ pub enum Crumb {
 
 impl Vis for Crumb {
     fn bbox(&self, ts: TranslateScale) -> Rect {
-        match *self {
+        match self {
             Crumb::Line(line) => line.bbox(ts),
             Crumb::Rect(rect) => rect.bbox(ts),
             Crumb::RoundedRect(rr) => rr.bbox(ts),
             Crumb::Circle(circ) => circ.bbox(ts),
             Crumb::Arc(arc) => arc.bbox(ts),
-            Crumb::Path(ref path) => path.bbox(ts),
+            Crumb::Path(path) => path.bbox(ts),
         }
     }
 
@@ -37,13 +37,13 @@ impl Vis for Crumb {
         style_id: Option<StyleId>,
         theme: &Theme,
     ) {
-        match *self {
+        match self {
             Crumb::Line(line) => line.vis(rc, ts, style_id, theme),
             Crumb::Rect(rect) => rect.vis(rc, ts, style_id, theme),
             Crumb::RoundedRect(rr) => rr.vis(rc, ts, style_id, theme),
             Crumb::Circle(circ) => circ.vis(rc, ts, style_id, theme),
             Crumb::Arc(arc) => arc.vis(rc, ts, style_id, theme),
-            Crumb::Path(ref path) => path.vis(rc, ts, style_id, theme),
+            Crumb::Path(path) => path.vis(rc, ts, style_id, theme),
         }
     }
 }
