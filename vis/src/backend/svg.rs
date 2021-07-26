@@ -80,6 +80,25 @@ pub trait WriteSvg {
     fn write_svg<W: std::io::Write>(&self, svg: W) -> std::io::Result<()>;
 }
 
+pub trait WriteSvgWithStyle: WriteSvg {
+    #[inline]
+    fn write_svg_opt<W: std::io::Write>(
+        &self,
+        svg: W,
+        _style: Option<&Style>,
+    ) -> std::io::Result<()> {
+        self.write_svg(svg)
+    }
+
+    fn write_svg_with_style<W: std::io::Write>(
+        &self,
+        svg: W,
+        ts: TranslateScale,
+        style_id: Option<StyleId>,
+        theme: &Theme,
+    ) -> std::io::Result<()>;
+}
+
 impl WriteSvg for Stroke {
     fn write_svg<W: std::io::Write>(&self, mut svg: W) -> std::io::Result<()> {
         self.get_brush().write_svg_with_name(&mut svg, "stroke")?;
@@ -112,17 +131,38 @@ impl WriteSvg for Style {
     }
 }
 
-pub trait WriteSvgWithStyle {
-    fn write_svg_with_style<W: std::io::Write>(
-        &self,
-        svg: W,
-        ts: TranslateScale,
-        style_id: Option<StyleId>,
-        theme: &Theme,
-    ) -> std::io::Result<()>;
+impl WriteSvg for Crumb {
+    #[inline]
+    fn write_svg<W: std::io::Write>(&self, mut svg: W) -> std::io::Result<()> {
+        match self {
+            Crumb::Line(line) => line.write_svg(&mut svg),
+            Crumb::Rect(rect) => rect.write_svg(&mut svg),
+            Crumb::RoundedRect(rr) => rr.write_svg(&mut svg),
+            Crumb::Circle(circ) => circ.write_svg(&mut svg),
+            Crumb::Arc(arc) => arc.write_svg(&mut svg),
+            Crumb::Path(path) => path.write_svg(&mut svg),
+        }
+    }
 }
 
 impl WriteSvgWithStyle for Crumb {
+    #[inline]
+    fn write_svg_opt<W: std::io::Write>(
+        &self,
+        mut svg: W,
+        style: Option<&Style>,
+    ) -> std::io::Result<()> {
+        match self {
+            Crumb::Line(line) => line.write_svg_opt(&mut svg, style),
+            Crumb::Rect(rect) => rect.write_svg_opt(&mut svg, style),
+            Crumb::RoundedRect(rr) => rr.write_svg_opt(&mut svg, style),
+            Crumb::Circle(circ) => circ.write_svg_opt(&mut svg, style),
+            Crumb::Arc(arc) => arc.write_svg_opt(&mut svg, style),
+            Crumb::Path(path) => path.write_svg_opt(&mut svg, style),
+        }
+    }
+
+    #[inline]
     fn write_svg_with_style<W: std::io::Write>(
         &self,
         mut svg: W,
@@ -141,7 +181,35 @@ impl WriteSvgWithStyle for Crumb {
     }
 }
 
+impl WriteSvg for Line {
+    fn write_svg<W: std::io::Write>(&self, mut svg: W) -> std::io::Result<()> {
+        writeln!(
+            svg,
+            "  <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" />",
+            self.p0.x, self.p0.y, self.p1.x, self.p1.y
+        )
+    }
+}
+
 impl WriteSvgWithStyle for Line {
+    fn write_svg_opt<W: std::io::Write>(
+        &self,
+        mut svg: W,
+        style: Option<&Style>,
+    ) -> std::io::Result<()> {
+        if let Some(style) = style {
+            write!(
+                svg,
+                "  <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" />",
+                self.p0.x, self.p0.y, self.p1.x, self.p1.y
+            )?;
+            style.write_svg(&mut svg)?;
+            writeln!(svg, "/>")
+        } else {
+            self.write_svg(svg)
+        }
+    }
+
     fn write_svg_with_style<W: std::io::Write>(
         &self,
         mut svg: W,
@@ -170,7 +238,41 @@ impl WriteSvgWithStyle for Line {
     }
 }
 
+impl WriteSvg for Rect {
+    fn write_svg<W: std::io::Write>(&self, mut svg: W) -> std::io::Result<()> {
+        writeln!(
+            svg,
+            "  <rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" />",
+            self.x0,
+            self.y0,
+            self.width(),
+            self.height(),
+        )
+    }
+}
+
 impl WriteSvgWithStyle for Rect {
+    fn write_svg_opt<W: std::io::Write>(
+        &self,
+        mut svg: W,
+        style: Option<&Style>,
+    ) -> std::io::Result<()> {
+        if let Some(style) = style {
+            write!(
+                svg,
+                "  <rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" />",
+                self.x0,
+                self.y0,
+                self.width(),
+                self.height(),
+            )?;
+            style.write_svg(&mut svg)?;
+            writeln!(svg, "/>")
+        } else {
+            self.write_svg(svg)
+        }
+    }
+
     fn write_svg_with_style<W: std::io::Write>(
         &self,
         mut svg: W,
@@ -197,7 +299,67 @@ impl WriteSvgWithStyle for Rect {
     }
 }
 
+impl WriteSvg for RoundedRect {
+    fn write_svg<W: std::io::Write>(&self, mut svg: W) -> std::io::Result<()> {
+        let rect = &self.rect();
+        if let Some(radius) = self.radii().as_single_radius() {
+            writeln!(
+                svg,
+                "  <rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" rx=\"{}\" />",
+                rect.x0,
+                rect.y0,
+                rect.width(),
+                rect.height(),
+                radius,
+            )
+        } else {
+            writeln!(
+                svg,
+                "  <rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" />",
+                rect.x0,
+                rect.y0,
+                rect.width(),
+                rect.height(),
+            )
+        }
+    }
+}
+
 impl WriteSvgWithStyle for RoundedRect {
+    fn write_svg_opt<W: std::io::Write>(
+        &self,
+        mut svg: W,
+        style: Option<&Style>,
+    ) -> std::io::Result<()> {
+        if let Some(style) = style {
+            let rect = &self.rect();
+            if let Some(radius) = self.radii().as_single_radius() {
+                write!(
+                    svg,
+                    "  <rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" rx=\"{}\" />",
+                    rect.x0,
+                    rect.y0,
+                    rect.width(),
+                    rect.height(),
+                    radius,
+                )?;
+            } else {
+                write!(
+                    svg,
+                    "  <rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" />",
+                    rect.x0,
+                    rect.y0,
+                    rect.width(),
+                    rect.height(),
+                )?;
+            }
+            style.write_svg(&mut svg)?;
+            writeln!(svg, "/>")
+        } else {
+            self.write_svg(svg)
+        }
+    }
+
     fn write_svg_with_style<W: std::io::Write>(
         &self,
         mut svg: W,
@@ -236,7 +398,35 @@ impl WriteSvgWithStyle for RoundedRect {
     }
 }
 
+impl WriteSvg for Circle {
+    fn write_svg<W: std::io::Write>(&self, mut svg: W) -> std::io::Result<()> {
+        writeln!(
+            svg,
+            "  <circle cx=\"{}\" cy=\"{}\" r=\"{}\" />",
+            self.center.x, self.center.y, self.radius
+        )
+    }
+}
+
 impl WriteSvgWithStyle for Circle {
+    fn write_svg_opt<W: std::io::Write>(
+        &self,
+        mut svg: W,
+        style: Option<&Style>,
+    ) -> std::io::Result<()> {
+        if let Some(style) = style {
+            write!(
+                svg,
+                "  <circle cx=\"{}\" cy=\"{}\" r=\"{}\" ",
+                self.center.x, self.center.y, self.radius
+            )?;
+            style.write_svg(&mut svg)?;
+            writeln!(svg, "/>")
+        } else {
+            self.write_svg(svg)
+        }
+    }
+
     fn write_svg_with_style<W: std::io::Write>(
         &self,
         mut svg: W,
@@ -257,7 +447,27 @@ impl WriteSvgWithStyle for Circle {
     }
 }
 
+impl WriteSvg for Arc {
+    fn write_svg<W: std::io::Write>(&self, svg: W) -> std::io::Result<()> {
+        // FIXME use `A` path element
+        let path = BezPath::from_vec(self.path_elements(0.1).collect());
+
+        path.write_svg(svg)
+    }
+}
+
 impl WriteSvgWithStyle for Arc {
+    fn write_svg_opt<W: std::io::Write>(
+        &self,
+        svg: W,
+        style: Option<&Style>,
+    ) -> std::io::Result<()> {
+        // FIXME use `A` path element
+        let path = BezPath::from_vec(self.path_elements(0.1).collect());
+
+        path.write_svg_opt(svg, style)
+    }
+
     fn write_svg_with_style<W: std::io::Write>(
         &self,
         svg: W,
@@ -272,7 +482,31 @@ impl WriteSvgWithStyle for Arc {
     }
 }
 
+impl WriteSvg for BezPath {
+    fn write_svg<W: std::io::Write>(&self, mut svg: W) -> std::io::Result<()> {
+        write!(svg, "  <path d=\"")?;
+        self.write_to(&mut svg)?;
+        writeln!(svg, "\" />")
+    }
+}
+
 impl WriteSvgWithStyle for BezPath {
+    fn write_svg_opt<W: std::io::Write>(
+        &self,
+        mut svg: W,
+        style: Option<&Style>,
+    ) -> std::io::Result<()> {
+        if let Some(style) = style {
+            write!(svg, "  <path d=\"")?;
+            self.write_to(&mut svg)?;
+            write!(svg, "\" ")?;
+            style.write_svg(&mut svg)?;
+            writeln!(svg, "/>")
+        } else {
+            self.write_svg(svg)
+        }
+    }
+
     fn write_svg_with_style<W: std::io::Write>(
         &self,
         mut svg: W,
@@ -377,25 +611,21 @@ impl WriteSvgWithName for Marker {
         mut svg: W,
         name: S,
     ) -> std::io::Result<()> {
-        write!(&mut svg, "    <marker id=\"{}\" ", name.as_ref())?;
+        write!(svg, "    <marker id=\"{}\" ", name.as_ref())?;
         if let Some(orient) = self.get_orient() {
-            writeln!(&mut svg, "orient=\"{}\"", orient)?;
+            writeln!(svg, "orient=\"{}\"", orient)?;
         } else {
-            writeln!(&mut svg, "orient=\"auto\"")?;
+            writeln!(svg, "orient=\"auto\"")?;
         }
         writeln!(
-            &mut svg,
+            svg,
             "            markerWidth=\"{}\" markerHeight=\"{}\"",
             self.get_width(),
             self.get_height()
         )?;
-        writeln!(
-            &mut svg,
-            "            refX=\"{}\" refY=\"{}\">",
-            self.get_refx(),
-            self.get_refy()
-        )?;
-        writeln!(&mut svg, "      <path d=\"M0,0 V7 L6,3.5 Z\" fill=\"black\"/>")?;
-        writeln!(&mut svg, "    </marker>")
+        writeln!(svg, "            refX=\"{}\" refY=\"{}\">", self.get_refx(), self.get_refy())?;
+
+        self.get_crumb().write_svg_opt(&mut svg, self.get_style())?;
+        writeln!(svg, "    </marker>")
     }
 }

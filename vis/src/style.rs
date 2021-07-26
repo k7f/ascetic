@@ -1,5 +1,5 @@
 use piet::{Color, UnitPoint, GradientStop};
-use crate::{Variation, Tweener};
+use crate::{Crumb, Variation, Tweener};
 
 #[derive(Clone, Copy, Debug)]
 pub struct StyleId(pub usize);
@@ -70,23 +70,13 @@ pub struct Marker {
     refx:   f64,
     refy:   f64,
     orient: Option<f64>,
-}
-
-impl Default for Marker {
-    fn default() -> Self {
-        Marker {
-            width:  0.0,
-            height: 0.0,
-            refx:   0.0,
-            refy:   0.0,
-            orient: None,
-        }
-    }
+    crumb:  Crumb,
+    style:  Option<Style>,
 }
 
 impl Marker {
-    pub fn new() -> Self {
-        Default::default()
+    pub fn new(crumb: Crumb) -> Self {
+        Marker { width: 0.0, height: 0.0, refx: 0.0, refy: 0.0, orient: None, crumb, style: None }
     }
 
     pub fn with_size(mut self, width: f64, height: f64) -> Self {
@@ -98,6 +88,11 @@ impl Marker {
     pub fn with_refxy(mut self, refx: f64, refy: f64) -> Self {
         self.refx = refx;
         self.refy = refy;
+        self
+    }
+
+    pub fn with_style(mut self, style: Style) -> Self {
+        self.style = Some(style);
         self
     }
 
@@ -124,6 +119,16 @@ impl Marker {
     #[inline]
     pub fn get_orient(&self) -> Option<f64> {
         self.orient
+    }
+
+    #[inline]
+    pub fn get_crumb(&self) -> &Crumb {
+        &self.crumb
+    }
+
+    #[inline]
+    pub fn get_style(&self) -> Option<&Style> {
+        self.style.as_ref()
     }
 }
 

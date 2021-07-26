@@ -31,7 +31,21 @@ fn roundabout_theme() -> Theme {
         ("token-dark", 1., token_dark_gradient_stops.as_slice()),
     ];
 
-    let markers = vec![("arrowhead1", Marker::new().with_size(12.0, 7.0).with_refxy(0.0, 3.5))];
+    let head1 = BezPath::from_vec(vec![
+        PathEl::MoveTo((0.0, 0.0).into()),
+        PathEl::LineTo((0.0, 7.0).into()),
+        PathEl::LineTo((6.0, 3.5).into()),
+        PathEl::ClosePath,
+    ]);
+    let head1_style = Style::new().with_fill(Fill::Color(Color::BLACK));
+
+    let markers = vec![(
+        "arrowhead1",
+        Marker::new(Crumb::Path(head1))
+            .with_size(12.0, 7.0)
+            .with_refxy(0.0, 3.5)
+            .with_style(head1_style),
+    )];
 
     let strokes = vec![
         ("frame", Stroke::new().with_brush(Color::BLACK).with_width(0.5)),
