@@ -63,20 +63,33 @@ pub enum GradSpec {
     Radial(f64, Vec<GradientStop>),
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct MarkerId(pub usize);
+
 #[derive(Clone, Debug)]
 pub struct Marker {
-    width:  f64,
-    height: f64,
-    refx:   f64,
-    refy:   f64,
-    orient: Option<f64>,
-    crumb:  Crumb,
-    style:  Option<Style>,
+    width:      f64,
+    height:     f64,
+    refx:       f64,
+    refy:       f64,
+    orient:     Option<f64>,
+    crumb:      Crumb,
+    style_name: Option<String>,
+    // FIXME resolve style name to StyleId: either introduce builder
+    // pattern for Theme, or add update to all relevant `with_` methods
 }
 
 impl Marker {
     pub fn new(crumb: Crumb) -> Self {
-        Marker { width: 0.0, height: 0.0, refx: 0.0, refy: 0.0, orient: None, crumb, style: None }
+        Marker {
+            width: 0.0,
+            height: 0.0,
+            refx: 0.0,
+            refy: 0.0,
+            orient: None,
+            crumb,
+            style_name: None,
+        }
     }
 
     pub fn with_size(mut self, width: f64, height: f64) -> Self {
@@ -91,8 +104,8 @@ impl Marker {
         self
     }
 
-    pub fn with_style(mut self, style: Style) -> Self {
-        self.style = Some(style);
+    pub fn with_named_style<S: AsRef<str>>(mut self, name: S) -> Self {
+        self.style_name = Some(name.as_ref().into());
         self
     }
 
@@ -127,8 +140,8 @@ impl Marker {
     }
 
     #[inline]
-    pub fn get_style(&self) -> Option<&Style> {
-        self.style.as_ref()
+    pub fn get_style_name(&self) -> Option<&str> {
+        self.style_name.as_deref()
     }
 }
 
@@ -147,23 +160,31 @@ impl Default for Fill {
 
 #[derive(Clone, Default, Debug)]
 pub struct Style {
-    stroke_name:    Option<String>,
-    fill_name:      Option<String>,
-    stroke:         Option<Stroke>,
-    fill:           Option<Fill>,
-    stroke_tweener: Option<Tweener<Stroke>>,
-    fill_tweener:   Option<Tweener<Fill>>,
+    stroke_name:       Option<String>,
+    fill_name:         Option<String>,
+    stroke:            Option<Stroke>,
+    fill:              Option<Fill>,
+    stroke_tweener:    Option<Tweener<Stroke>>,
+    fill_tweener:      Option<Tweener<Fill>>,
+    start_marker_name: Option<String>,
+    mid_marker_name:   Option<String>,
+    end_marker_name:   Option<String>,
+    // FIXME resolve marker names to ids: either introduce builder
+    // pattern for Theme, or add update to all relevant `with_` methods
 }
 
 impl Style {
     pub const fn new() -> Self {
         Style {
-            stroke_name:    None,
-            fill_name:      None,
-            stroke:         None,
-            fill:           None,
-            stroke_tweener: None,
-            fill_tweener:   None,
+            stroke_name:       None,
+            fill_name:         None,
+            stroke:            None,
+            fill:              None,
+            stroke_tweener:    None,
+            fill_tweener:      None,
+            start_marker_name: None,
+            mid_marker_name:   None,
+            end_marker_name:   None,
         }
     }
 
@@ -184,6 +205,21 @@ impl Style {
 
     pub fn with_named_fill<S: AsRef<str>>(mut self, name: S) -> Self {
         self.fill_name = Some(name.as_ref().into());
+        self
+    }
+
+    pub fn with_named_start_marker<S: AsRef<str>>(mut self, name: S) -> Self {
+        self.start_marker_name = Some(name.as_ref().into());
+        self
+    }
+
+    pub fn with_named_mid_marker<S: AsRef<str>>(mut self, name: S) -> Self {
+        self.mid_marker_name = Some(name.as_ref().into());
+        self
+    }
+
+    pub fn with_named_end_marker<S: AsRef<str>>(mut self, name: S) -> Self {
+        self.end_marker_name = Some(name.as_ref().into());
         self
     }
 
@@ -211,7 +247,7 @@ impl Style {
         }
 
         if let Some(fill) =
-            self.fill_name.as_ref().and_then(|n| variation.get_fill_by_path(path, n))
+            self.fill_name.as_ref().and_then(|n| variation.get_fill_by_path(path.clone(), n))
         {
             self.fill = Some(fill.clone());
         }

@@ -3,7 +3,7 @@ use std::{
     iter::FromIterator,
 };
 use piet::{Color, LinearGradient, RadialGradient, UnitPoint, GradientStops};
-use crate::{Style, StyleId, Stroke, Fill, GradSpec, Marker};
+use crate::{Style, StyleId, Stroke, Fill, GradSpec, Marker, MarkerId};
 
 const DEFAULT_NAME: &str = "default";
 const SCENE_NAME: &str = "scene";
@@ -139,9 +139,10 @@ impl Variation {
 pub struct Theme {
     original:         Variation,
     styles:           Vec<Style>,
+    markers:          Vec<Marker>,
     named_styles:     HashMap<String, StyleId>,
+    named_markers:    HashMap<String, MarkerId>,
     named_gradspecs:  HashMap<String, GradSpec>,
-    named_markers:    HashMap<String, Marker>,
     linear_gradients: HashMap<String, LinearGradient>,
     radial_gradients: HashMap<String, RadialGradient>,
 }
@@ -153,21 +154,23 @@ impl Default for Theme {
             Style::default().with_named_stroke(DEFAULT_NAME).with_named_fill(DEFAULT_NAME),
             Style::default().with_named_stroke(SCENE_NAME).with_named_fill(SCENE_NAME),
         ];
+        let markers = Vec::new();
         let named_styles = HashMap::from_iter(vec![
             (DEFAULT_NAME.into(), Self::DEFAULT_STYLE_ID),
             (SCENE_NAME.into(), Self::SCENE_STYLE_ID),
         ]);
-        let named_gradspecs = HashMap::default();
         let named_markers = HashMap::default();
+        let named_gradspecs = HashMap::default();
         let linear_gradients = HashMap::default();
         let radial_gradients = HashMap::default();
 
         Theme {
             original,
             styles,
+            markers,
             named_styles,
-            named_gradspecs,
             named_markers,
+            named_gradspecs,
             linear_gradients,
             radial_gradients,
         }
@@ -278,13 +281,25 @@ impl Theme {
         self
     }
 
+    /// Note: calling this is the only way of adding markers to a
+    /// theme.
     pub fn with_markers<S, I>(mut self, markers: I) -> Self
     where
         S: AsRef<str>,
         I: IntoIterator<Item = (S, Marker)>,
     {
         for (name, marker) in markers.into_iter() {
-            self.named_markers.insert(name.as_ref().into(), marker);
+            match self.named_markers.entry(name.as_ref().into()) {
+                hash_map::Entry::Occupied(entry) => {
+                    self.markers[entry.get().0] = marker;
+                }
+                hash_map::Entry::Vacant(entry) => {
+                    let id = self.markers.len();
+
+                    entry.insert(MarkerId(id));
+                    self.markers.push(marker);
+                }
+            }
         }
 
         self
@@ -349,6 +364,11 @@ impl Theme {
     }
 
     #[inline]
+    pub fn get_style_by_name<S: AsRef<str>>(&self, name: S) -> Option<&Style> {
+        self.get(name).and_then(|id| self.styles.get(id.0))
+    }
+
+    #[inline]
     pub fn get_stroke(&self, style_id: Option<StyleId>) -> Option<&Stroke> {
         self.get_style(style_id).and_then(|s| s.get_stroke())
     }
@@ -404,8 +424,13 @@ impl Theme {
     }
 
     #[inline]
-    pub fn get_marker<S: AsRef<str>>(&self, name: S) -> Option<&Marker> {
-        self.named_markers.get(name.as_ref())
+    pub fn get_marker(&self, marker_id: Option<MarkerId>) -> Option<&Marker> {
+        marker_id.and_then(|id| self.markers.get(id.0))
+    }
+
+    #[inline]
+    pub fn get_marker_by_name<S: AsRef<str>>(&self, name: S) -> Option<&Marker> {
+        self.get_marker(self.named_markers.get(name.as_ref()).copied())
     }
 
     #[inline]
@@ -429,7 +454,7 @@ impl Theme {
     }
 
     #[inline]
-    pub fn get_named_markers(&self) -> hash_map::Iter<String, Marker> {
+    pub fn get_named_marker_ids(&self) -> hash_map::Iter<String, MarkerId> {
         self.named_markers.iter()
     }
 

@@ -45,13 +45,21 @@ impl ToSvg for Scene {
             out_size.width.round(),
             out_size.height.round()
         )?;
+
         writeln!(&mut svg, "  <defs>")?;
+
         for (name, spec) in theme.get_named_gradspecs() {
             spec.write_svg_with_name(&mut svg, name)?;
         }
-        for (name, spec) in theme.get_named_markers() {
-            spec.write_svg_with_name(&mut svg, name)?;
+
+        for (name, id) in theme.get_named_marker_ids() {
+            if let Some(marker) = theme.get_marker(Some(*id)) {
+                (marker, theme).write_svg_with_name(&mut svg, name)?;
+            } else {
+                // FIXME error
+            }
         }
+
         writeln!(&mut svg, "  </defs>")?;
 
         let bg_color = theme.get_bg_color();
@@ -203,7 +211,9 @@ impl WriteSvgWithStyle for Line {
                 "  <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" />",
                 self.p0.x, self.p0.y, self.p1.x, self.p1.y
             )?;
-            style.write_svg(&mut svg)?;
+            if let Some(stroke) = style.get_stroke() {
+                stroke.write_svg(&mut svg)?;
+            }
             writeln!(svg, "/>")
         } else {
             self.write_svg(svg)
@@ -228,9 +238,9 @@ impl WriteSvgWithStyle for Line {
             p0.x, p0.y, p1.x, p1.y
         )?;
 
-        if let Some(stroke) =
-            theme.get_stroke(style_id).or_else(|| theme.get_default_style().get_stroke())
-        {
+        let style = theme.get_style(style_id).unwrap_or_else(|| theme.get_default_style());
+
+        if let Some(stroke) = style.get_stroke() {
             stroke.write_svg(&mut svg)?;
         }
 
@@ -605,14 +615,14 @@ impl WriteSvgWithName for GradSpec {
     }
 }
 
-impl WriteSvgWithName for Marker {
+impl WriteSvgWithName for (&Marker, &Theme) {
     fn write_svg_with_name<W: std::io::Write, S: AsRef<str>>(
         &self,
         mut svg: W,
         name: S,
     ) -> std::io::Result<()> {
         write!(svg, "    <marker id=\"{}\" ", name.as_ref())?;
-        if let Some(orient) = self.get_orient() {
+        if let Some(orient) = self.0.get_orient() {
             writeln!(svg, "orient=\"{}\"", orient)?;
         } else {
             writeln!(svg, "orient=\"auto\"")?;
@@ -620,12 +630,20 @@ impl WriteSvgWithName for Marker {
         writeln!(
             svg,
             "            markerWidth=\"{}\" markerHeight=\"{}\"",
-            self.get_width(),
-            self.get_height()
+            self.0.get_width(),
+            self.0.get_height()
         )?;
-        writeln!(svg, "            refX=\"{}\" refY=\"{}\">", self.get_refx(), self.get_refy())?;
+        writeln!(
+            svg,
+            "            refX=\"{}\" refY=\"{}\">",
+            self.0.get_refx(),
+            self.0.get_refy()
+        )?;
 
-        self.get_crumb().write_svg_opt(&mut svg, self.get_style())?;
+        self.0.get_crumb().write_svg_opt(
+            &mut svg,
+            self.0.get_style_name().and_then(|name| self.1.get_style_by_name(name)),
+        )?;
         writeln!(svg, "    </marker>")
     }
 }

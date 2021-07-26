@@ -31,22 +31,6 @@ fn roundabout_theme() -> Theme {
         ("token-dark", 1., token_dark_gradient_stops.as_slice()),
     ];
 
-    let head1 = BezPath::from_vec(vec![
-        PathEl::MoveTo((0.0, 0.0).into()),
-        PathEl::LineTo((0.0, 7.0).into()),
-        PathEl::LineTo((6.0, 3.5).into()),
-        PathEl::ClosePath,
-    ]);
-    let head1_style = Style::new().with_fill(Fill::Color(Color::BLACK));
-
-    let markers = vec![(
-        "arrowhead1",
-        Marker::new(Crumb::Path(head1))
-            .with_size(12.0, 7.0)
-            .with_refxy(0.0, 3.5)
-            .with_style(head1_style),
-    )];
-
     let strokes = vec![
         ("frame", Stroke::new().with_brush(Color::BLACK).with_width(0.5)),
         ("node", Stroke::new().with_brush(Color::rgb8(0, 0x80, 0)).with_width(3.0)),
@@ -58,6 +42,7 @@ fn roundabout_theme() -> Theme {
         ("frame", Fill::Linear("frame".into())),
         ("node", Fill::Radial("node".into())),
         ("token", Fill::Radial("token".into())),
+        ("black", Fill::Color(Color::BLACK)),
     ];
 
     let dark_strokes =
@@ -67,6 +52,7 @@ fn roundabout_theme() -> Theme {
         (SCENE_NAME, Fill::Color(Color::BLACK)),
         ("node", Fill::Radial("node-dark".into())),
         ("token", Fill::Radial("token-dark".into())),
+        ("black", Fill::Color(Color::WHITE)),
     ];
 
     let variations =
@@ -78,7 +64,22 @@ fn roundabout_theme() -> Theme {
         ("token", Style::new().with_named_fill("token")),
         ("line-thick", Style::new().with_named_stroke("line-thick")),
         ("line-thin", Style::new().with_named_stroke("line-thin")),
+        ("arrow1", Style::new().with_named_stroke("line-thin").with_named_end_marker("arrowhead1")),
+        ("head1", Style::new().with_named_fill("black")),
     ];
+
+    let markers = vec![(
+        "arrowhead1",
+        Marker::new(Crumb::Path(BezPath::from_vec(vec![
+            PathEl::MoveTo((0.0, 0.0).into()),
+            PathEl::LineTo((0.0, 7.0).into()),
+            PathEl::LineTo((6.0, 3.5).into()),
+            PathEl::ClosePath,
+        ])))
+        .with_size(12.0, 7.0)
+        .with_refxy(0.0, 3.5)
+        .with_named_style("head1"),
+    )];
 
     Theme::new()
         .with_gradients(linear_gradients, radial_gradients)
@@ -113,8 +114,10 @@ fn joint(
 
                         let dist = (end_p0 - start_p0) / (end_p0 - start_p0).hypot();
 
-                        let mut marker_len =
-                            theme.get_marker("arrowhead1").map(|m| m.get_width()).unwrap_or(0.0);
+                        let mut marker_len = theme
+                            .get_marker_by_name("arrowhead1")
+                            .map(|m| m.get_width())
+                            .unwrap_or(0.0);
                         if let Some(stroke) = theme.get_stroke_by_name("line-thin") {
                             marker_len += 2.0 * stroke.get_width();
                         }
