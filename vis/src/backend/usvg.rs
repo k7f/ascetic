@@ -1,4 +1,4 @@
-use std::{borrow::Cow, ops::RangeBounds};
+use std::{borrow::Cow, ops::RangeBounds, f64::consts::PI};
 use kurbo::{Point, Line, Rect, RoundedRect, Circle, Arc, BezPath, Shape, TranslateScale, Size, Affine};
 use piet::{
     Color, GradientStop, Error, FixedGradient, FontFamily, HitTestPoint, HitTestPosition, Image,
@@ -40,6 +40,7 @@ impl AsUsvgTree for Scene {
                 aspect: usvg::AspectRatio::default(),
             },
         });
+        let mut root_node = rtree.root();
 
         for (name, spec) in theme.get_named_gradspecs() {
             let node = spec.as_usvg_node_with_name(name);
@@ -51,8 +52,15 @@ impl AsUsvgTree for Scene {
 
         for CrumbItem(crumb_id, ts, style_id) in self.all_crumbs(root_ts) {
             if let Some(crumb) = self.get_crumb(crumb_id) {
-                let node = crumb.as_usvg_node_with_style(ts, style_id, theme);
-                rtree.root().append_kind(node);
+                let (node_kind, more_kinds) = crumb.as_usvg_node_with_style(ts, style_id, theme);
+                let node = usvg::Node::new(node_kind);
+
+                root_node.append(node);
+
+                for kind in more_kinds {
+                    let node = usvg::Node::new(kind);
+                    root_node.append(node);
+                }
             } else {
                 // FIXME
                 panic!()
@@ -64,6 +72,10 @@ impl AsUsvgTree for Scene {
 }
 
 pub trait AsUsvgNodeWithStyle {
+    fn end_angle(&self) -> f64 {
+        0.0
+    }
+
     fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData;
 
     fn as_usvg_node_with_style(
@@ -71,15 +83,26 @@ pub trait AsUsvgNodeWithStyle {
         ts: TranslateScale,
         style_id: Option<StyleId>,
         theme: &Theme,
-    ) -> usvg::NodeKind {
+    ) -> (usvg::NodeKind, Vec<usvg::NodeKind>) {
         let (fill, stroke) = theme.get_style_as_usvg(style_id);
         let data = std::rc::Rc::new(self.as_path_data(ts));
 
-        usvg::NodeKind::Path(usvg::Path { fill, stroke, data, ..Default::default() })
+        (usvg::NodeKind::Path(usvg::Path { fill, stroke, data, ..Default::default() }), Vec::new())
     }
 }
 
 impl AsUsvgNodeWithStyle for Crumb {
+    fn end_angle(&self) -> f64 {
+        match self {
+            Crumb::Line(line) => line.end_angle(),
+            Crumb::Rect(rect) => rect.end_angle(),
+            Crumb::RoundedRect(rr) => rr.end_angle(),
+            Crumb::Circle(circ) => circ.end_angle(),
+            Crumb::Arc(arc) => arc.end_angle(),
+            Crumb::Path(path) => path.end_angle(),
+        }
+    }
+
     fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData {
         match self {
             Crumb::Line(line) => line.as_path_data(ts),
@@ -96,7 +119,7 @@ impl AsUsvgNodeWithStyle for Crumb {
         ts: TranslateScale,
         style_id: Option<StyleId>,
         theme: &Theme,
-    ) -> usvg::NodeKind {
+    ) -> (usvg::NodeKind, Vec<usvg::NodeKind>) {
         match self {
             Crumb::Line(line) => line.as_usvg_node_with_style(ts, style_id, theme),
             Crumb::Rect(rect) => rect.as_usvg_node_with_style(ts, style_id, theme),
@@ -109,6 +132,18 @@ impl AsUsvgNodeWithStyle for Crumb {
 }
 
 impl AsUsvgNodeWithStyle for Line {
+    fn end_angle(&self) -> f64 {
+        let angle = (self.p1.y - self.p0.y).atan2(self.p1.x - self.p0.x);
+
+        if angle.is_nan() {
+            0.0
+        } else if angle < 0.0 {
+            angle % (PI * 2.0) + PI * 2.0
+        } else {
+            angle % (PI * 2.0)
+        }
+    }
+
     fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData {
         let p0 = ts * self.p0;
         let p1 = ts * self.p1;
@@ -124,11 +159,57 @@ impl AsUsvgNodeWithStyle for Line {
         ts: TranslateScale,
         style_id: Option<StyleId>,
         theme: &Theme,
-    ) -> usvg::NodeKind {
+    ) -> (usvg::NodeKind, Vec<usvg::NodeKind>) {
+        let mut more_kinds = Vec::new();
+        let style = theme.get_style(style_id).unwrap_or_else(|| theme.get_default_style());
         let stroke = theme.get_stroke_as_usvg(style_id);
-        let data = std::rc::Rc::new(self.as_path_data(ts));
+        let path_data = self.as_path_data(ts);
 
-        usvg::NodeKind::Path(usvg::Path { stroke, data, ..Default::default() })
+        let markers = style.get_markers();
+        if let Some(name) = markers.get_end_name() {
+            if let Some(marker) = theme.get_marker_by_name(name) {
+                // FIXME precompute marker's path data, clone it here.
+                let mut marker_data = marker.get_crumb().as_path_data(TranslateScale::default());
+
+                // FIXME precompute unit width.
+                let unit_width = stroke.as_ref().map(|s| s.width.value()).unwrap_or(1.0);
+                let angle = marker.get_orient().unwrap_or_else(|| self.end_angle());
+                let a = angle.cos() * unit_width;
+                let b = angle.sin() * unit_width;
+                let refx = marker.get_refx();
+                let refy = marker.get_refy();
+                let p1 = ts * self.p1;
+
+                marker_data.transform(usvg::Transform::new(
+                    a,
+                    b,
+                    -b,
+                    a,
+                    p1.x - a * refx + b * refy,
+                    p1.y - b * refx - a * refy,
+                ));
+
+                let (stroke, fill) = if let Some(style) =
+                    marker.get_style_name().and_then(|name| theme.get_style_by_name(name))
+                {
+                    (style.get_stroke().map(|s| s.as_usvg()), style.get_fill().map(|s| s.as_usvg()))
+                } else {
+                    (None, None)
+                };
+                let data = std::rc::Rc::new(marker_data);
+
+                more_kinds.push(usvg::NodeKind::Path(usvg::Path {
+                    stroke,
+                    fill,
+                    data,
+                    ..Default::default()
+                }));
+            }
+        }
+
+        let data = std::rc::Rc::new(path_data);
+
+        (usvg::NodeKind::Path(usvg::Path { stroke, data, ..Default::default() }), more_kinds)
     }
 }
 

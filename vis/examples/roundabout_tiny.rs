@@ -165,16 +165,17 @@ fn roundabout_scene(theme: &Theme) -> Scene {
 
     let _thick_style = theme.get("line-thick");
     let thin_style = theme.get("line-thin");
+    let arrow_style = theme.get("arrow1");
 
     let lines = scene.add_grouped_lines([
-        (joint(&scene, theme, nodes, 3, 0).unwrap(), thin_style),
-        (joint(&scene, theme, nodes, 4, 1).unwrap(), thin_style),
-        (joint(&scene, theme, nodes, 2, 3).unwrap(), thin_style),
-        (joint(&scene, theme, nodes, 6, 7).unwrap(), thin_style),
-        (joint(&scene, theme, nodes, 4, 5).unwrap(), thin_style),
-        (joint(&scene, theme, nodes, 8, 9).unwrap(), thin_style),
-        (joint(&scene, theme, nodes, 10, 7).unwrap(), thin_style),
-        (joint(&scene, theme, nodes, 11, 8).unwrap(), thin_style),
+        (joint(&scene, theme, nodes, 3, 0).unwrap(), arrow_style),
+        (joint(&scene, theme, nodes, 4, 1).unwrap(), arrow_style),
+        (joint(&scene, theme, nodes, 2, 3).unwrap(), arrow_style),
+        (joint(&scene, theme, nodes, 6, 7).unwrap(), arrow_style),
+        (joint(&scene, theme, nodes, 4, 5).unwrap(), arrow_style),
+        (joint(&scene, theme, nodes, 8, 9).unwrap(), arrow_style),
+        (joint(&scene, theme, nodes, 10, 7).unwrap(), arrow_style),
+        (joint(&scene, theme, nodes, 11, 8).unwrap(), arrow_style),
     ]);
 
     let arcs = scene.add_grouped_crumbs([

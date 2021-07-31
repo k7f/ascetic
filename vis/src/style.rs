@@ -58,6 +58,19 @@ impl Stroke {
 }
 
 #[derive(Clone, Debug)]
+pub enum Fill {
+    Color(Color),
+    Linear(String),
+    Radial(String),
+}
+
+impl Default for Fill {
+    fn default() -> Self {
+        Fill::Color(Color::WHITE)
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum GradSpec {
     Linear(UnitPoint, UnitPoint, Vec<GradientStop>),
     Radial(f64, Vec<GradientStop>),
@@ -145,46 +158,54 @@ impl Marker {
     }
 }
 
-#[derive(Clone, Debug)]
-pub enum Fill {
-    Color(Color),
-    Linear(String),
-    Radial(String),
+#[derive(Clone, Default, Debug)]
+pub(crate) struct MarkerSuit {
+    start_name: Option<String>,
+    mid_name:   Option<String>,
+    end_name:   Option<String>,
+    // FIXME resolve marker names to ids: either introduce builder
+    // pattern for Theme, or add update to all relevant `with_` methods
 }
 
-impl Default for Fill {
-    fn default() -> Self {
-        Fill::Color(Color::WHITE)
+impl MarkerSuit {
+    pub(crate) const fn new() -> Self {
+        MarkerSuit { start_name: None, mid_name: None, end_name: None }
+    }
+
+    pub(crate) fn get_start_name(&self) -> Option<&str> {
+        self.start_name.as_deref()
+    }
+
+    pub(crate) fn get_mid_name(&self) -> Option<&str> {
+        self.mid_name.as_deref()
+    }
+
+    pub(crate) fn get_end_name(&self) -> Option<&str> {
+        self.end_name.as_deref()
     }
 }
 
 #[derive(Clone, Default, Debug)]
 pub struct Style {
-    stroke_name:       Option<String>,
-    fill_name:         Option<String>,
-    stroke:            Option<Stroke>,
-    fill:              Option<Fill>,
-    stroke_tweener:    Option<Tweener<Stroke>>,
-    fill_tweener:      Option<Tweener<Fill>>,
-    start_marker_name: Option<String>,
-    mid_marker_name:   Option<String>,
-    end_marker_name:   Option<String>,
-    // FIXME resolve marker names to ids: either introduce builder
-    // pattern for Theme, or add update to all relevant `with_` methods
+    stroke_name:    Option<String>,
+    fill_name:      Option<String>,
+    stroke:         Option<Stroke>,
+    fill:           Option<Fill>,
+    stroke_tweener: Option<Tweener<Stroke>>,
+    fill_tweener:   Option<Tweener<Fill>>,
+    markers:        MarkerSuit,
 }
 
 impl Style {
     pub const fn new() -> Self {
         Style {
-            stroke_name:       None,
-            fill_name:         None,
-            stroke:            None,
-            fill:              None,
-            stroke_tweener:    None,
-            fill_tweener:      None,
-            start_marker_name: None,
-            mid_marker_name:   None,
-            end_marker_name:   None,
+            stroke_name:    None,
+            fill_name:      None,
+            stroke:         None,
+            fill:           None,
+            stroke_tweener: None,
+            fill_tweener:   None,
+            markers:        MarkerSuit::new(),
         }
     }
 
@@ -209,17 +230,17 @@ impl Style {
     }
 
     pub fn with_named_start_marker<S: AsRef<str>>(mut self, name: S) -> Self {
-        self.start_marker_name = Some(name.as_ref().into());
+        self.markers.start_name = Some(name.as_ref().into());
         self
     }
 
     pub fn with_named_mid_marker<S: AsRef<str>>(mut self, name: S) -> Self {
-        self.mid_marker_name = Some(name.as_ref().into());
+        self.markers.mid_name = Some(name.as_ref().into());
         self
     }
 
     pub fn with_named_end_marker<S: AsRef<str>>(mut self, name: S) -> Self {
-        self.end_marker_name = Some(name.as_ref().into());
+        self.markers.end_name = Some(name.as_ref().into());
         self
     }
 
@@ -375,5 +396,10 @@ impl Style {
             Some(Fill::Linear(ref name)) | Some(Fill::Radial(ref name)) => Some(name.as_str()),
             _ => None,
         }
+    }
+
+    #[inline]
+    pub(crate) fn get_markers(&self) -> &MarkerSuit {
+        &self.markers
     }
 }

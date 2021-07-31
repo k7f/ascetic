@@ -1,7 +1,10 @@
 use std::io::Write;
 use kurbo::{Shape, Line, Rect, RoundedRect, Circle, Arc, BezPath, TranslateScale, Size};
 use piet::Color;
-use crate::{Scene, Theme, Style, StyleId, Stroke, Fill, GradSpec, Marker, Crumb, CrumbItem};
+use crate::{
+    Scene, Theme, Style, StyleId, Stroke, Fill, GradSpec, Marker, style::MarkerSuit, Crumb,
+    CrumbItem,
+};
 
 pub trait ToSvg {
     fn to_svg<S, M>(
@@ -57,6 +60,7 @@ impl ToSvg for Scene {
                 (marker, theme).write_svg_with_name(&mut svg, name)?;
             } else {
                 // FIXME error
+                panic!()
             }
         }
 
@@ -121,6 +125,24 @@ impl WriteSvg for Fill {
             Fill::Linear(ref name) => write!(svg, "fill=\"url(#{})\"", name),
             Fill::Radial(ref name) => write!(svg, "fill=\"url(#{})\"", name),
         }
+    }
+}
+
+impl WriteSvg for MarkerSuit {
+    fn write_svg<W: std::io::Write>(&self, mut svg: W) -> std::io::Result<()> {
+        if let Some(name) = self.get_start_name() {
+            write!(svg, " marker-start=\"url(#{})\"", name)?;
+        }
+
+        if let Some(name) = self.get_mid_name() {
+            write!(svg, " marker-mid=\"url(#{})\"", name)?;
+        }
+
+        if let Some(name) = self.get_end_name() {
+            write!(svg, " marker-end=\"url(#{})\"", name)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -229,22 +251,17 @@ impl WriteSvgWithStyle for Line {
     ) -> std::io::Result<()> {
         let p0 = ts * self.p0;
         let p1 = ts * self.p1;
-
-        //write!(svg, "  <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" ", p0.x, p0.y, p1.x, p1.y)?;
-        //write!(svg, "  <line marker-end=\"url(#arrowhead)\" x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" ", p0.x, p0.y, p1.x, p1.y)?;
-        write!(
-            svg,
-            "  <path marker-end=\"url(#arrowhead1)\" d=\"M{},{} {},{}\" ",
-            p0.x, p0.y, p1.x, p1.y
-        )?;
-
         let style = theme.get_style(style_id).unwrap_or_else(|| theme.get_default_style());
+
+        write!(svg, "  <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" ", p0.x, p0.y, p1.x, p1.y)?;
 
         if let Some(stroke) = style.get_stroke() {
             stroke.write_svg(&mut svg)?;
         }
 
-        writeln!(svg, "/>")
+        style.get_markers().write_svg(&mut svg)?;
+
+        writeln!(svg, " />")
     }
 }
 
