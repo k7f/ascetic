@@ -72,11 +72,28 @@ impl AsUsvgTree for Scene {
 }
 
 pub trait AsUsvgNodeWithStyle {
-    fn end_angle(&self) -> f64 {
+    fn end_angle(&self, points: &[Point]) -> f64 {
+        if let Some((p1, head)) = points.split_last() {
+            if let Some(p0) = head.last() {
+                let angle = (p1.y - p0.y).atan2(p1.x - p0.x);
+
+                if !angle.is_nan() {
+                    if angle < 0.0 {
+                        return angle % (PI * 2.0) + PI * 2.0
+                    } else {
+                        return angle % (PI * 2.0)
+                    }
+                }
+            }
+        }
         0.0
     }
 
     fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData;
+
+    fn as_path_data_and_points(&self, ts: TranslateScale) -> (usvg::PathData, Vec<Point>) {
+        (self.as_path_data(ts), Vec::new())
+    }
 
     fn as_usvg_node_with_style(
         &self,
@@ -92,14 +109,14 @@ pub trait AsUsvgNodeWithStyle {
 }
 
 impl AsUsvgNodeWithStyle for Crumb {
-    fn end_angle(&self) -> f64 {
+    fn end_angle(&self, points: &[Point]) -> f64 {
         match self {
-            Crumb::Line(line) => line.end_angle(),
-            Crumb::Rect(rect) => rect.end_angle(),
-            Crumb::RoundedRect(rr) => rr.end_angle(),
-            Crumb::Circle(circ) => circ.end_angle(),
-            Crumb::Arc(arc) => arc.end_angle(),
-            Crumb::Path(path) => path.end_angle(),
+            Crumb::Line(line) => line.end_angle(points),
+            Crumb::Rect(rect) => rect.end_angle(points),
+            Crumb::RoundedRect(rr) => rr.end_angle(points),
+            Crumb::Circle(circ) => circ.end_angle(points),
+            Crumb::Arc(arc) => arc.end_angle(points),
+            Crumb::Path(path) => path.end_angle(points),
         }
     }
 
@@ -111,6 +128,17 @@ impl AsUsvgNodeWithStyle for Crumb {
             Crumb::Circle(circ) => circ.as_path_data(ts),
             Crumb::Arc(arc) => arc.as_path_data(ts),
             Crumb::Path(path) => path.as_path_data(ts),
+        }
+    }
+
+    fn as_path_data_and_points(&self, ts: TranslateScale) -> (usvg::PathData, Vec<Point>) {
+        match self {
+            Crumb::Line(line) => line.as_path_data_and_points(ts),
+            Crumb::Rect(rect) => rect.as_path_data_and_points(ts),
+            Crumb::RoundedRect(rr) => rr.as_path_data_and_points(ts),
+            Crumb::Circle(circ) => circ.as_path_data_and_points(ts),
+            Crumb::Arc(arc) => arc.as_path_data_and_points(ts),
+            Crumb::Path(path) => path.as_path_data_and_points(ts),
         }
     }
 
@@ -132,7 +160,7 @@ impl AsUsvgNodeWithStyle for Crumb {
 }
 
 impl AsUsvgNodeWithStyle for Line {
-    fn end_angle(&self) -> f64 {
+    fn end_angle(&self, _points: &[Point]) -> f64 {
         let angle = (self.p1.y - self.p0.y).atan2(self.p1.x - self.p0.x);
 
         if angle.is_nan() {
@@ -145,13 +173,20 @@ impl AsUsvgNodeWithStyle for Line {
     }
 
     fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData {
+        self.as_path_data_and_points(ts).0
+    }
+
+    fn as_path_data_and_points(&self, ts: TranslateScale) -> (usvg::PathData, Vec<Point>) {
         let p0 = ts * self.p0;
         let p1 = ts * self.p1;
 
-        usvg::PathData(vec![
-            usvg::PathSegment::MoveTo { x: p0.x, y: p0.y },
-            usvg::PathSegment::LineTo { x: p1.x, y: p1.y },
-        ])
+        (
+            usvg::PathData(vec![
+                usvg::PathSegment::MoveTo { x: p0.x, y: p0.y },
+                usvg::PathSegment::LineTo { x: p1.x, y: p1.y },
+            ]),
+            vec![p0, p1],
+        )
     }
 
     fn as_usvg_node_with_style(
@@ -162,23 +197,31 @@ impl AsUsvgNodeWithStyle for Line {
     ) -> (usvg::NodeKind, Vec<usvg::NodeKind>) {
         let mut more_kinds = Vec::new();
         let style = theme.get_style(style_id).unwrap_or_else(|| theme.get_default_style());
-        let stroke = theme.get_stroke_as_usvg(style_id);
-        let path_data = self.as_path_data(ts);
+        let stroke = style
+            .get_stroke()
+            .or_else(|| theme.get_default_style().get_stroke())
+            .map(|s| s.as_usvg());
 
-        let markers = style.get_markers();
-        if let Some(name) = markers.get_end_name() {
-            if let Some(marker) = theme.get_marker_by_name(name) {
+        let path_data = {
+            let markers = style.get_markers();
+
+            if let Some(marker) =
+                markers.get_end_name().and_then(|name| theme.get_marker_by_name(name))
+            {
+                let (path_data, points) = self.as_path_data_and_points(ts);
+
                 // FIXME precompute marker's path data, clone it here.
                 let mut marker_data = marker.get_crumb().as_path_data(TranslateScale::default());
 
                 // FIXME precompute unit width.
                 let unit_width = stroke.as_ref().map(|s| s.width.value()).unwrap_or(1.0);
-                let angle = marker.get_orient().unwrap_or_else(|| self.end_angle());
+                let angle =
+                    marker.get_orient().unwrap_or_else(|| self.end_angle(points.as_slice()));
                 let a = angle.cos() * unit_width;
                 let b = angle.sin() * unit_width;
                 let refx = marker.get_refx();
                 let refy = marker.get_refy();
-                let p1 = ts * self.p1;
+                let p1 = points.last().unwrap();
 
                 marker_data.transform(usvg::Transform::new(
                     a,
@@ -204,8 +247,12 @@ impl AsUsvgNodeWithStyle for Line {
                     data,
                     ..Default::default()
                 }));
+
+                path_data
+            } else {
+                self.as_path_data(ts)
             }
-        }
+        };
 
         let data = std::rc::Rc::new(path_data);
 
@@ -288,7 +335,12 @@ impl AsUsvgNodeWithStyle for Arc {
 
 impl AsUsvgNodeWithStyle for BezPath {
     fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData {
+        self.as_path_data_and_points(ts).0
+    }
+
+    fn as_path_data_and_points(&self, ts: TranslateScale) -> (usvg::PathData, Vec<Point>) {
         let mut out_path = usvg::PathData::with_capacity(self.elements().len());
+        let mut out_points = Vec::new();
 
         for path_el in self.iter() {
             use kurbo::PathEl::*;
@@ -296,28 +348,106 @@ impl AsUsvgNodeWithStyle for BezPath {
                 MoveTo(point) => {
                     let point = ts * point;
                     out_path.push_move_to(point.x, point.y);
+                    out_points.push(point);
                 }
                 LineTo(point) => {
                     let point = ts * point;
-                    out_path.push_line_to(point.x, point.y)
+                    out_path.push_line_to(point.x, point.y);
+                    out_points.push(point);
                 }
                 QuadTo(point1, point2) => {
                     let point1 = ts * point1;
                     let point2 = ts * point2;
-                    out_path.push_quad_to(point1.x, point1.y, point2.x, point2.y)
+                    out_path.push_quad_to(point1.x, point1.y, point2.x, point2.y);
+                    out_points.push(point1);
+                    out_points.push(point2);
                 }
                 CurveTo(point1, point2, point3) => {
                     let point1 = ts * point1;
                     let point2 = ts * point2;
                     let point3 = ts * point3;
                     out_path
-                        .push_curve_to(point1.x, point1.y, point2.x, point2.y, point3.x, point3.y)
+                        .push_curve_to(point1.x, point1.y, point2.x, point2.y, point3.x, point3.y);
+                    out_points.push(point1);
+                    out_points.push(point2);
+                    out_points.push(point3);
                 }
                 ClosePath => out_path.push_close_path(),
             }
         }
 
-        out_path
+        (out_path, out_points)
+    }
+
+    fn as_usvg_node_with_style(
+        &self,
+        ts: TranslateScale,
+        style_id: Option<StyleId>,
+        theme: &Theme,
+    ) -> (usvg::NodeKind, Vec<usvg::NodeKind>) {
+        let mut more_kinds = Vec::new();
+        let style = theme.get_style(style_id).unwrap_or_else(|| theme.get_default_style());
+        let stroke = style
+            .get_stroke()
+            .or_else(|| theme.get_default_style().get_stroke())
+            .map(|s| s.as_usvg());
+        let fill = style.get_fill().map(|f| f.as_usvg());
+
+        let path_data = {
+            let markers = style.get_markers();
+
+            if let Some(marker) =
+                markers.get_end_name().and_then(|name| theme.get_marker_by_name(name))
+            {
+                let (path_data, points) = self.as_path_data_and_points(ts);
+
+                // FIXME precompute marker's path data, clone it here.
+                let mut marker_data = marker.get_crumb().as_path_data(TranslateScale::default());
+
+                // FIXME precompute unit width.
+                let unit_width = stroke.as_ref().map(|s| s.width.value()).unwrap_or(1.0);
+                let angle =
+                    marker.get_orient().unwrap_or_else(|| self.end_angle(points.as_slice()));
+                let a = angle.cos() * unit_width;
+                let b = angle.sin() * unit_width;
+                let refx = marker.get_refx();
+                let refy = marker.get_refy();
+                let p1 = points.last().unwrap();
+
+                marker_data.transform(usvg::Transform::new(
+                    a,
+                    b,
+                    -b,
+                    a,
+                    p1.x - a * refx + b * refy,
+                    p1.y - b * refx - a * refy,
+                ));
+
+                let (stroke, fill) = if let Some(style) =
+                    marker.get_style_name().and_then(|name| theme.get_style_by_name(name))
+                {
+                    (style.get_stroke().map(|s| s.as_usvg()), style.get_fill().map(|s| s.as_usvg()))
+                } else {
+                    (None, None)
+                };
+                let data = std::rc::Rc::new(marker_data);
+
+                more_kinds.push(usvg::NodeKind::Path(usvg::Path {
+                    stroke,
+                    fill,
+                    data,
+                    ..Default::default()
+                }));
+
+                path_data
+            } else {
+                self.as_path_data(ts)
+            }
+        };
+
+        let data = std::rc::Rc::new(path_data);
+
+        (usvg::NodeKind::Path(usvg::Path { stroke, fill, data, ..Default::default() }), more_kinds)
     }
 }
 

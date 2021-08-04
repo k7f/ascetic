@@ -90,29 +90,29 @@ fn roundabout_theme() -> Theme {
         .with_styles(styles)
 }
 
-fn joint(
+fn line_joint(
     scene: &Scene,
     theme: &Theme,
     group_id: GroupId,
-    start: usize,
-    end: usize,
+    tail: usize,
+    head: usize,
 ) -> Option<Line> {
     if let Some(group) = scene.get_group(group_id) {
         let items = group.get_crumb_items();
-        if let Some(CrumbItem(start_id, ..)) = items.get(start) {
-            if let Some(CrumbItem(end_id, ..)) = items.get(end) {
-                if let Some(start_crumb) = scene.get_crumb(*start_id) {
-                    if let Some(end_crumb) = scene.get_crumb(*end_id) {
-                        let (start_p0, start_r) = match start_crumb {
-                            Crumb::Circle(c1) => (c1.center, c1.radius),
+        if let Some(CrumbItem(tail_id, ..)) = items.get(tail) {
+            if let Some(CrumbItem(head_id, ..)) = items.get(head) {
+                if let Some(tail_crumb) = scene.get_crumb(*tail_id) {
+                    if let Some(head_crumb) = scene.get_crumb(*head_id) {
+                        let (tail_p0, tail_r) = match tail_crumb {
+                            Crumb::Circle(c) => (c.center, c.radius),
                             _ => return None,
                         };
-                        let (end_p0, end_r) = match end_crumb {
-                            Crumb::Circle(c1) => (c1.center, c1.radius),
+                        let (head_p0, head_r) = match head_crumb {
+                            Crumb::Circle(c) => (c.center, c.radius),
                             _ => return None,
                         };
 
-                        let dist = (end_p0 - start_p0) / (end_p0 - start_p0).hypot();
+                        let dist = (head_p0 - tail_p0) / (head_p0 - tail_p0).hypot();
 
                         let mut marker_len = theme
                             .get_marker_by_name("arrowhead1")
@@ -125,10 +125,99 @@ fn joint(
                         let border_width =
                             theme.get_stroke_by_name("node").map(|s| s.get_width()).unwrap_or(0.0);
 
-                        let start_p1 = start_p0 + dist * start_r;
-                        let end_p1 = end_p0 - dist * (end_r + marker_len + border_width);
+                        let tail_p1 = tail_p0 + dist * tail_r;
+                        let head_p1 = head_p0 - dist * (head_r + marker_len + border_width);
 
-                        return Some(Line::new(start_p1, end_p1))
+                        return Some(Line::new(tail_p1, head_p1))
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+fn arc_joint(
+    scene: &Scene,
+    theme: &Theme,
+    group_id: GroupId,
+    tail: usize,
+    head: usize,
+    radius: f64,
+) -> Option<Arc> {
+    if radius > 0.1 {
+        Some(Arc {
+            center:      (500.0, 500.0).into(),
+            radii:       (radius, radius).into(),
+            start_angle: 0.0,
+            sweep_angle: std::f64::consts::PI,
+            x_rotation:  0.0,
+        })
+    } else if radius < -0.1 {
+        let radius = -radius;
+
+        Some(Arc {
+            center:      (500.0, 500.0).into(),
+            radii:       (radius, radius).into(),
+            start_angle: std::f64::consts::PI,
+            sweep_angle: std::f64::consts::PI,
+            x_rotation:  0.0,
+        })
+    } else {
+        None
+    }
+}
+
+fn quad_joint(
+    scene: &Scene,
+    theme: &Theme,
+    group_id: GroupId,
+    tail: usize,
+    head: usize,
+    bendx: f64,
+    bendy: f64,
+) -> Option<BezPath> {
+    if let Some(group) = scene.get_group(group_id) {
+        let items = group.get_crumb_items();
+        if let Some(CrumbItem(tail_id, ..)) = items.get(tail) {
+            if let Some(CrumbItem(head_id, ..)) = items.get(head) {
+                if let Some(tail_crumb) = scene.get_crumb(*tail_id) {
+                    if let Some(head_crumb) = scene.get_crumb(*head_id) {
+                        let (tail_p0, tail_r) = match tail_crumb {
+                            Crumb::Circle(c) => (c.center, c.radius),
+                            _ => return None,
+                        };
+                        let (head_p0, head_r) = match head_crumb {
+                            Crumb::Circle(c) => (c.center, c.radius),
+                            _ => return None,
+                        };
+
+                        let mid_p0 = kurbo::Point::new(
+                            (head_p0.x + tail_p0.x) * 0.5 + bendx,
+                            (head_p0.y + tail_p0.y) * 0.5 + bendy,
+                        );
+
+                        let tail_dist = (tail_p0 - mid_p0) / (tail_p0 - mid_p0).hypot();
+                        let head_dist = (head_p0 - mid_p0) / (head_p0 - mid_p0).hypot();
+
+                        let mut marker_len = theme
+                            .get_marker_by_name("arrowhead1")
+                            .map(|m| m.get_width())
+                            .unwrap_or(0.0);
+                        if let Some(stroke) = theme.get_stroke_by_name("line-thin") {
+                            marker_len += 2.0 * stroke.get_width();
+                        }
+
+                        let border_width =
+                            theme.get_stroke_by_name("node").map(|s| s.get_width()).unwrap_or(0.0);
+
+                        let tail_p1 = tail_p0 + tail_dist * tail_r;
+                        let head_p1 = head_p0 - head_dist * (head_r + marker_len + border_width);
+
+                        return Some(BezPath::from_vec(vec![
+                            PathEl::MoveTo(tail_p1),
+                            PathEl::QuadTo(mid_p0, head_p1),
+                        ]))
                     }
                 }
             }
@@ -164,58 +253,28 @@ fn roundabout_scene(theme: &Theme) -> Scene {
     );
 
     let _thick_style = theme.get("line-thick");
-    let thin_style = theme.get("line-thin");
+    let _thin_style = theme.get("line-thin");
     let arrow_style = theme.get("arrow1");
 
     let lines = scene.add_grouped_lines([
-        (joint(&scene, theme, nodes, 3, 0).unwrap(), arrow_style),
-        (joint(&scene, theme, nodes, 4, 1).unwrap(), arrow_style),
-        (joint(&scene, theme, nodes, 2, 3).unwrap(), arrow_style),
-        (joint(&scene, theme, nodes, 6, 7).unwrap(), arrow_style),
-        (joint(&scene, theme, nodes, 4, 5).unwrap(), arrow_style),
-        (joint(&scene, theme, nodes, 8, 9).unwrap(), arrow_style),
-        (joint(&scene, theme, nodes, 10, 7).unwrap(), arrow_style),
-        (joint(&scene, theme, nodes, 11, 8).unwrap(), arrow_style),
+        (line_joint(&scene, theme, nodes, 3, 0).unwrap(), arrow_style),
+        (line_joint(&scene, theme, nodes, 4, 1).unwrap(), arrow_style),
+        (line_joint(&scene, theme, nodes, 2, 3).unwrap(), arrow_style),
+        (line_joint(&scene, theme, nodes, 6, 7).unwrap(), arrow_style),
+        (line_joint(&scene, theme, nodes, 4, 5).unwrap(), arrow_style),
+        (line_joint(&scene, theme, nodes, 8, 9).unwrap(), arrow_style),
+        (line_joint(&scene, theme, nodes, 10, 7).unwrap(), arrow_style),
+        (line_joint(&scene, theme, nodes, 11, 8).unwrap(), arrow_style),
     ]);
 
     let arcs = scene.add_grouped_crumbs([
-        (
-            Crumb::Arc(Arc {
-                center:      (500.0, 500.0).into(),
-                radii:       (500.0, 500.0).into(),
-                start_angle: 0.0,
-                sweep_angle: std::f64::consts::PI,
-                x_rotation:  0.0,
-            }),
-            thin_style,
-        ),
-        (
-            Crumb::Arc(Arc {
-                center:      (500.0, 500.0).into(),
-                radii:       (500.0, 500.0).into(),
-                start_angle: std::f64::consts::PI,
-                sweep_angle: std::f64::consts::PI,
-                x_rotation:  0.0,
-            }),
-            thin_style,
-        ),
+        (Crumb::Arc(arc_joint(&scene, theme, nodes, 0, 10, -500.0).unwrap()), arrow_style),
+        (Crumb::Arc(arc_joint(&scene, theme, nodes, 1, 11, 500.0).unwrap()), arrow_style),
     ]);
 
     let quads = scene.add_grouped_crumbs([
-        (
-            Crumb::Path(BezPath::from_vec(vec![
-                PathEl::MoveTo((0.0, 500.0).into()),
-                PathEl::QuadTo((500.0, 0.0).into(), (1000.0, 500.0).into()),
-            ])),
-            thin_style,
-        ),
-        (
-            Crumb::Path(BezPath::from_vec(vec![
-                PathEl::MoveTo((0.0, 500.0).into()),
-                PathEl::QuadTo((500.0, 1000.0).into(), (1000.0, 500.0).into()),
-            ])),
-            thin_style,
-        ),
+        (Crumb::Path(quad_joint(&scene, theme, nodes, 0, 10, 0.0, -700.0).unwrap()), arrow_style),
+        (Crumb::Path(quad_joint(&scene, theme, nodes, 1, 11, 0.0, 700.0).unwrap()), arrow_style),
     ]);
 
     let token_style = theme.get("token");

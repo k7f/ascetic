@@ -154,10 +154,12 @@ impl WriteSvg for Style {
         }
 
         if let Some(fill) = self.get_fill() {
-            fill.write_svg(&mut svg)
+            fill.write_svg(&mut svg)?;
         } else {
-            write!(svg, "fill=\"none\"")
+            write!(svg, "fill=\"none\"")?;
         }
+
+        self.get_markers().write_svg(&mut svg)
     }
 }
 
