@@ -1,6 +1,6 @@
 use std::{slice, error::Error};
 use piet::RenderContext;
-use kurbo::{Line, Rect, RoundedRect, Circle, TranslateScale, Size};
+use kurbo::{Point, Line, Rect, RoundedRect, Circle, Arc, BezPath, PathEl, TranslateScale, Size};
 use crate::{Vis, Crumb, CrumbId, CrumbItem, Group, GroupId, GroupItem, StyleId, Theme};
 
 #[derive(Clone, Default, Debug)]
@@ -115,6 +115,213 @@ impl Scene {
         self.roots.push(group_id);
 
         group_id
+    }
+
+    pub fn line_joint(
+        &self,
+        theme: &Theme,
+        group_id: GroupId,
+        tail: usize,
+        head: usize,
+    ) -> Option<Line> {
+        if let Some(group) = self.get_group(group_id) {
+            let items = group.get_crumb_items();
+            if let Some(CrumbItem(tail_id, ..)) = items.get(tail) {
+                if let Some(CrumbItem(head_id, ..)) = items.get(head) {
+                    if let Some(tail_crumb) = self.get_crumb(*tail_id) {
+                        if let Some(head_crumb) = self.get_crumb(*head_id) {
+                            let (tail_p0, tail_r) = match tail_crumb {
+                                Crumb::Circle(c) => (c.center, c.radius),
+                                _ => return None,
+                            };
+                            let (head_p0, head_r) = match head_crumb {
+                                Crumb::Circle(c) => (c.center, c.radius),
+                                _ => return None,
+                            };
+
+                            let versor = (head_p0 - tail_p0) / (head_p0 - tail_p0).hypot();
+
+                            let mut marker_len = theme
+                                .get_marker_by_name("arrowhead1")
+                                .map(|m| m.get_width())
+                                .unwrap_or(0.0);
+                            if let Some(stroke) = theme.get_stroke_by_name("line-thin") {
+                                marker_len += 2.0 * stroke.get_width();
+                            }
+
+                            let border_width = theme
+                                .get_stroke_by_name("node")
+                                .map(|s| s.get_width())
+                                .unwrap_or(0.0);
+
+                            let tail_p1 = tail_p0 + versor * tail_r;
+                            let head_p1 = head_p0 - versor * (head_r + marker_len + border_width);
+
+                            return Some(Line::new(tail_p1, head_p1))
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    pub fn arc_joint(
+        &self,
+        theme: &Theme,
+        group_id: GroupId,
+        tail: usize,
+        head: usize,
+        radius: f64,
+    ) -> Option<Arc> {
+        if let Some(group) = self.get_group(group_id) {
+            let items = group.get_crumb_items();
+            if let Some(CrumbItem(tail_id, ..)) = items.get(tail) {
+                if let Some(CrumbItem(head_id, ..)) = items.get(head) {
+                    if let Some(tail_crumb) = self.get_crumb(*tail_id) {
+                        if let Some(head_crumb) = self.get_crumb(*head_id) {
+                            let (tail_p0, tail_r) = match tail_crumb {
+                                Crumb::Circle(c) => (c.center, c.radius),
+                                _ => return None,
+                            };
+                            let (head_p0, head_r) = match head_crumb {
+                                Crumb::Circle(c) => (c.center, c.radius),
+                                _ => return None,
+                            };
+
+                            let mid_x = (head_p0.x + tail_p0.x) * 0.5;
+                            let mid_y = (head_p0.y + tail_p0.y) * 0.5;
+                            let halfdist = (head_p0 - tail_p0).hypot() * 0.5;
+
+                            if halfdist < 0.1 {
+                                return None
+                            }
+
+                            if radius > halfdist {
+                                let base = (radius * radius - halfdist * halfdist).sqrt()
+                                    / (halfdist * 2.0);
+                                let center: Point = (
+                                    mid_x + (tail_p0.y - head_p0.y) * base,
+                                    mid_y + (tail_p0.x - head_p0.x) * base,
+                                )
+                                    .into();
+                                let start_angle =
+                                    (tail_p0.y - center.y).atan2(tail_p0.x - center.x);
+                                let mut sweep_angle = (head_p0.y - center.y)
+                                    .atan2(head_p0.x - center.x)
+                                    - start_angle;
+
+                                if sweep_angle >= std::f64::consts::PI {
+                                    sweep_angle -= 2.0 * std::f64::consts::PI;
+                                } else if sweep_angle <= -std::f64::consts::PI {
+                                    sweep_angle += 2.0 * std::f64::consts::PI;
+                                }
+
+                                return Some(Arc {
+                                    center,
+                                    radii: (radius, radius).into(),
+                                    start_angle,
+                                    sweep_angle,
+                                    x_rotation: 0.0,
+                                })
+                            } else if radius < -halfdist {
+                                let radius = -radius;
+                                let base = (radius * radius - halfdist * halfdist).sqrt()
+                                    / (halfdist * 2.0);
+                                let center: Point = (
+                                    mid_x - (tail_p0.y - head_p0.y) * base,
+                                    mid_y - (tail_p0.x - head_p0.x) * base,
+                                )
+                                    .into();
+                                let start_angle =
+                                    (tail_p0.y - center.y).atan2(tail_p0.x - center.x);
+                                let mut sweep_angle = (head_p0.y - center.y)
+                                    .atan2(head_p0.x - center.x)
+                                    - start_angle;
+
+                                if sweep_angle >= std::f64::consts::PI {
+                                    sweep_angle -= 2.0 * std::f64::consts::PI;
+                                } else if sweep_angle <= -std::f64::consts::PI {
+                                    sweep_angle += 2.0 * std::f64::consts::PI;
+                                }
+
+                                return Some(Arc {
+                                    center,
+                                    radii: (radius, radius).into(),
+                                    start_angle,
+                                    sweep_angle,
+                                    x_rotation: 0.0,
+                                })
+                            } else {
+                                // FIXME line segment
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    pub fn quad_joint(
+        &self,
+        theme: &Theme,
+        group_id: GroupId,
+        tail: usize,
+        head: usize,
+        bendx: f64,
+        bendy: f64,
+    ) -> Option<BezPath> {
+        if let Some(group) = self.get_group(group_id) {
+            let items = group.get_crumb_items();
+            if let Some(CrumbItem(tail_id, ..)) = items.get(tail) {
+                if let Some(CrumbItem(head_id, ..)) = items.get(head) {
+                    if let Some(tail_crumb) = self.get_crumb(*tail_id) {
+                        if let Some(head_crumb) = self.get_crumb(*head_id) {
+                            let (tail_p0, tail_r) = match tail_crumb {
+                                Crumb::Circle(c) => (c.center, c.radius),
+                                _ => return None,
+                            };
+                            let (head_p0, head_r) = match head_crumb {
+                                Crumb::Circle(c) => (c.center, c.radius),
+                                _ => return None,
+                            };
+
+                            let mid_p0 = Point::new(
+                                (head_p0.x + tail_p0.x) * 0.5 + bendx,
+                                (head_p0.y + tail_p0.y) * 0.5 + bendy,
+                            );
+
+                            let tail_versor = (tail_p0 - mid_p0) / (tail_p0 - mid_p0).hypot();
+                            let head_versor = (head_p0 - mid_p0) / (head_p0 - mid_p0).hypot();
+
+                            let mut marker_len = theme
+                                .get_marker_by_name("arrowhead1")
+                                .map(|m| m.get_width())
+                                .unwrap_or(0.0);
+                            if let Some(stroke) = theme.get_stroke_by_name("line-thin") {
+                                marker_len += 2.0 * stroke.get_width();
+                            }
+
+                            let border_width = theme
+                                .get_stroke_by_name("node")
+                                .map(|s| s.get_width())
+                                .unwrap_or(0.0);
+
+                            let tail_p1 = tail_p0 + tail_versor * tail_r;
+                            let head_p1 =
+                                head_p0 - head_versor * (head_r + marker_len + border_width);
+
+                            return Some(BezPath::from_vec(vec![
+                                PathEl::MoveTo(tail_p1),
+                                PathEl::QuadTo(mid_p0, head_p1),
+                            ]))
+                        }
+                    }
+                }
+            }
+        }
+        None
     }
 
     pub fn render<S, M, R>(
