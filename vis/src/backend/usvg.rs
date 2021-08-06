@@ -53,13 +53,13 @@ impl AsUsvgTree for Scene {
         for CrumbItem(crumb_id, ts, style_id) in self.all_crumbs(root_ts) {
             if let Some(crumb) = self.get_crumb(crumb_id) {
                 let (node_kind, more_kinds) = crumb.as_usvg_node_with_style(ts, style_id, theme);
-                let node = usvg::Node::new(node_kind);
 
-                root_node.append(node);
+                if let Some(kind) = node_kind {
+                    root_node.append(usvg::Node::new(kind));
+                }
 
                 for kind in more_kinds {
-                    let node = usvg::Node::new(kind);
-                    root_node.append(node);
+                    root_node.append(usvg::Node::new(kind));
                 }
             } else {
                 // FIXME
@@ -100,11 +100,20 @@ pub trait AsUsvgNodeWithStyle {
         ts: TranslateScale,
         style_id: Option<StyleId>,
         theme: &Theme,
-    ) -> (usvg::NodeKind, Vec<usvg::NodeKind>) {
-        let (fill, stroke) = theme.get_style_as_usvg(style_id);
-        let data = std::rc::Rc::new(self.as_path_data(ts));
+    ) -> (Option<usvg::NodeKind>, Vec<usvg::NodeKind>) {
+        let path_data = self.as_path_data(ts);
 
-        (usvg::NodeKind::Path(usvg::Path { fill, stroke, data, ..Default::default() }), Vec::new())
+        if path_data.0.is_empty() {
+            (None, Vec::new())
+        } else {
+            let (fill, stroke) = theme.get_style_as_usvg(style_id);
+            let data = std::rc::Rc::new(path_data);
+
+            (
+                Some(usvg::NodeKind::Path(usvg::Path { fill, stroke, data, ..Default::default() })),
+                Vec::new(),
+            )
+        }
     }
 }
 
@@ -117,6 +126,7 @@ impl AsUsvgNodeWithStyle for Crumb {
             Crumb::Circle(circ) => circ.end_angle(points),
             Crumb::Arc(arc) => arc.end_angle(points),
             Crumb::Path(path) => path.end_angle(points),
+            Crumb::Pin(pin) => pin.end_angle(points),
         }
     }
 
@@ -128,6 +138,7 @@ impl AsUsvgNodeWithStyle for Crumb {
             Crumb::Circle(circ) => circ.as_path_data(ts),
             Crumb::Arc(arc) => arc.as_path_data(ts),
             Crumb::Path(path) => path.as_path_data(ts),
+            Crumb::Pin(_) => usvg::PathData::new(),
         }
     }
 
@@ -139,6 +150,7 @@ impl AsUsvgNodeWithStyle for Crumb {
             Crumb::Circle(circ) => circ.as_path_data_and_points(ts),
             Crumb::Arc(arc) => arc.as_path_data_and_points(ts),
             Crumb::Path(path) => path.as_path_data_and_points(ts),
+            Crumb::Pin(_) => (usvg::PathData::new(), Vec::new()),
         }
     }
 
@@ -147,7 +159,7 @@ impl AsUsvgNodeWithStyle for Crumb {
         ts: TranslateScale,
         style_id: Option<StyleId>,
         theme: &Theme,
-    ) -> (usvg::NodeKind, Vec<usvg::NodeKind>) {
+    ) -> (Option<usvg::NodeKind>, Vec<usvg::NodeKind>) {
         match self {
             Crumb::Line(line) => line.as_usvg_node_with_style(ts, style_id, theme),
             Crumb::Rect(rect) => rect.as_usvg_node_with_style(ts, style_id, theme),
@@ -155,6 +167,7 @@ impl AsUsvgNodeWithStyle for Crumb {
             Crumb::Circle(circ) => circ.as_usvg_node_with_style(ts, style_id, theme),
             Crumb::Arc(arc) => arc.as_usvg_node_with_style(ts, style_id, theme),
             Crumb::Path(path) => path.as_usvg_node_with_style(ts, style_id, theme),
+            Crumb::Pin(_) => (None, Vec::new()),
         }
     }
 }
@@ -194,7 +207,7 @@ impl AsUsvgNodeWithStyle for Line {
         ts: TranslateScale,
         style_id: Option<StyleId>,
         theme: &Theme,
-    ) -> (usvg::NodeKind, Vec<usvg::NodeKind>) {
+    ) -> (Option<usvg::NodeKind>, Vec<usvg::NodeKind>) {
         let mut more_kinds = Vec::new();
         let style = theme.get_style(style_id).unwrap_or_else(|| theme.get_default_style());
         let stroke = style
@@ -256,7 +269,7 @@ impl AsUsvgNodeWithStyle for Line {
 
         let data = std::rc::Rc::new(path_data);
 
-        (usvg::NodeKind::Path(usvg::Path { stroke, data, ..Default::default() }), more_kinds)
+        (Some(usvg::NodeKind::Path(usvg::Path { stroke, data, ..Default::default() })), more_kinds)
     }
 }
 
@@ -384,7 +397,7 @@ impl AsUsvgNodeWithStyle for BezPath {
         ts: TranslateScale,
         style_id: Option<StyleId>,
         theme: &Theme,
-    ) -> (usvg::NodeKind, Vec<usvg::NodeKind>) {
+    ) -> (Option<usvg::NodeKind>, Vec<usvg::NodeKind>) {
         let mut more_kinds = Vec::new();
         let style = theme.get_style(style_id).unwrap_or_else(|| theme.get_default_style());
         let stroke = style
@@ -447,7 +460,10 @@ impl AsUsvgNodeWithStyle for BezPath {
 
         let data = std::rc::Rc::new(path_data);
 
-        (usvg::NodeKind::Path(usvg::Path { stroke, fill, data, ..Default::default() }), more_kinds)
+        (
+            Some(usvg::NodeKind::Path(usvg::Path { stroke, fill, data, ..Default::default() })),
+            more_kinds,
+        )
     }
 }
 

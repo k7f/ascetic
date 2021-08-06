@@ -132,10 +132,12 @@ impl Scene {
                         if let Some(head_crumb) = self.get_crumb(*head_id) {
                             let (tail_p0, tail_r) = match tail_crumb {
                                 Crumb::Circle(c) => (c.center, c.radius),
+                                Crumb::Pin(p) => (p.center, p.radius),
                                 _ => return None,
                             };
                             let (head_p0, head_r) = match head_crumb {
                                 Crumb::Circle(c) => (c.center, c.radius),
+                                Crumb::Pin(p) => (p.center, p.radius),
                                 _ => return None,
                             };
 
@@ -166,6 +168,8 @@ impl Scene {
         None
     }
 
+    // FIXME line2_joint, line3_joint
+
     pub fn arc_joint(
         &self,
         theme: &Theme,
@@ -182,10 +186,12 @@ impl Scene {
                         if let Some(head_crumb) = self.get_crumb(*head_id) {
                             let (tail_p0, tail_r) = match tail_crumb {
                                 Crumb::Circle(c) => (c.center, c.radius),
+                                Crumb::Pin(p) => (p.center, p.radius),
                                 _ => return None,
                             };
                             let (head_p0, head_r) = match head_crumb {
                                 Crumb::Circle(c) => (c.center, c.radius),
+                                Crumb::Pin(p) => (p.center, p.radius),
                                 _ => return None,
                             };
 
@@ -289,10 +295,12 @@ impl Scene {
                         if let Some(head_crumb) = self.get_crumb(*head_id) {
                             let (tail_p0, tail_r) = match tail_crumb {
                                 Crumb::Circle(c) => (c.center, c.radius),
+                                Crumb::Pin(p) => (p.center, p.radius),
                                 _ => return None,
                             };
                             let (head_p0, head_r) = match head_crumb {
                                 Crumb::Circle(c) => (c.center, c.radius),
+                                Crumb::Pin(p) => (p.center, p.radius),
                                 _ => return None,
                             };
 
@@ -352,10 +360,12 @@ impl Scene {
                         if let Some(head_crumb) = self.get_crumb(*head_id) {
                             let (tail_p0, tail_r) = match tail_crumb {
                                 Crumb::Circle(c) => (c.center, c.radius),
+                                Crumb::Pin(p) => (p.center, p.radius),
                                 _ => return None,
                             };
                             let (head_p0, head_r) = match head_crumb {
                                 Crumb::Circle(c) => (c.center, c.radius),
+                                Crumb::Pin(p) => (p.center, p.radius),
                                 _ => return None,
                             };
 

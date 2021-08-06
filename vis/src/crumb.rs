@@ -16,6 +16,7 @@ pub enum Crumb {
     Circle(Circle),
     Arc(Arc),
     Path(BezPath),
+    Pin(Circle),
 }
 
 impl Vis for Crumb {
@@ -27,6 +28,7 @@ impl Vis for Crumb {
             Crumb::Circle(circ) => circ.bbox(ts),
             Crumb::Arc(arc) => arc.bbox(ts),
             Crumb::Path(path) => path.bbox(ts),
+            Crumb::Pin(pin) => pin.bbox(ts),
         }
     }
 
@@ -44,6 +46,7 @@ impl Vis for Crumb {
             Crumb::Circle(circ) => circ.vis(rc, ts, style_id, theme),
             Crumb::Arc(arc) => arc.vis(rc, ts, style_id, theme),
             Crumb::Path(path) => path.vis(rc, ts, style_id, theme),
+            Crumb::Pin(_) => {}
         }
     }
 }

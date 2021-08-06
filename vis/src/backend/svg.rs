@@ -173,6 +173,7 @@ impl WriteSvg for Crumb {
             Crumb::Circle(circ) => circ.write_svg(&mut svg),
             Crumb::Arc(arc) => arc.write_svg(&mut svg),
             Crumb::Path(path) => path.write_svg(&mut svg),
+            Crumb::Pin(_) => Ok(()),
         }
     }
 }
@@ -191,6 +192,7 @@ impl WriteSvgWithStyle for Crumb {
             Crumb::Circle(circ) => circ.write_svg_opt(&mut svg, style),
             Crumb::Arc(arc) => arc.write_svg_opt(&mut svg, style),
             Crumb::Path(path) => path.write_svg_opt(&mut svg, style),
+            Crumb::Pin(_) => Ok(()),
         }
     }
 
@@ -209,6 +211,7 @@ impl WriteSvgWithStyle for Crumb {
             Crumb::Circle(circ) => circ.write_svg_with_style(&mut svg, ts, style_id, theme),
             Crumb::Arc(arc) => arc.write_svg_with_style(&mut svg, ts, style_id, theme),
             Crumb::Path(path) => path.write_svg_with_style(&mut svg, ts, style_id, theme),
+            Crumb::Pin(_) => Ok(()),
         }
     }
 }
