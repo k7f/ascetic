@@ -154,7 +154,7 @@ impl Scene {
                                 .map(|s| s.get_width())
                                 .unwrap_or(0.0);
 
-                            let tail_p1 = tail_p0 + versor * tail_r;
+                            let tail_p1 = tail_p0 + versor * (tail_r + border_width);
                             let head_p1 = head_p0 - versor * (head_r + marker_len + border_width);
 
                             return Some(Line::new(tail_p1, head_p1))
@@ -231,7 +231,8 @@ impl Scene {
                                 .map(|s| s.get_width())
                                 .unwrap_or(0.0);
 
-                            let tail_apex_angle = 2.0 * (tail_r / (2.0 * radius)).asin();
+                            let tail_apex_angle =
+                                2.0 * ((tail_r + border_width) / (2.0 * radius)).asin();
                             let head_apex_angle = 2.0
                                 * ((head_r + marker_len + border_width) / (2.0 * radius)).asin();
                             let total_apex_angle = tail_apex_angle + head_apex_angle;
@@ -295,13 +296,13 @@ impl Scene {
                                 _ => return None,
                             };
 
-                            let mid_p0 = Point::new(
+                            let mid_p1 = Point::new(
                                 (head_p0.x + tail_p0.x) * 0.5 + bendx,
                                 (head_p0.y + tail_p0.y) * 0.5 + bendy,
                             );
 
-                            let tail_versor = (tail_p0 - mid_p0) / (tail_p0 - mid_p0).hypot();
-                            let head_versor = (head_p0 - mid_p0) / (head_p0 - mid_p0).hypot();
+                            let tail_versor = (tail_p0 - mid_p1) / (tail_p0 - mid_p1).hypot();
+                            let head_versor = (head_p0 - mid_p1) / (head_p0 - mid_p1).hypot();
 
                             let mut marker_len = theme
                                 .get_marker_by_name("arrowhead1")
@@ -316,13 +317,81 @@ impl Scene {
                                 .map(|s| s.get_width())
                                 .unwrap_or(0.0);
 
-                            let tail_p1 = tail_p0 - tail_versor * tail_r;
+                            let tail_p1 = tail_p0 - tail_versor * (tail_r + border_width);
                             let head_p1 =
                                 head_p0 - head_versor * (head_r + marker_len + border_width);
 
                             return Some(BezPath::from_vec(vec![
                                 PathEl::MoveTo(tail_p1),
-                                PathEl::QuadTo(mid_p0, head_p1),
+                                PathEl::QuadTo(mid_p1, head_p1),
+                            ]))
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    pub fn cubic_joint(
+        &self,
+        theme: &Theme,
+        group_id: GroupId,
+        tail: usize,
+        head: usize,
+        bend1x: f64,
+        bend1y: f64,
+        bend2x: f64,
+        bend2y: f64,
+    ) -> Option<BezPath> {
+        if let Some(group) = self.get_group(group_id) {
+            let items = group.get_crumb_items();
+            if let Some(CrumbItem(tail_id, ..)) = items.get(tail) {
+                if let Some(CrumbItem(head_id, ..)) = items.get(head) {
+                    if let Some(tail_crumb) = self.get_crumb(*tail_id) {
+                        if let Some(head_crumb) = self.get_crumb(*head_id) {
+                            let (tail_p0, tail_r) = match tail_crumb {
+                                Crumb::Circle(c) => (c.center, c.radius),
+                                _ => return None,
+                            };
+                            let (head_p0, head_r) = match head_crumb {
+                                Crumb::Circle(c) => (c.center, c.radius),
+                                _ => return None,
+                            };
+
+                            let mid_p1 = Point::new(
+                                (head_p0.x + tail_p0.x) * 0.5 + bend1x,
+                                (head_p0.y + tail_p0.y) * 0.5 + bend1y,
+                            );
+
+                            let mid_p2 = Point::new(
+                                (head_p0.x + tail_p0.x) * 0.5 + bend2x,
+                                (head_p0.y + tail_p0.y) * 0.5 + bend2y,
+                            );
+
+                            let tail_versor = (tail_p0 - mid_p1) / (tail_p0 - mid_p1).hypot();
+                            let head_versor = (head_p0 - mid_p2) / (head_p0 - mid_p2).hypot();
+
+                            let mut marker_len = theme
+                                .get_marker_by_name("arrowhead1")
+                                .map(|m| m.get_width())
+                                .unwrap_or(0.0);
+                            if let Some(stroke) = theme.get_stroke_by_name("line-thin") {
+                                marker_len += 2.0 * stroke.get_width();
+                            }
+
+                            let border_width = theme
+                                .get_stroke_by_name("node")
+                                .map(|s| s.get_width())
+                                .unwrap_or(0.0);
+
+                            let tail_p1 = tail_p0 - tail_versor * (tail_r + border_width);
+                            let head_p1 =
+                                head_p0 - head_versor * (head_r + marker_len + border_width);
+
+                            return Some(BezPath::from_vec(vec![
+                                PathEl::MoveTo(tail_p1),
+                                PathEl::CurveTo(mid_p1, mid_p2, head_p1),
                             ]))
                         }
                     }

@@ -140,7 +140,14 @@ fn roundabout_scene(theme: &Theme) -> Scene {
 
     let quads = scene.add_grouped_crumbs([
         (Crumb::Path(scene.quad_joint(theme, nodes, 0, 10, 0.0, -680.0).unwrap()), arrow_style),
-        (Crumb::Path(scene.quad_joint(theme, nodes, 1, 11, 0.0, 680.0).unwrap()), arrow_style),
+        (Crumb::Path(scene.quad_joint(theme, nodes, 11, 10, 270.0, 0.0).unwrap()), arrow_style),
+        (Crumb::Path(scene.quad_joint(theme, nodes, 11, 1, 0.0, 680.0).unwrap()), arrow_style),
+        (Crumb::Path(scene.quad_joint(theme, nodes, 0, 1, -270.0, 0.0).unwrap()), arrow_style),
+    ]);
+
+    let cubics = scene.add_grouped_crumbs([
+        (Crumb::Path(scene.cubic_joint(theme, nodes, 6, 2, -20.0, -200.0, 20.0, 200.0).unwrap()), arrow_style),
+        (Crumb::Path(scene.cubic_joint(theme, nodes, 5, 9, 20.0, 200.0, -20.0, -200.0).unwrap()), arrow_style),
     ]);
 
     let token_style = theme.get("token");
@@ -179,7 +186,7 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         ),
     ]);
 
-    scene.add_root(Group::from_groups([tokens, nodes, lines, arcs, quads, frame]));
+    scene.add_root(Group::from_groups([tokens, nodes, lines, arcs, quads, cubics, frame]));
 
     scene
 }
