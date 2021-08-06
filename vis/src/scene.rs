@@ -172,7 +172,7 @@ impl Scene {
         group_id: GroupId,
         tail: usize,
         head: usize,
-        radius: f64,
+        mut radius: f64,
     ) -> Option<Arc> {
         if let Some(group) = self.get_group(group_id) {
             let items = group.get_crumb_items();
@@ -193,67 +193,75 @@ impl Scene {
                             let mid_y = (head_p0.y + tail_p0.y) * 0.5;
                             let halfdist = (head_p0 - tail_p0).hypot() * 0.5;
 
-                            if halfdist < 0.1 {
+                            if halfdist < tail_r + head_r + 0.1 {
                                 return None
                             }
 
-                            if radius > halfdist {
+                            let center: Point = if radius > halfdist {
                                 let base = (radius * radius - halfdist * halfdist).sqrt()
                                     / (halfdist * 2.0);
-                                let center: Point = (
+                                (
                                     mid_x + (tail_p0.y - head_p0.y) * base,
                                     mid_y + (tail_p0.x - head_p0.x) * base,
                                 )
-                                    .into();
-                                let start_angle =
-                                    (tail_p0.y - center.y).atan2(tail_p0.x - center.x);
-                                let mut sweep_angle = (head_p0.y - center.y)
-                                    .atan2(head_p0.x - center.x)
-                                    - start_angle;
-
-                                if sweep_angle >= std::f64::consts::PI {
-                                    sweep_angle -= 2.0 * std::f64::consts::PI;
-                                } else if sweep_angle <= -std::f64::consts::PI {
-                                    sweep_angle += 2.0 * std::f64::consts::PI;
-                                }
-
-                                return Some(Arc {
-                                    center,
-                                    radii: (radius, radius).into(),
-                                    start_angle,
-                                    sweep_angle,
-                                    x_rotation: 0.0,
-                                })
                             } else if radius < -halfdist {
-                                let radius = -radius;
+                                radius = -radius;
                                 let base = (radius * radius - halfdist * halfdist).sqrt()
                                     / (halfdist * 2.0);
-                                let center: Point = (
+                                (
                                     mid_x - (tail_p0.y - head_p0.y) * base,
                                     mid_y - (tail_p0.x - head_p0.x) * base,
                                 )
-                                    .into();
-                                let start_angle =
-                                    (tail_p0.y - center.y).atan2(tail_p0.x - center.x);
-                                let mut sweep_angle = (head_p0.y - center.y)
-                                    .atan2(head_p0.x - center.x)
-                                    - start_angle;
+                            } else {
+                                // FIXME line segment
+                                return None
+                            }
+                            .into();
 
-                                if sweep_angle >= std::f64::consts::PI {
-                                    sweep_angle -= 2.0 * std::f64::consts::PI;
-                                } else if sweep_angle <= -std::f64::consts::PI {
-                                    sweep_angle += 2.0 * std::f64::consts::PI;
-                                }
+                            let mut marker_len = theme
+                                .get_marker_by_name("arrowhead1")
+                                .map(|m| m.get_width())
+                                .unwrap_or(0.0);
+                            if let Some(stroke) = theme.get_stroke_by_name("line-thin") {
+                                marker_len += 2.0 * stroke.get_width();
+                            }
 
+                            let border_width = theme
+                                .get_stroke_by_name("node")
+                                .map(|s| s.get_width())
+                                .unwrap_or(0.0);
+
+                            let tail_apex_angle = 2.0 * (tail_r / (2.0 * radius)).asin();
+                            let head_apex_angle = 2.0
+                                * ((head_r + marker_len + border_width) / (2.0 * radius)).asin();
+                            let total_apex_angle = tail_apex_angle + head_apex_angle;
+
+                            let start_angle = (tail_p0.y - center.y).atan2(tail_p0.x - center.x);
+                            let mut sweep_angle =
+                                (head_p0.y - center.y).atan2(head_p0.x - center.x) - start_angle;
+
+                            if sweep_angle >= std::f64::consts::PI {
+                                sweep_angle -= 2.0 * std::f64::consts::PI;
+                            } else if sweep_angle <= -std::f64::consts::PI {
+                                sweep_angle += 2.0 * std::f64::consts::PI;
+                            }
+
+                            if sweep_angle > total_apex_angle {
                                 return Some(Arc {
                                     center,
                                     radii: (radius, radius).into(),
-                                    start_angle,
-                                    sweep_angle,
+                                    start_angle: start_angle + tail_apex_angle,
+                                    sweep_angle: sweep_angle - total_apex_angle,
                                     x_rotation: 0.0,
                                 })
-                            } else {
-                                // FIXME line segment
+                            } else if sweep_angle < -total_apex_angle {
+                                return Some(Arc {
+                                    center,
+                                    radii: (radius, radius).into(),
+                                    start_angle: start_angle - tail_apex_angle,
+                                    sweep_angle: sweep_angle + total_apex_angle,
+                                    x_rotation: 0.0,
+                                })
                             }
                         }
                     }
@@ -308,7 +316,7 @@ impl Scene {
                                 .map(|s| s.get_width())
                                 .unwrap_or(0.0);
 
-                            let tail_p1 = tail_p0 + tail_versor * tail_r;
+                            let tail_p1 = tail_p0 - tail_versor * tail_r;
                             let head_p1 =
                                 head_p0 - head_versor * (head_r + marker_len + border_width);
 
