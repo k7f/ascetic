@@ -106,6 +106,16 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         (800.0, 400.0),
         (800.0, 600.0),
     ];
+    let pin_positions = vec![
+        node_positions[0],
+        (node_positions[0].0 - 135.0, node_positions[0].1 - 135.0),
+        node_positions[1],
+        (node_positions[1].0 - 135.0, node_positions[1].1 + 135.0),
+        node_positions[10],
+        (node_positions[10].0 + 135.0, node_positions[10].1 - 135.0),
+        node_positions[11],
+        (node_positions[11].0 + 135.0, node_positions[11].1 + 135.0),
+    ];
     let token_positions = vec![node_positions[0], node_positions[7]];
 
     let node_style = theme.get("node");
@@ -113,6 +123,12 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         node_positions
             .into_iter()
             .map(|(x, y)| (Crumb::Circle(Circle::new((x, y), 40.)), node_style)),
+    );
+
+    let pins = scene.add_grouped_crumbs(
+        pin_positions
+            .into_iter()
+            .map(|(x, y)| (Crumb::Pin(Circle::new((x, y), 40.)), None)),
     );
 
     let thick_style = theme.get("line-thick");
@@ -128,6 +144,13 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         (scene.line_joint(theme, nodes, 8, 11).unwrap(), arrow_style),
         (scene.line_joint(theme, nodes, 10, 7).unwrap(), arrow_style),
         (scene.line_joint(theme, nodes, 7, 6).unwrap(), arrow_style),
+    ]);
+
+    let polylines = scene.add_grouped_crumbs([
+        (Crumb::Path(scene.line3_joint(theme, pins, 0, 1, 0.0, -20.0, 10.0, 30.0).unwrap()), arrow_style),
+        (Crumb::Path(scene.line3_joint(theme, pins, 3, 2, 20.0, 0.0, -30.0, 10.0).unwrap()), arrow_style),
+        (Crumb::Path(scene.line3_joint(theme, pins, 5, 4, -30.0, 10.0, 20.0, 0.0).unwrap()), arrow_style),
+        (Crumb::Path(scene.line3_joint(theme, pins, 6, 7, 10.0, 30.0, 0.0, -20.0).unwrap()), arrow_style),
     ]);
 
     let radius = 2f64.sqrt() * 100.0;
@@ -186,7 +209,7 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         ),
     ]);
 
-    scene.add_root(Group::from_groups([tokens, nodes, lines, arcs, quads, cubics, frame]));
+    scene.add_root(Group::from_groups([tokens, nodes, lines, polylines, arcs, quads, cubics, frame, pins]));
 
     scene
 }
