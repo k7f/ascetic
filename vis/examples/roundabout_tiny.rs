@@ -6,7 +6,7 @@ use std::{
     error::Error,
 };
 use ascetic_vis::{
-    Scene, Theme, Style, Stroke, Fill, Marker, Variation, Group, Crumb, Color, UnitPoint,
+    Scene, Theme, Style, Stroke, Fill, Marker, Variation, Group, Crumb, Joint, Color, UnitPoint,
     kurbo::{Rect, Circle, Arc, BezPath, PathEl},
     backend::{usvg::AsUsvgTree, svg::ToSvg},
 };
@@ -107,16 +107,12 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         (800.0, 600.0),
     ];
     let pin_positions = vec![
-        node_positions[0],
         (node_positions[0].0 - 135.0, node_positions[0].1 - 135.0),
-        node_positions[1],
         (node_positions[1].0 - 135.0, node_positions[1].1 + 135.0),
-        node_positions[10],
         (node_positions[10].0 + 135.0, node_positions[10].1 - 135.0),
-        node_positions[11],
         (node_positions[11].0 + 135.0, node_positions[11].1 + 135.0),
     ];
-    let token_positions = vec![node_positions[0], node_positions[7]];
+    let token_positions = vec![node_positions[0], node_positions[7], node_positions[9]];
 
     let node_style = theme.get("node");
     let nodes = scene.add_grouped_crumbs(
@@ -126,52 +122,60 @@ fn roundabout_scene(theme: &Theme) -> Scene {
     );
 
     let pins = scene.add_grouped_crumbs(
-        pin_positions
-            .into_iter()
-            .map(|(x, y)| (Crumb::Pin(Circle::new((x, y), 40.)), None)),
+        pin_positions.into_iter().map(|(x, y)| (Crumb::Pin(Circle::new((x, y), 40.)), None)),
     );
 
     let thick_style = theme.get("line-thick");
     let thin_style = theme.get("line-thin");
     let arrow_style = theme.get("arrow1");
 
-    let lines = scene.add_grouped_lines([
-        (scene.line_joint(theme, nodes, 2, 3).unwrap(), arrow_style),
-        (scene.line_joint(theme, nodes, 3, 0).unwrap(), arrow_style),
-        (scene.line_joint(theme, nodes, 1, 4).unwrap(), arrow_style),
-        (scene.line_joint(theme, nodes, 4, 5).unwrap(), arrow_style),
-        (scene.line_joint(theme, nodes, 9, 8).unwrap(), arrow_style),
-        (scene.line_joint(theme, nodes, 8, 11).unwrap(), arrow_style),
-        (scene.line_joint(theme, nodes, 10, 7).unwrap(), arrow_style),
-        (scene.line_joint(theme, nodes, 7, 6).unwrap(), arrow_style),
-    ]);
+    let lines = scene
+        .join(nodes, nodes)
+        .with_lines(arrow_style, [(2, 3), (3, 0), (1, 4), (4, 5), (9, 8), (8, 11), (10, 7), (7, 6)])
+        .as_group(theme);
 
-    let polylines = scene.add_grouped_crumbs([
-        (Crumb::Path(scene.line3_joint(theme, pins, 0, 1, 0.0, -20.0, 10.0, 30.0).unwrap()), arrow_style),
-        (Crumb::Path(scene.line3_joint(theme, pins, 3, 2, 20.0, 0.0, -30.0, 10.0).unwrap()), arrow_style),
-        (Crumb::Path(scene.line3_joint(theme, pins, 5, 4, -30.0, 10.0, 20.0, 0.0).unwrap()), arrow_style),
-        (Crumb::Path(scene.line3_joint(theme, pins, 6, 7, 10.0, 30.0, 0.0, -20.0).unwrap()), arrow_style),
-    ]);
+    let source_lines = scene
+        .join(pins, nodes)
+        .with_polylines(
+            arrow_style,
+            [(1, 1, [(20.0, 0.0), (-30.0, 10.0)]), (2, 10, [(-30.0, 10.0), (20.0, 0.0)])],
+        )
+        .as_group(theme);
+
+    let sink_lines = scene
+        .join(nodes, pins)
+        .with_polylines(
+            arrow_style,
+            [(0, 0, [(0.0, -20.0), (10.0, 30.0)]), (11, 3, [(10.0, 30.0), (0.0, -20.0)])],
+        )
+        .as_group(theme);
 
     let radius = 2f64.sqrt() * 100.0;
-    let arcs = scene.add_grouped_crumbs([
-        (Crumb::Arc(scene.arc_joint(theme, nodes, 7, 3, radius).unwrap()), arrow_style),
-        (Crumb::Arc(scene.arc_joint(theme, nodes, 3, 4, -radius).unwrap()), arrow_style),
-        (Crumb::Arc(scene.arc_joint(theme, nodes, 4, 8, radius).unwrap()), arrow_style),
-        (Crumb::Arc(scene.arc_joint(theme, nodes, 8, 7, -radius).unwrap()), arrow_style),
-    ]);
+    let arcs = scene
+        .join(nodes, nodes)
+        .with_arcs(arrow_style, [(7, 3, radius), (3, 4, -radius), (4, 8, radius), (8, 7, -radius)])
+        .as_group(theme);
 
-    let quads = scene.add_grouped_crumbs([
-        (Crumb::Path(scene.quad_joint(theme, nodes, 0, 10, 0.0, -680.0).unwrap()), arrow_style),
-        (Crumb::Path(scene.quad_joint(theme, nodes, 11, 10, 270.0, 0.0).unwrap()), arrow_style),
-        (Crumb::Path(scene.quad_joint(theme, nodes, 11, 1, 0.0, 680.0).unwrap()), arrow_style),
-        (Crumb::Path(scene.quad_joint(theme, nodes, 0, 1, -270.0, 0.0).unwrap()), arrow_style),
-    ]);
+    let quads = scene
+        .join(nodes, nodes)
+        .with_curves(
+            arrow_style,
+            [
+                (0, 10, [(0.0, -680.0)]),
+                (11, 10, [(270.0, 0.0)]),
+                (11, 1, [(0.0, 680.0)]),
+                (0, 1, [(-270.0, 0.0)]),
+            ],
+        )
+        .as_group(theme);
 
-    let cubics = scene.add_grouped_crumbs([
-        (Crumb::Path(scene.cubic_joint(theme, nodes, 6, 2, -20.0, -200.0, 20.0, 200.0).unwrap()), arrow_style),
-        (Crumb::Path(scene.cubic_joint(theme, nodes, 5, 9, 20.0, 200.0, -20.0, -200.0).unwrap()), arrow_style),
-    ]);
+    let cubics = scene
+        .join(nodes, nodes)
+        .with_curves(
+            arrow_style,
+            [(6, 2, [(-20.0, -200.0), (20.0, 200.0)]), (5, 9, [(20.0, 200.0), (-20.0, -200.0)])],
+        )
+        .as_group(theme);
 
     let token_style = theme.get("token");
     let tokens = scene.add_grouped_crumbs(
@@ -209,7 +213,18 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         ),
     ]);
 
-    scene.add_root(Group::from_groups([tokens, nodes, lines, polylines, arcs, quads, cubics, frame, pins]));
+    scene.add_root(Group::from_groups([
+        tokens,
+        nodes,
+        lines,
+        source_lines,
+        sink_lines,
+        arcs,
+        quads,
+        cubics,
+        frame,
+        pins,
+    ]));
 
     scene
 }

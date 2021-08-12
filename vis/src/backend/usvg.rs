@@ -344,6 +344,23 @@ impl AsUsvgNodeWithStyle for Arc {
 
         path.as_path_data(ts)
     }
+
+    fn as_path_data_and_points(&self, ts: TranslateScale) -> (usvg::PathData, Vec<Point>) {
+        let path = BezPath::from_vec(self.path_elements(0.1).collect());
+
+        path.as_path_data_and_points(ts)
+    }
+
+    fn as_usvg_node_with_style(
+        &self,
+        ts: TranslateScale,
+        style_id: Option<StyleId>,
+        theme: &Theme,
+    ) -> (Option<usvg::NodeKind>, Vec<usvg::NodeKind>) {
+        let path = BezPath::from_vec(self.path_elements(0.1).collect());
+
+        path.as_usvg_node_with_style(ts, style_id, theme)
+    }
 }
 
 impl AsUsvgNodeWithStyle for BezPath {
