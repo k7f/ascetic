@@ -6,7 +6,7 @@ use piet::{
     TextAlignment, TextAttribute, TextLayout, TextLayoutBuilder, TextStorage,
 };
 use usvg::NodeExt;
-use crate::{Scene, Theme, Style, StyleId, Stroke, Fill, GradSpec, Crumb, CrumbItem};
+use crate::{Scene, Theme, Style, StyleId, Stroke, Fill, GradSpec, Crumb, CrumbItem, TextLabel};
 
 pub use usvg::{Tree, FitTo};
 pub use tiny_skia::Pixmap;
@@ -127,6 +127,7 @@ impl AsUsvgNodeWithStyle for Crumb {
             Crumb::Arc(arc) => arc.end_angle(points),
             Crumb::Path(path) => path.end_angle(points),
             Crumb::Pin(pin) => pin.end_angle(points),
+            Crumb::Label(label) => label.end_angle(points),
         }
     }
 
@@ -139,6 +140,7 @@ impl AsUsvgNodeWithStyle for Crumb {
             Crumb::Arc(arc) => arc.as_path_data(ts),
             Crumb::Path(path) => path.as_path_data(ts),
             Crumb::Pin(_) => usvg::PathData::new(),
+            Crumb::Label(label) => label.as_path_data(ts),
         }
     }
 
@@ -151,6 +153,7 @@ impl AsUsvgNodeWithStyle for Crumb {
             Crumb::Arc(arc) => arc.as_path_data_and_points(ts),
             Crumb::Path(path) => path.as_path_data_and_points(ts),
             Crumb::Pin(_) => (usvg::PathData::new(), Vec::new()),
+            Crumb::Label(label) => label.as_path_data_and_points(ts),
         }
     }
 
@@ -168,6 +171,7 @@ impl AsUsvgNodeWithStyle for Crumb {
             Crumb::Arc(arc) => arc.as_usvg_node_with_style(ts, style_id, theme),
             Crumb::Path(path) => path.as_usvg_node_with_style(ts, style_id, theme),
             Crumb::Pin(_) => (None, Vec::new()),
+            Crumb::Label(label) => label.as_usvg_node_with_style(ts, style_id, theme),
         }
     }
 }
@@ -481,6 +485,17 @@ impl AsUsvgNodeWithStyle for BezPath {
             Some(usvg::NodeKind::Path(usvg::Path { stroke, fill, data, ..Default::default() })),
             more_kinds,
         )
+    }
+}
+
+impl AsUsvgNodeWithStyle for TextLabel {
+    fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData {
+        self.as_path_data_and_points(ts).0
+    }
+
+    fn as_path_data_and_points(&self, _ts: TranslateScale) -> (usvg::PathData, Vec<Point>) {
+        // FIXME
+        (usvg::PathData::new(), Vec::new())
     }
 }
 

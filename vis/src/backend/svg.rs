@@ -3,7 +3,7 @@ use kurbo::{Shape, Line, Rect, RoundedRect, Circle, Arc, BezPath, TranslateScale
 use piet::Color;
 use crate::{
     Scene, Theme, Style, StyleId, Stroke, Fill, GradSpec, Marker, style::MarkerSuit, Crumb,
-    CrumbItem,
+    CrumbItem, TextLabel,
 };
 
 pub trait ToSvg {
@@ -174,6 +174,7 @@ impl WriteSvg for Crumb {
             Crumb::Arc(arc) => arc.write_svg(&mut svg),
             Crumb::Path(path) => path.write_svg(&mut svg),
             Crumb::Pin(_) => Ok(()),
+            Crumb::Label(label) => label.write_svg(&mut svg),
         }
     }
 }
@@ -193,6 +194,7 @@ impl WriteSvgWithStyle for Crumb {
             Crumb::Arc(arc) => arc.write_svg_opt(&mut svg, style),
             Crumb::Path(path) => path.write_svg_opt(&mut svg, style),
             Crumb::Pin(_) => Ok(()),
+            Crumb::Label(label) => label.write_svg_opt(&mut svg, style),
         }
     }
 
@@ -212,6 +214,7 @@ impl WriteSvgWithStyle for Crumb {
             Crumb::Arc(arc) => arc.write_svg_with_style(&mut svg, ts, style_id, theme),
             Crumb::Path(path) => path.write_svg_with_style(&mut svg, ts, style_id, theme),
             Crumb::Pin(_) => Ok(()),
+            Crumb::Label(label) => label.write_svg_with_style(&mut svg, ts, style_id, theme),
         }
     }
 }
@@ -555,6 +558,38 @@ impl WriteSvgWithStyle for BezPath {
         }
 
         writeln!(svg, "/>")
+    }
+}
+
+impl WriteSvg for TextLabel {
+    fn write_svg<W: std::io::Write>(&self, mut svg: W) -> std::io::Result<()> {
+        writeln!(
+            svg,
+            "  <text x=\"{}\" y=\"{}\" font-family=\"Arial\" font-size=\"24\">{}</text>",
+            self.x,
+            self.y,
+            self.body,
+        )
+    }
+}
+
+impl WriteSvgWithStyle for TextLabel {
+    fn write_svg_opt<W: std::io::Write>(
+        &self,
+        svg: W,
+        _style: Option<&Style>,
+    ) -> std::io::Result<()> {
+        self.write_svg(svg)
+    }
+
+    fn write_svg_with_style<W: std::io::Write>(
+        &self,
+        svg: W,
+        _ts: TranslateScale,
+        _style_id: Option<StyleId>,
+        _theme: &Theme,
+    ) -> std::io::Result<()> {
+        self.write_svg(svg)
     }
 }
 

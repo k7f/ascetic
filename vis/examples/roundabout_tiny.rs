@@ -6,9 +6,12 @@ use std::{
     error::Error,
 };
 use ascetic_vis::{
-    Scene, Theme, Style, Stroke, Fill, Marker, Variation, Group, Crumb, Joint, Color, UnitPoint,
+    Scene, Theme, Style, Stroke, Fill, Marker, Variation, Group, Crumb, Joint, TextLabel, Color, UnitPoint,
     kurbo::{Rect, Circle, Arc, BezPath, PathEl},
-    backend::{usvg::AsUsvgTree, svg::ToSvg},
+    backend::{
+        usvg::AsUsvgTree, usvg::Tree as UsvgTree, usvg::FitTo, usvg::Pixmap,
+        usvg::render_to_pixmap, svg::ToSvg,
+    },
 };
 
 const SCENE_NAME: &str = "scene";
@@ -213,7 +216,15 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         ),
     ]);
 
+    let labels = scene.add_grouped_crumbs([
+        (
+            Crumb::Label(TextLabel::new("A text label".to_string()).with_xy(100.0, 100.0)),
+            thin_style,
+        ),
+    ]);
+
     scene.add_root(Group::from_groups([
+        labels,
         tokens,
         nodes,
         lines,
@@ -363,12 +374,12 @@ impl App {
         self.save_bitmap_image(&rtree)
     }
 
-    fn save_bitmap_image(&self, rtree: &usvg::Tree) -> Result<&Path, Box<dyn Error>> {
+    fn save_bitmap_image(&self, rtree: &UsvgTree) -> Result<&Path, Box<dyn Error>> {
         let start_time = self.start("Rendering to bitmap...");
         let pixmap_size = rtree.svg_node().size.to_screen_size();
-        let mut pixmap = tiny_skia::Pixmap::new(pixmap_size.width(), pixmap_size.height())
-            .expect("pixmap creation");
-        resvg::render(rtree, usvg::FitTo::Original, pixmap.as_mut()).expect("pixmap rendering");
+        let mut pixmap =
+            Pixmap::new(pixmap_size.width(), pixmap_size.height()).expect("pixmap creation");
+        render_to_pixmap(rtree, FitTo::Original, pixmap.as_mut()).expect("pixmap rendering");
         done_in_micros(start_time);
 
         let start_time = self

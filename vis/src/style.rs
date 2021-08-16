@@ -1,5 +1,5 @@
 use piet::{Color, UnitPoint, GradientStop};
-use crate::{Crumb, Variation, Tweener};
+use crate::{Crumb, Variation, Tweener, Font};
 
 #[derive(Clone, Copy, Debug)]
 pub struct StyleId(pub usize);
@@ -194,6 +194,7 @@ pub struct Style {
     stroke_tweener: Option<Tweener<Stroke>>,
     fill_tweener:   Option<Tweener<Fill>>,
     markers:        MarkerSuit,
+    font:           Option<Font>,
 }
 
 impl Style {
@@ -206,6 +207,7 @@ impl Style {
             stroke_tweener: None,
             fill_tweener:   None,
             markers:        MarkerSuit::new(),
+            font:           None,
         }
     }
 
@@ -241,6 +243,11 @@ impl Style {
 
     pub fn with_named_end_marker<S: AsRef<str>>(mut self, name: S) -> Self {
         self.markers.end_name = Some(name.as_ref().into());
+        self
+    }
+
+    pub fn with_font(mut self, font: Font) -> Self {
+        self.set_font(font);
         self
     }
 
@@ -401,5 +408,15 @@ impl Style {
     #[inline]
     pub(crate) fn get_markers(&self) -> &MarkerSuit {
         &self.markers
+    }
+
+    #[inline]
+    pub(crate) fn set_font(&mut self, font: Font) {
+        self.font = Some(font);
+    }
+
+    #[inline]
+    pub(crate) fn get_font(&self) -> Option<&Font> {
+        self.font.as_ref()
     }
 }

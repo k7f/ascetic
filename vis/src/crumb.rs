@@ -1,6 +1,6 @@
-use piet::RenderContext;
-use kurbo::{Shape, Line, Rect, RoundedRect, Circle, Arc, BezPath, TranslateScale};
-use crate::{Vis, Theme, StyleId};
+use piet::{RenderContext, Text, TextLayoutBuilder, FontFamily};
+use kurbo::{Shape, Point, Line, Rect, RoundedRect, Circle, Arc, BezPath, TranslateScale};
+use crate::{Vis, Theme, Style, StyleId, Font, TextLabel};
 
 #[derive(Clone, Copy, Debug)]
 pub struct CrumbId(pub usize);
@@ -17,18 +17,20 @@ pub enum Crumb {
     Arc(Arc),
     Path(BezPath),
     Pin(Circle),
+    Label(TextLabel),
 }
 
 impl Vis for Crumb {
-    fn bbox(&self, ts: TranslateScale) -> Rect {
+    fn bbox(&self, ts: TranslateScale, style: Option<&Style>, theme: &Theme) -> Rect {
         match self {
-            Crumb::Line(line) => line.bbox(ts),
-            Crumb::Rect(rect) => rect.bbox(ts),
-            Crumb::RoundedRect(rr) => rr.bbox(ts),
-            Crumb::Circle(circ) => circ.bbox(ts),
-            Crumb::Arc(arc) => arc.bbox(ts),
-            Crumb::Path(path) => path.bbox(ts),
-            Crumb::Pin(pin) => pin.bbox(ts),
+            Crumb::Line(line) => line.bbox(ts, style, theme),
+            Crumb::Rect(rect) => rect.bbox(ts, style, theme),
+            Crumb::RoundedRect(rr) => rr.bbox(ts, style, theme),
+            Crumb::Circle(circ) => circ.bbox(ts, style, theme),
+            Crumb::Arc(arc) => arc.bbox(ts, style, theme),
+            Crumb::Path(path) => path.bbox(ts, style, theme),
+            Crumb::Pin(pin) => pin.bbox(ts, style, theme),
+            Crumb::Label(label) => label.bbox(ts, style, theme),
         }
     }
 
@@ -36,24 +38,25 @@ impl Vis for Crumb {
         &self,
         rc: &mut R,
         ts: TranslateScale,
-        style_id: Option<StyleId>,
+        style: Option<&Style>,
         theme: &Theme,
     ) {
         match self {
-            Crumb::Line(line) => line.vis(rc, ts, style_id, theme),
-            Crumb::Rect(rect) => rect.vis(rc, ts, style_id, theme),
-            Crumb::RoundedRect(rr) => rr.vis(rc, ts, style_id, theme),
-            Crumb::Circle(circ) => circ.vis(rc, ts, style_id, theme),
-            Crumb::Arc(arc) => arc.vis(rc, ts, style_id, theme),
-            Crumb::Path(path) => path.vis(rc, ts, style_id, theme),
+            Crumb::Line(line) => line.vis(rc, ts, style, theme),
+            Crumb::Rect(rect) => rect.vis(rc, ts, style, theme),
+            Crumb::RoundedRect(rr) => rr.vis(rc, ts, style, theme),
+            Crumb::Circle(circ) => circ.vis(rc, ts, style, theme),
+            Crumb::Arc(arc) => arc.vis(rc, ts, style, theme),
+            Crumb::Path(path) => path.vis(rc, ts, style, theme),
             Crumb::Pin(_) => {}
+            Crumb::Label(label) => label.vis(rc, ts, style, theme),
         }
     }
 }
 
 impl Vis for Line {
     #[inline]
-    fn bbox(&self, ts: TranslateScale) -> Rect {
+    fn bbox(&self, ts: TranslateScale, _style: Option<&Style>, _theme: &Theme) -> Rect {
         (ts * *self).bounding_box()
     }
 
@@ -61,11 +64,11 @@ impl Vis for Line {
         &self,
         rc: &mut R,
         ts: TranslateScale,
-        style_id: Option<StyleId>,
+        style: Option<&Style>,
         theme: &Theme,
     ) {
         if let Some(stroke) =
-            theme.get_stroke(style_id).or_else(|| theme.get_default_style().get_stroke())
+            style.and_then(|s| s.get_stroke()).or_else(|| theme.get_default_style().get_stroke())
         {
             rc.stroke(ts * *self, stroke.get_brush(), stroke.get_width());
         }
@@ -74,7 +77,7 @@ impl Vis for Line {
 
 impl Vis for Rect {
     #[inline]
-    fn bbox(&self, ts: TranslateScale) -> Rect {
+    fn bbox(&self, ts: TranslateScale, _style: Option<&Style>, _theme: &Theme) -> Rect {
         (ts * *self).bounding_box()
     }
 
@@ -82,10 +85,10 @@ impl Vis for Rect {
         &self,
         rc: &mut R,
         ts: TranslateScale,
-        style_id: Option<StyleId>,
+        style: Option<&Style>,
         theme: &Theme,
     ) {
-        let style = theme.get_style(style_id).unwrap_or_else(|| theme.get_default_style());
+        let style = style.unwrap_or_else(|| theme.get_default_style());
         let rect = ts * *self;
 
         if let Some(brush) = style.get_fill_color() {
@@ -106,7 +109,7 @@ impl Vis for Rect {
 
 impl Vis for RoundedRect {
     #[inline]
-    fn bbox(&self, ts: TranslateScale) -> Rect {
+    fn bbox(&self, ts: TranslateScale, _style: Option<&Style>, _theme: &Theme) -> Rect {
         (ts * *self).bounding_box()
     }
 
@@ -114,10 +117,10 @@ impl Vis for RoundedRect {
         &self,
         rc: &mut R,
         ts: TranslateScale,
-        style_id: Option<StyleId>,
+        style: Option<&Style>,
         theme: &Theme,
     ) {
-        let style = theme.get_style(style_id).unwrap_or_else(|| theme.get_default_style());
+        let style = style.unwrap_or_else(|| theme.get_default_style());
         let rr = ts * *self;
 
         if let Some(brush) = style.get_fill_color() {
@@ -138,7 +141,7 @@ impl Vis for RoundedRect {
 
 impl Vis for Circle {
     #[inline]
-    fn bbox(&self, ts: TranslateScale) -> Rect {
+    fn bbox(&self, ts: TranslateScale, _style: Option<&Style>, _theme: &Theme) -> Rect {
         (ts * *self).bounding_box()
     }
 
@@ -146,10 +149,10 @@ impl Vis for Circle {
         &self,
         rc: &mut R,
         ts: TranslateScale,
-        style_id: Option<StyleId>,
+        style: Option<&Style>,
         theme: &Theme,
     ) {
-        let style = theme.get_style(style_id).unwrap_or_else(|| theme.get_default_style());
+        let style = style.unwrap_or_else(|| theme.get_default_style());
         let circ = ts * *self;
 
         if let Some(brush) = style.get_fill_color() {
@@ -170,7 +173,7 @@ impl Vis for Circle {
 
 impl Vis for Arc {
     #[inline]
-    fn bbox(&self, ts: TranslateScale) -> Rect {
+    fn bbox(&self, ts: TranslateScale, _style: Option<&Style>, _theme: &Theme) -> Rect {
         ts * self.bounding_box()
     }
 
@@ -178,10 +181,10 @@ impl Vis for Arc {
         &self,
         rc: &mut R,
         ts: TranslateScale,
-        style_id: Option<StyleId>,
+        style: Option<&Style>,
         theme: &Theme,
     ) {
-        let style = theme.get_style(style_id).unwrap_or_else(|| theme.get_default_style());
+        let style = style.unwrap_or_else(|| theme.get_default_style());
         let path = ts * BezPath::from_vec(self.path_elements(0.1).collect());
 
         if let Some(brush) = style.get_fill_color() {
@@ -202,7 +205,7 @@ impl Vis for Arc {
 
 impl Vis for BezPath {
     #[inline]
-    fn bbox(&self, ts: TranslateScale) -> Rect {
+    fn bbox(&self, ts: TranslateScale, _style: Option<&Style>, _theme: &Theme) -> Rect {
         ts * self.bounding_box()
     }
 
@@ -210,10 +213,10 @@ impl Vis for BezPath {
         &self,
         rc: &mut R,
         ts: TranslateScale,
-        style_id: Option<StyleId>,
+        style: Option<&Style>,
         theme: &Theme,
     ) {
-        let style = theme.get_style(style_id).unwrap_or_else(|| theme.get_default_style());
+        let style = style.unwrap_or_else(|| theme.get_default_style());
         let path = ts * self.clone();
 
         if let Some(brush) = style.get_fill_color() {
@@ -228,6 +231,30 @@ impl Vis for BezPath {
 
         if let Some(border) = style.get_stroke() {
             rc.stroke(&path, border.get_brush(), border.get_width());
+        }
+    }
+}
+
+impl Vis for TextLabel {
+    #[inline]
+    fn bbox(&self, ts: TranslateScale, _style: Option<&Style>, _theme: &Theme) -> Rect {
+        // FIXME
+        ts * self.bounding_box(Font::new_serif())
+    }
+
+    fn vis<R: RenderContext>(
+        &self,
+        rc: &mut R,
+        ts: TranslateScale,
+        _style: Option<&Style>,
+        _theme: &Theme,
+    ) {
+        let origin: Point = (self.x, self.y).into();
+        let text = rc.text();
+        let font = text.font_family("Arial").unwrap_or(FontFamily::SANS_SERIF);
+
+        if let Ok(mut layout) = text.new_text_layout(self.body.clone()).font(font, 12.0).build() {
+            rc.draw_text(&mut layout, ts * origin);
         }
     }
 }

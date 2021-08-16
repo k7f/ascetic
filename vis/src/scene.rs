@@ -149,7 +149,9 @@ impl Scene {
 
         for CrumbItem(crumb_id, ts, style_id) in self.all_crumbs(root_ts) {
             if let Some(crumb) = self.crumbs.get(crumb_id.0) {
-                crumb.vis(rc, ts, style_id, theme);
+                let style = theme.get_style(style_id);
+
+                crumb.vis(rc, ts, style, theme);
             } else {
                 // FIXME
                 panic!()

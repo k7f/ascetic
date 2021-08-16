@@ -3,7 +3,7 @@ use std::{
     iter::FromIterator,
 };
 use piet::{Color, LinearGradient, RadialGradient, UnitPoint, GradientStops};
-use crate::{Style, StyleId, Stroke, Fill, GradSpec, Marker, MarkerId};
+use crate::{Style, StyleId, Stroke, Fill, GradSpec, Marker, MarkerId, Font, font::GenericFontFamily};
 
 const DEFAULT_NAME: &str = "default";
 const SCENE_NAME: &str = "scene";
@@ -145,6 +145,7 @@ pub struct Theme {
     named_gradspecs:  HashMap<String, GradSpec>,
     linear_gradients: HashMap<String, LinearGradient>,
     radial_gradients: HashMap<String, RadialGradient>,
+    default_fonts:    HashMap<GenericFontFamily, Font>,
 }
 
 impl Default for Theme {
@@ -163,6 +164,7 @@ impl Default for Theme {
         let named_gradspecs = HashMap::default();
         let linear_gradients = HashMap::default();
         let radial_gradients = HashMap::default();
+        let default_fonts = HashMap::default();
 
         Theme {
             original,
@@ -173,6 +175,7 @@ impl Default for Theme {
             named_gradspecs,
             linear_gradients,
             radial_gradients,
+            default_fonts,
         }
     }
 }
