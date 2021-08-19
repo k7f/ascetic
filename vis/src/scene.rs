@@ -1,7 +1,5 @@
-use std::{slice, error::Error};
-use piet::RenderContext;
 use kurbo::{Line, Rect, RoundedRect, Circle, Arc, TranslateScale, Size};
-use crate::{Vis, Crumb, CrumbId, CrumbItem, Group, GroupId, GroupItem, StyleId, Theme};
+use crate::{Crumb, CrumbId, CrumbItem, Group, GroupId, GroupItem, StyleId, Theme};
 
 #[derive(Clone, Default, Debug)]
 pub struct Scene {
@@ -125,43 +123,43 @@ impl Scene {
         group_id
     }
 
-    pub fn render<S, M, R>(
-        &self,
-        theme: &Theme,
-        out_size: S,
-        out_margin: M,
-        rc: &mut R,
-    ) -> Result<(), Box<dyn Error>>
-    where
-        S: Into<Size>,
-        M: Into<Size>,
-        R: RenderContext,
-    {
-        let out_size = out_size.into();
-        let out_margin = out_margin.into();
-        let out_scale = ((out_size.width - 2. * out_margin.width) / self.size.width)
-            .min((out_size.height - 2. * out_margin.height) / self.size.height);
+    // pub fn render<S, M, R>(
+    //     &self,
+    //     theme: &Theme,
+    //     out_size: S,
+    //     out_margin: M,
+    //     rc: &mut R,
+    // ) -> Result<(), Box<dyn Error>>
+    // where
+    //     S: Into<Size>,
+    //     M: Into<Size>,
+    //     R: RenderContext,
+    // {
+    //     let out_size = out_size.into();
+    //     let out_margin = out_margin.into();
+    //     let out_scale = ((out_size.width - 2. * out_margin.width) / self.size.width)
+    //         .min((out_size.height - 2. * out_margin.height) / self.size.height);
 
-        let root_ts =
-            TranslateScale::translate(out_margin.to_vec2()) * TranslateScale::scale(out_scale);
+    //     let root_ts =
+    //         TranslateScale::translate(out_margin.to_vec2()) * TranslateScale::scale(out_scale);
 
-        rc.clear(None, theme.get_bg_color());
+    //     rc.clear(None, theme.get_bg_color());
 
-        for CrumbItem(crumb_id, ts, style_id) in self.all_crumbs(root_ts) {
-            if let Some(crumb) = self.crumbs.get(crumb_id.0) {
-                let style = theme.get_style(style_id);
+    //     for CrumbItem(crumb_id, ts, style_id) in self.all_crumbs(root_ts) {
+    //         if let Some(crumb) = self.crumbs.get(crumb_id.0) {
+    //             let style = theme.get_style(style_id);
 
-                crumb.vis(rc, ts, style, theme);
-            } else {
-                // FIXME
-                panic!()
-            }
-        }
+    //             crumb.vis(rc, ts, style, theme);
+    //         } else {
+    //             // FIXME
+    //             panic!()
+    //         }
+    //     }
 
-        rc.finish()?;
+    //     rc.finish()?;
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     fn push_crumbs_of_a_group<'a>(
         &'a self,
@@ -249,7 +247,7 @@ impl Scene {
     }
 }
 
-type CrumbList<'a> = slice::Iter<'a, CrumbItem>;
+type CrumbList<'a> = std::slice::Iter<'a, CrumbItem>;
 
 /// An iterator traversing all [`CrumbItem`]s of a [`Scene`].
 ///

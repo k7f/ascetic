@@ -1,6 +1,6 @@
-use piet::{RenderContext, Text, TextLayoutBuilder, FontFamily};
-use kurbo::{Shape, Point, Line, Rect, RoundedRect, Circle, Arc, BezPath, TranslateScale};
-use crate::{Vis, Theme, Style, StyleId, Font, TextLabel};
+use piet::RenderContext;
+use kurbo::{Shape, Line, Rect, RoundedRect, Circle, Arc, BezPath, TranslateScale};
+use crate::{Vis, Theme, Style, StyleId, TextLabel};
 
 #[derive(Clone, Copy, Debug)]
 pub struct CrumbId(pub usize);
@@ -20,53 +20,13 @@ pub enum Crumb {
     Label(TextLabel),
 }
 
-impl Vis for Crumb {
-    fn bbox(&self, ts: TranslateScale, style: Option<&Style>, theme: &Theme) -> Rect {
-        match self {
-            Crumb::Line(line) => line.bbox(ts, style, theme),
-            Crumb::Rect(rect) => rect.bbox(ts, style, theme),
-            Crumb::RoundedRect(rr) => rr.bbox(ts, style, theme),
-            Crumb::Circle(circ) => circ.bbox(ts, style, theme),
-            Crumb::Arc(arc) => arc.bbox(ts, style, theme),
-            Crumb::Path(path) => path.bbox(ts, style, theme),
-            Crumb::Pin(pin) => pin.bbox(ts, style, theme),
-            Crumb::Label(label) => label.bbox(ts, style, theme),
-        }
-    }
-
-    fn vis<R: RenderContext>(
-        &self,
-        rc: &mut R,
-        ts: TranslateScale,
-        style: Option<&Style>,
-        theme: &Theme,
-    ) {
-        match self {
-            Crumb::Line(line) => line.vis(rc, ts, style, theme),
-            Crumb::Rect(rect) => rect.vis(rc, ts, style, theme),
-            Crumb::RoundedRect(rr) => rr.vis(rc, ts, style, theme),
-            Crumb::Circle(circ) => circ.vis(rc, ts, style, theme),
-            Crumb::Arc(arc) => arc.vis(rc, ts, style, theme),
-            Crumb::Path(path) => path.vis(rc, ts, style, theme),
-            Crumb::Pin(_) => {}
-            Crumb::Label(label) => label.vis(rc, ts, style, theme),
-        }
-    }
-}
-
-impl Vis for Line {
+impl<R: RenderContext> Vis<R> for Line {
     #[inline]
-    fn bbox(&self, ts: TranslateScale, _style: Option<&Style>, _theme: &Theme) -> Rect {
+    fn bbox(&self, _rc: &mut R, ts: TranslateScale) -> Rect {
         (ts * *self).bounding_box()
     }
 
-    fn vis<R: RenderContext>(
-        &self,
-        rc: &mut R,
-        ts: TranslateScale,
-        style: Option<&Style>,
-        theme: &Theme,
-    ) {
+    fn vis(&self, rc: &mut R, ts: TranslateScale, style: Option<&Style>, theme: &Theme) {
         if let Some(stroke) =
             style.and_then(|s| s.get_stroke()).or_else(|| theme.get_default_style().get_stroke())
         {
@@ -75,19 +35,13 @@ impl Vis for Line {
     }
 }
 
-impl Vis for Rect {
+impl<R: RenderContext> Vis<R> for Rect {
     #[inline]
-    fn bbox(&self, ts: TranslateScale, _style: Option<&Style>, _theme: &Theme) -> Rect {
+    fn bbox(&self, _rc: &mut R, ts: TranslateScale) -> Rect {
         (ts * *self).bounding_box()
     }
 
-    fn vis<R: RenderContext>(
-        &self,
-        rc: &mut R,
-        ts: TranslateScale,
-        style: Option<&Style>,
-        theme: &Theme,
-    ) {
+    fn vis(&self, rc: &mut R, ts: TranslateScale, style: Option<&Style>, theme: &Theme) {
         let style = style.unwrap_or_else(|| theme.get_default_style());
         let rect = ts * *self;
 
@@ -107,19 +61,13 @@ impl Vis for Rect {
     }
 }
 
-impl Vis for RoundedRect {
+impl<R: RenderContext> Vis<R> for RoundedRect {
     #[inline]
-    fn bbox(&self, ts: TranslateScale, _style: Option<&Style>, _theme: &Theme) -> Rect {
+    fn bbox(&self, _rc: &mut R, ts: TranslateScale) -> Rect {
         (ts * *self).bounding_box()
     }
 
-    fn vis<R: RenderContext>(
-        &self,
-        rc: &mut R,
-        ts: TranslateScale,
-        style: Option<&Style>,
-        theme: &Theme,
-    ) {
+    fn vis(&self, rc: &mut R, ts: TranslateScale, style: Option<&Style>, theme: &Theme) {
         let style = style.unwrap_or_else(|| theme.get_default_style());
         let rr = ts * *self;
 
@@ -139,19 +87,13 @@ impl Vis for RoundedRect {
     }
 }
 
-impl Vis for Circle {
+impl<R: RenderContext> Vis<R> for Circle {
     #[inline]
-    fn bbox(&self, ts: TranslateScale, _style: Option<&Style>, _theme: &Theme) -> Rect {
+    fn bbox(&self, _rc: &mut R, ts: TranslateScale) -> Rect {
         (ts * *self).bounding_box()
     }
 
-    fn vis<R: RenderContext>(
-        &self,
-        rc: &mut R,
-        ts: TranslateScale,
-        style: Option<&Style>,
-        theme: &Theme,
-    ) {
+    fn vis(&self, rc: &mut R, ts: TranslateScale, style: Option<&Style>, theme: &Theme) {
         let style = style.unwrap_or_else(|| theme.get_default_style());
         let circ = ts * *self;
 
@@ -171,19 +113,13 @@ impl Vis for Circle {
     }
 }
 
-impl Vis for Arc {
+impl<R: RenderContext> Vis<R> for Arc {
     #[inline]
-    fn bbox(&self, ts: TranslateScale, _style: Option<&Style>, _theme: &Theme) -> Rect {
+    fn bbox(&self, _rc: &mut R, ts: TranslateScale) -> Rect {
         ts * self.bounding_box()
     }
 
-    fn vis<R: RenderContext>(
-        &self,
-        rc: &mut R,
-        ts: TranslateScale,
-        style: Option<&Style>,
-        theme: &Theme,
-    ) {
+    fn vis(&self, rc: &mut R, ts: TranslateScale, style: Option<&Style>, theme: &Theme) {
         let style = style.unwrap_or_else(|| theme.get_default_style());
         let path = ts * BezPath::from_vec(self.path_elements(0.1).collect());
 
@@ -203,19 +139,13 @@ impl Vis for Arc {
     }
 }
 
-impl Vis for BezPath {
+impl<R: RenderContext> Vis<R> for BezPath {
     #[inline]
-    fn bbox(&self, ts: TranslateScale, _style: Option<&Style>, _theme: &Theme) -> Rect {
+    fn bbox(&self, _rc: &mut R, ts: TranslateScale) -> Rect {
         ts * self.bounding_box()
     }
 
-    fn vis<R: RenderContext>(
-        &self,
-        rc: &mut R,
-        ts: TranslateScale,
-        style: Option<&Style>,
-        theme: &Theme,
-    ) {
+    fn vis(&self, rc: &mut R, ts: TranslateScale, style: Option<&Style>, theme: &Theme) {
         let style = style.unwrap_or_else(|| theme.get_default_style());
         let path = ts * self.clone();
 
@@ -231,30 +161,6 @@ impl Vis for BezPath {
 
         if let Some(border) = style.get_stroke() {
             rc.stroke(&path, border.get_brush(), border.get_width());
-        }
-    }
-}
-
-impl Vis for TextLabel {
-    #[inline]
-    fn bbox(&self, ts: TranslateScale, _style: Option<&Style>, _theme: &Theme) -> Rect {
-        // FIXME
-        ts * self.bounding_box(Font::new_serif())
-    }
-
-    fn vis<R: RenderContext>(
-        &self,
-        rc: &mut R,
-        ts: TranslateScale,
-        _style: Option<&Style>,
-        _theme: &Theme,
-    ) {
-        let origin: Point = (self.x, self.y).into();
-        let text = rc.text();
-        let font = text.font_family("Arial").unwrap_or(FontFamily::SANS_SERIF);
-
-        if let Ok(mut layout) = text.new_text_layout(self.body.clone()).font(font, 12.0).build() {
-            rc.draw_text(&mut layout, ts * origin);
         }
     }
 }

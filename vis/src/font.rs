@@ -1,23 +1,30 @@
+use crate::AsCss;
+
 #[derive(Clone, Debug)]
 pub struct Font {
-    family: Vec<FontFamily>,
+    pub(crate) family: Vec<FontFamily>,
     size:   f64, // point size (`pt` in svg)
     weight: FontWeight,
     style:  FontStyle,
 }
 
 impl Default for Font {
+    #[inline]
     fn default() -> Self {
-        Font {
-            family: vec![FontFamily::default()],
-            size:   12.0,
-            weight: FontWeight::default(),
-            style:  FontStyle::default(),
-        }
+        Font::new()
     }
 }
 
 impl Font {
+    pub const fn new() -> Self {
+        Font {
+            family: Vec::new(),
+            size:   12.0,
+            weight: FontWeight::Normal,
+            style:  FontStyle::Normal,
+        }
+    }
+
     pub fn new_serif() -> Self {
         Font { family: vec![FontFamily::Generic(GenericFontFamily::Serif)], ..Default::default() }
     }
@@ -46,10 +53,44 @@ impl Font {
         self.size = size;
         self
     }
+
+    pub fn with_weight(mut self, value: u16) -> Self {
+        self.weight = FontWeight::Number(value.clamp(1, 1000));
+        self
+    }
+
+    pub fn with_bold_weight(mut self) -> Self {
+        self.weight = FontWeight::Bold;
+        self
+    }
+
+    pub fn with_italic_style(mut self) -> Self {
+        self.style = FontStyle::Italic;
+        self
+    }
+
+    pub fn with_oblique_style(mut self) -> Self {
+        self.style = FontStyle::Oblique;
+        self
+    }
+
+    #[inline]
+    pub fn get_family_name(&self) -> &str {
+        if let Some(family) = self.family.first() {
+            family.as_css()
+        } else {
+            "Times"
+        }
+    }
+
+    #[inline]
+    pub fn get_size(&self) -> f64 {
+        self.size
+    }
 }
 
-#[derive(Clone, Hash, Debug)]
-pub(crate) enum GenericFontFamily {
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub enum GenericFontFamily {
     Serif,
     SansSerif,
     Cursive,
@@ -63,8 +104,21 @@ impl Default for GenericFontFamily {
     }
 }
 
+impl AsCss for GenericFontFamily {
+    fn as_css(&self) -> &str {
+        use GenericFontFamily::*;
+
+        match self {
+            Serif => "serif",
+            SansSerif => "sans-serif",
+            Cursive => "cursive",
+            Monospace => "monospace",
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
-enum FontFamily {
+pub(crate) enum FontFamily {
     Generic(GenericFontFamily),
     Specific(String),
 }
@@ -76,11 +130,22 @@ impl Default for FontFamily {
     }
 }
 
+impl AsCss for FontFamily {
+    fn as_css(&self) -> &str {
+        use FontFamily::*;
+
+        match self {
+            Generic(form) => form.as_css(),
+            Specific(name) => name,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
-enum FontWeight {
+pub(crate) enum FontWeight {
     Normal,
     Bold,
-    Number(f64),
+    Number(u16),
 }
 
 impl Default for FontWeight {
@@ -90,8 +155,22 @@ impl Default for FontWeight {
     }
 }
 
+impl FontWeight {
+    #[allow(dead_code)]
+    #[inline]
+    pub(crate) fn as_number(&self) -> u16 {
+        use FontWeight::*;
+
+        match *self {
+            Normal => 400,
+            Bold => 700,
+            Number(v) => v,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
-enum FontStyle {
+pub(crate) enum FontStyle {
     Normal,
     Italic,
     Oblique,

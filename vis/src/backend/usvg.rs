@@ -6,7 +6,7 @@ use piet::{
     TextAlignment, TextAttribute, TextLayout, TextLayoutBuilder, TextStorage,
 };
 use usvg::NodeExt;
-use crate::{Scene, Theme, Style, StyleId, Stroke, Fill, GradSpec, Crumb, CrumbItem, TextLabel};
+use crate::{Vis, Scene, Theme, Style, StyleId, Stroke, Fill, GradSpec, Crumb, CrumbItem, TextLabel};
 
 pub use usvg::{Tree, FitTo};
 pub use tiny_skia::Pixmap;
@@ -903,5 +903,101 @@ impl RenderContext for BitmapDevice {
 
     fn current_transform(&self) -> Affine {
         Affine::default()
+    }
+}
+
+impl Scene {
+    pub fn render<S, M>(
+        &self,
+        theme: &Theme,
+        out_size: S,
+        out_margin: M,
+        rc: &mut BitmapDevice,
+    ) -> Result<(), Box<dyn std::error::Error>>
+    where
+        S: Into<Size>,
+        M: Into<Size>,
+    {
+        let out_size = out_size.into();
+        let out_margin = out_margin.into();
+        let out_scale = ((out_size.width - 2. * out_margin.width) / self.get_size().width)
+            .min((out_size.height - 2. * out_margin.height) / self.get_size().height);
+
+        let root_ts =
+            TranslateScale::translate(out_margin.to_vec2()) * TranslateScale::scale(out_scale);
+
+        rc.clear(None, theme.get_bg_color());
+
+        for CrumbItem(crumb_id, ts, style_id) in self.all_crumbs(root_ts) {
+            if let Some(crumb) = self.get_crumb(crumb_id) {
+                let style = theme.get_style(style_id);
+
+                crumb.vis(rc, ts, style, theme);
+            } else {
+                // FIXME
+                panic!()
+            }
+        }
+
+        rc.finish()?;
+
+        Ok(())
+    }
+}
+
+impl Vis<BitmapDevice> for Crumb {
+    fn bbox(&self, rc: &mut BitmapDevice, ts: TranslateScale) -> Rect {
+        match self {
+            Crumb::Line(line) => line.bbox(rc, ts),
+            Crumb::Rect(rect) => rect.bbox(rc, ts),
+            Crumb::RoundedRect(rr) => rr.bbox(rc, ts),
+            Crumb::Circle(circ) => circ.bbox(rc, ts),
+            Crumb::Arc(arc) => arc.bbox(rc, ts),
+            Crumb::Path(path) => path.bbox(rc, ts),
+            Crumb::Pin(pin) => pin.bbox(rc, ts),
+            Crumb::Label(label) => label.bbox(rc, ts),
+        }
+    }
+
+    fn vis(&self, rc: &mut BitmapDevice, ts: TranslateScale, style: Option<&Style>, theme: &Theme) {
+        match self {
+            Crumb::Line(line) => line.vis(rc, ts, style, theme),
+            Crumb::Rect(rect) => rect.vis(rc, ts, style, theme),
+            Crumb::RoundedRect(rr) => rr.vis(rc, ts, style, theme),
+            Crumb::Circle(circ) => circ.vis(rc, ts, style, theme),
+            Crumb::Arc(arc) => arc.vis(rc, ts, style, theme),
+            Crumb::Path(path) => path.vis(rc, ts, style, theme),
+            Crumb::Pin(_) => {}
+            Crumb::Label(label) => label.vis(rc, ts, style, theme),
+        }
+    }
+}
+
+// FIXME cache text_layout somehow
+impl Vis<BitmapDevice> for TextLabel {
+    fn bbox(&self, rc: &mut BitmapDevice, ts: TranslateScale) -> Rect {
+        let text = rc.text();
+        let font = FontFamily::SANS_SERIF;
+
+        if let Ok(layout) = text.new_text_layout(self.body.clone()).font(font, 12.0).build() {
+            ts * layout.image_bounds()  // FIXME translate to (self.x, self.y)
+        } else {
+            ts * Rect::new(self.x, self.y, self.x + 100.0, self.y + 30.0)
+        }
+    }
+
+    fn vis(&self, rc: &mut BitmapDevice, ts: TranslateScale, style: Option<&Style>, theme: &Theme) {
+        let rc_text = rc.text();
+        let (font_name, font_size) = if let Some(font) = self.resolve_font(style, theme) {
+            (font.get_family_name(), font.get_size())
+        } else {
+            ("sans-serif", Self::DEFAULT_FONT.get_size())
+        };
+        let rc_font = rc_text.font_family(font_name).unwrap_or(FontFamily::SANS_SERIF);
+        let origin: Point = (self.x, self.y).into();
+
+        if let Ok(mut layout) = rc_text.new_text_layout(self.body.clone()).font(rc_font, font_size).build() {
+            rc.draw_text(&mut layout, ts * origin);
+        }
     }
 }

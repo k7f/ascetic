@@ -3,7 +3,7 @@ use std::{
     iter::FromIterator,
 };
 use piet::{Color, LinearGradient, RadialGradient, UnitPoint, GradientStops};
-use crate::{Style, StyleId, Stroke, Fill, GradSpec, Marker, MarkerId, Font, font::GenericFontFamily};
+use crate::{Style, StyleId, Stroke, Fill, GradSpec, Marker, MarkerId, Font, GenericFontFamily};
 
 const DEFAULT_NAME: &str = "default";
 const SCENE_NAME: &str = "scene";
@@ -459,6 +459,16 @@ impl Theme {
     #[inline]
     pub fn get_named_marker_ids(&self) -> hash_map::Iter<String, MarkerId> {
         self.named_markers.iter()
+    }
+
+    #[inline]
+    pub fn get_font(&self, style_id: Option<StyleId>) -> Option<&Font> {
+        self.get_style(style_id).and_then(|s| s.get_font())
+    }
+
+    #[inline]
+    pub fn get_generic_font(&self, form: GenericFontFamily) -> Option<&Font> {
+        self.default_fonts.get(&form)
     }
 
     pub fn simple_demo() -> Self {

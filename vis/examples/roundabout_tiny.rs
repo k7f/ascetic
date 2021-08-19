@@ -267,7 +267,7 @@ impl App {
     const DEFAULT_PNG_PATH: &'static str = "test.png";
     const DEFAULT_OUT_SIZE: (f64, f64) = (800., 450.);
     const DEFAULT_OUT_MARGIN: (f64, f64) = (10., 10.);
-    const DEFAULT_PNG_COLOR_TYPE: png::ColorType = png::ColorType::RGBA;
+    const DEFAULT_PNG_COLOR_TYPE: png::ColorType = png::ColorType::Rgba;
     const DEFAULT_PNG_BIT_DEPTH: png::BitDepth = png::BitDepth::Eight;
     const DEFAULT_PNG_COMPRESSION: png::Compression = png::Compression::Fast;
     const DEFAULT_PNG_FILTER: png::FilterType = png::FilterType::NoFilter;

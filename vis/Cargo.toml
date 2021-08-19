@@ -20,7 +20,7 @@ svg = []
 
 kurbo = "0.8"
 piet = "0.4"
-png = "0.16"
+png = "0.17"
 usvg = { version = "0.14", optional = true }
 resvg = { version = "0.14", optional = true }
 tiny-skia = { version = "0.5", optional = true }
