@@ -6,7 +6,8 @@ use std::{
     error::Error,
 };
 use ascetic_vis::{
-    Scene, Theme, Style, Stroke, Fill, Marker, Variation, Group, Crumb, Joint, TextLabel, Color, UnitPoint,
+    Scene, Theme, Style, Stroke, Fill, Marker, Variation, Group, Crumb, Joint, TextLabel, Color,
+    UnitPoint,
     kurbo::{Rect, Circle, Arc, BezPath, PathEl},
     backend::{
         usvg::AsUsvgTree, usvg::Tree as UsvgTree, usvg::FitTo, usvg::Pixmap,
@@ -35,7 +36,7 @@ fn roundabout_theme() -> Theme {
 
     let strokes = vec![
         ("frame", Stroke::new().with_brush(Color::BLACK).with_width(0.5)),
-        ("node", Stroke::new().with_brush(Color::rgb8(0, 0x80, 0)).with_width(3.0)),
+        ("node", Stroke::new().with_brush(Color::rgb8(0, 0x80, 0)).with_width(2.0)),
         ("line-thick", Stroke::new().with_brush(Color::BLACK).with_width(3.0)),
         ("line-thin", Stroke::new().with_brush(Color::BLACK).with_width(1.5)),
     ];
@@ -48,7 +49,7 @@ fn roundabout_theme() -> Theme {
     ];
 
     let dark_strokes =
-        vec![("node", Stroke::new().with_brush(Color::rgb8(0, 0x60, 0xff)).with_width(3.0))];
+        vec![("node", Stroke::new().with_brush(Color::rgb8(0, 0x60, 0xff)).with_width(2.0))];
 
     let dark_fills = vec![
         (SCENE_NAME, Fill::Color(Color::BLACK)),
@@ -95,6 +96,7 @@ fn roundabout_theme() -> Theme {
 fn roundabout_scene(theme: &Theme) -> Scene {
     let mut scene = Scene::new((1000., 1000.));
 
+    let node_names = ["A0", "A1", "A2", "A3", "A4"];
     let node_positions = vec![
         (200.0, 400.0),
         (200.0, 600.0),
@@ -109,6 +111,13 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         (800.0, 400.0),
         (800.0, 600.0),
     ];
+    let label_positions = vec![
+        (node_positions[0].0 - 110.0, node_positions[0].1),
+        (node_positions[1].0 - 110.0, node_positions[1].1),
+        (node_positions[2].0 - 50.0, node_positions[2].1 + 75.0),
+        (node_positions[3].0 - 50.0, node_positions[3].1 + 75.0),
+        (node_positions[4].0 - 70.0, node_positions[4].1 + 70.0),
+    ];
     let pin_positions = vec![
         (node_positions[0].0 - 135.0, node_positions[0].1 - 135.0),
         (node_positions[1].0 - 135.0, node_positions[1].1 + 135.0),
@@ -121,11 +130,11 @@ fn roundabout_scene(theme: &Theme) -> Scene {
     let nodes = scene.add_grouped_crumbs(
         node_positions
             .into_iter()
-            .map(|(x, y)| (Crumb::Circle(Circle::new((x, y), 40.)), node_style)),
+            .map(|(x, y)| (Crumb::Circle(Circle::new((x, y), 35.)), node_style)),
     );
 
     let pins = scene.add_grouped_crumbs(
-        pin_positions.into_iter().map(|(x, y)| (Crumb::Pin(Circle::new((x, y), 40.)), None)),
+        pin_positions.into_iter().map(|(x, y)| (Crumb::Pin(Circle::new((x, y), 35.)), None)),
     );
 
     let thick_style = theme.get("line-thick");
@@ -216,12 +225,32 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         ),
     ]);
 
-    let labels = scene.add_grouped_crumbs([
+    let labels = scene.add_grouped_crumbs((0..5).map(|ndx| {
         (
-            Crumb::Label(TextLabel::new("A text label".to_string()).with_xy(100.0, 100.0)),
+            Crumb::Label(
+                TextLabel::new()
+                    .with_text(node_names[ndx])
+                    .with_end_anchor()
+                    .with_origin(label_positions[ndx])
+                    .with_font_size(28.0)
+                    .with_span(
+                        TextLabel::new()
+                            .with_text("text")
+                            .with_origin(label_positions[ndx])
+                            .with_dy([-10.0])
+                            .with_font_size(22.0),
+                    )
+                    .with_span(
+                        TextLabel::new()
+                            .with_text("label")
+                            .with_origin(label_positions[ndx])
+                            .with_dy([10.0])
+                            .with_font_size(22.0),
+                    ),
+            ),
             thin_style,
-        ),
-    ]);
+        )
+    }));
 
     scene.add_root(Group::from_groups([
         labels,
@@ -348,7 +377,11 @@ impl App {
         }
     }
 
-    fn render_to_svg(&self, scene: &Scene, theme: &Theme) -> Result<Option<&Path>, Box<dyn Error>> {
+    fn render_to_svg(
+        &self,
+        scene: &mut Scene,
+        theme: &Theme,
+    ) -> Result<Option<&Path>, Box<dyn Error>> {
         if let Some(ref svg_path) = self.svg_path {
             let start_time = self.start("Rendering to svg...");
             let svg = scene.to_svg(theme, self.out_size, self.out_margin)?;
@@ -394,7 +427,7 @@ impl App {
 fn main() -> Result<(), Box<dyn Error>> {
     let app = App::new()?;
     let mut theme = roundabout_theme();
-    let scene = roundabout_scene(&theme);
+    let mut scene = roundabout_scene(&theme);
 
     if app.verbosity > 1 {
         if app.verbosity > 2 {
@@ -416,7 +449,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         eprintln!("\n{:?}", theme);
     }
 
-    let svg_path = app.render_to_svg(&scene, &theme)?;
+    let svg_path = app.render_to_svg(&mut scene, &theme)?;
     let png_path = app.render_to_png(&scene, &theme)?;
 
     if let Some(svg_path) = svg_path {

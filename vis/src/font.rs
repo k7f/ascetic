@@ -2,84 +2,137 @@ use crate::AsCss;
 
 #[derive(Clone, Debug)]
 pub struct Font {
-    pub(crate) family: Vec<FontFamily>,
+    names:  Vec<String>,
+    class:  GenericFontFamily,
     size:   f64, // point size (`pt` in svg)
     weight: FontWeight,
     style:  FontStyle,
 }
 
-impl Default for Font {
-    #[inline]
-    fn default() -> Self {
-        Font::new()
-    }
-}
-
 impl Font {
-    pub const fn new() -> Self {
+    pub const DEFAULT_SIZE: f64 = 12.0;
+
+    pub fn new<S: AsRef<str>>(name: S) -> Self {
         Font {
-            family: Vec::new(),
-            size:   12.0,
+            names:  vec![name.as_ref().to_string()],
+            class:  GenericFontFamily::Unspecified,
+            size:   Self::DEFAULT_SIZE,
             weight: FontWeight::Normal,
             style:  FontStyle::Normal,
         }
     }
 
-    pub fn new_serif() -> Self {
-        Font { family: vec![FontFamily::Generic(GenericFontFamily::Serif)], ..Default::default() }
-    }
-
-    pub fn new_sans_serif() -> Self {
+    pub const fn new_serif() -> Self {
         Font {
-            family: vec![FontFamily::Generic(GenericFontFamily::SansSerif)],
-            ..Default::default()
+            names:  Vec::new(),
+            class:  GenericFontFamily::Serif,
+            size:   Self::DEFAULT_SIZE,
+            weight: FontWeight::Normal,
+            style:  FontStyle::Normal,
         }
     }
 
-    pub fn with_family<N, I>(mut self, family: I) -> Self
+    pub const fn new_sans_serif() -> Self {
+        Font {
+            names:  Vec::new(),
+            class:  GenericFontFamily::SansSerif,
+            size:   Self::DEFAULT_SIZE,
+            weight: FontWeight::Normal,
+            style:  FontStyle::Normal,
+        }
+    }
+
+    pub const fn new_cursive() -> Self {
+        Font {
+            names:  Vec::new(),
+            class:  GenericFontFamily::Cursive,
+            size:   Self::DEFAULT_SIZE,
+            weight: FontWeight::Normal,
+            style:  FontStyle::Normal,
+        }
+    }
+
+    pub const fn new_monospace() -> Self {
+        Font {
+            names:  Vec::new(),
+            class:  GenericFontFamily::Monospace,
+            size:   Self::DEFAULT_SIZE,
+            weight: FontWeight::Normal,
+            style:  FontStyle::Normal,
+        }
+    }
+
+    pub fn with_names<N, I>(mut self, names: I) -> Self
     where
         N: AsRef<str>,
         I: IntoIterator<Item = N>,
     {
-        for (pos, name) in family.into_iter().enumerate() {
-            let name = name.as_ref().to_string();
-
-            self.family.insert(pos, FontFamily::Specific(name));
-        }
+        self.append_names(names);
         self
     }
 
     pub fn with_size(mut self, size: f64) -> Self {
-        self.size = size;
+        self.set_size(size);
         self
     }
 
     pub fn with_weight(mut self, value: u16) -> Self {
-        self.weight = FontWeight::Number(value.clamp(1, 1000));
+        self.set_weight(value);
         self
     }
 
     pub fn with_bold_weight(mut self) -> Self {
-        self.weight = FontWeight::Bold;
+        self.set_bold_weight();
         self
     }
 
     pub fn with_italic_style(mut self) -> Self {
-        self.style = FontStyle::Italic;
+        self.set_italic_style();
         self
     }
 
     pub fn with_oblique_style(mut self) -> Self {
-        self.style = FontStyle::Oblique;
+        self.set_oblique_style();
         self
+    }
+
+    pub fn append_names<N, I>(&mut self, names: I)
+    where
+        N: AsRef<str>,
+        I: IntoIterator<Item = N>,
+    {
+        self.names.extend(names.into_iter().map(|name| name.as_ref().to_string()));
+    }
+
+    pub fn set_size(&mut self, size: f64) {
+        self.size = size;
+    }
+
+    pub fn set_weight(&mut self, value: u16) {
+        self.weight = FontWeight::Number(value.clamp(1, 1000));
+    }
+
+    pub fn set_bold_weight(&mut self) {
+        self.weight = FontWeight::Bold;
+    }
+
+    pub fn set_italic_style(&mut self) {
+        self.style = FontStyle::Italic;
+    }
+
+    pub fn set_oblique_style(&mut self) {
+        self.style = FontStyle::Oblique;
     }
 
     #[inline]
     pub fn get_family_name(&self) -> &str {
-        if let Some(family) = self.family.first() {
-            family.as_css()
+        if let Some(family) = self.names.first() {
+            family.as_str()
         } else {
-            "Times"
+            match &self.class {
+                GenericFontFamily::Unspecified => unreachable!(),
+                class => class.as_css(),
+            }
         }
     }
 
@@ -89,19 +142,13 @@ impl Font {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum GenericFontFamily {
     Serif,
     SansSerif,
     Cursive,
     Monospace,
-}
-
-impl Default for GenericFontFamily {
-    #[inline]
-    fn default() -> Self {
-        GenericFontFamily::Serif
-    }
+    Unspecified,
 }
 
 impl AsCss for GenericFontFamily {
@@ -113,30 +160,7 @@ impl AsCss for GenericFontFamily {
             SansSerif => "sans-serif",
             Cursive => "cursive",
             Monospace => "monospace",
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub(crate) enum FontFamily {
-    Generic(GenericFontFamily),
-    Specific(String),
-}
-
-impl Default for FontFamily {
-    #[inline]
-    fn default() -> Self {
-        FontFamily::Generic(Default::default())
-    }
-}
-
-impl AsCss for FontFamily {
-    fn as_css(&self) -> &str {
-        use FontFamily::*;
-
-        match self {
-            Generic(form) => form.as_css(),
-            Specific(name) => name,
+            Unspecified => "",
         }
     }
 }
@@ -146,13 +170,6 @@ pub(crate) enum FontWeight {
     Normal,
     Bold,
     Number(u16),
-}
-
-impl Default for FontWeight {
-    #[inline]
-    fn default() -> Self {
-        FontWeight::Normal
-    }
 }
 
 impl FontWeight {
@@ -174,11 +191,4 @@ pub(crate) enum FontStyle {
     Normal,
     Italic,
     Oblique,
-}
-
-impl Default for FontStyle {
-    #[inline]
-    fn default() -> Self {
-        FontStyle::Normal
-    }
 }

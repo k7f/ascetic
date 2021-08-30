@@ -26,6 +26,10 @@ pub trait Vis<R: piet::RenderContext> {
     fn bbox(&self, rc: &mut R, ts: TranslateScale) -> Rect;
 
     fn vis(&self, rc: &mut R, ts: TranslateScale, style: Option<&Style>, theme: &Theme);
+
+    fn vis_mut(&mut self, rc: &mut R, ts: TranslateScale, style: Option<&Style>, theme: &Theme) {
+        self.vis(rc, ts, style, theme)
+    }
 }
 
 pub trait AsCss {

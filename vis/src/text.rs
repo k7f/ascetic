@@ -1,25 +1,93 @@
-use crate::{Theme, Style, Font, GenericFontFamily};
+use kurbo::Point;
+use crate::{Theme, Style, Font};
+
+#[derive(Clone, Debug)]
+pub(crate) enum Anchor {
+    Start,
+    Middle,
+    End,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum Item {
+    Text(String),
+    Span(TextLabel),
+}
 
 #[derive(Clone, Debug)]
 pub struct TextLabel {
-    pub(crate) x:    f64,
-    pub(crate) y:    f64,
-    pub(crate) body: String,
-    pub(crate) font: Option<Font>,
+    pub(crate) origin:    Option<Point>,
+    pub(crate) dx:        Vec<f64>,
+    pub(crate) dy:        Vec<f64>,
+    pub(crate) anchor:    Anchor,
+    pub(crate) body:      Vec<Item>,
+    pub(crate) font:      Option<Font>,
+    is_root:              bool,
+    font_is_explicit:     bool,
+    pub(crate) font_size: Option<f64>,
 }
 
 impl TextLabel {
-    pub const DEFAULT_FONT: Font = Font::new();
+    pub const DEFAULT_FONT: Font = Font::new_sans_serif();
 
-    // fn new(body: S, rc: &mut R, style: Option<&Style>, theme: &Theme)
+    pub fn new() -> Self {
+        TextLabel {
+            origin:           None,
+            dx:               Vec::new(),
+            dy:               Vec::new(),
+            anchor:           Anchor::Start,
+            body:             Vec::new(),
+            font:             None,
+            is_root:          true,
+            font_is_explicit: false,
+            font_size:        None,
+        }
+    }
 
-    pub fn new(body: String) -> Self {
-        TextLabel { x: 0.0, y: 0.0, body, font: None }
+    pub fn with_text<S: AsRef<str>>(mut self, body: S) -> Self {
+        self.body.push(Item::Text(body.as_ref().to_string()));
+        self
+    }
+
+    pub fn with_span(mut self, mut span: Self) -> Self {
+        span.is_root = false;
+        self.body.push(Item::Span(span));
+        self
+    }
+
+    pub fn with_origin<P: Into<Point>>(mut self, origin: P) -> Self {
+        self.set_origin(origin);
+        self
     }
 
     pub fn with_xy(mut self, x: f64, y: f64) -> Self {
-        self.x = x;
-        self.y = y;
+        self.set_xy(x, y);
+        self
+    }
+
+    pub fn with_dx<I>(mut self, dx: I) -> Self
+    where
+        I: IntoIterator<Item = f64>,
+    {
+        self.set_dx(dx);
+        self
+    }
+
+    pub fn with_dy<I>(mut self, dy: I) -> Self
+    where
+        I: IntoIterator<Item = f64>,
+    {
+        self.set_dy(dy);
+        self
+    }
+
+    pub fn with_middle_anchor(mut self) -> Self {
+        self.set_middle_anchor();
+        self
+    }
+
+    pub fn with_end_anchor(mut self) -> Self {
+        self.set_end_anchor();
         self
     }
 
@@ -28,23 +96,85 @@ impl TextLabel {
         self
     }
 
-    pub fn set_font(&mut self, font: Font) {
-        self.font = Some(font);
+    pub fn with_font_size(mut self, font_size: f64) -> Self {
+        self.set_font_size(font_size);
+        self
     }
 
-    pub fn get_font(&mut self) -> Option<&Font> {
+    pub fn set_origin<P: Into<Point>>(&mut self, origin: P) {
+        self.origin = Some(origin.into());
+    }
+
+    pub fn set_xy(&mut self, x: f64, y: f64) {
+        self.origin = Some(Point::new(x, y));
+    }
+
+    pub fn set_dx<I>(&mut self, dx: I)
+    where
+        I: IntoIterator<Item = f64>,
+    {
+        self.dx = dx.into_iter().collect();
+    }
+
+    pub fn set_dy<I>(&mut self, dy: I)
+    where
+        I: IntoIterator<Item = f64>,
+    {
+        self.dy = dy.into_iter().collect();
+    }
+
+    pub fn set_middle_anchor(&mut self) {
+        self.anchor = Anchor::Middle;
+    }
+
+    pub fn set_end_anchor(&mut self) {
+        self.anchor = Anchor::End;
+    }
+
+    pub fn set_font(&mut self, font: Font) {
+        self.font = Some(font);
+        self.font_is_explicit = true;
+    }
+
+    pub fn set_font_size(&mut self, font_size: f64) {
+        if let Some(ref mut font) = self.font {
+            font.set_size(font_size);
+        }
+        self.font_size = Some(font_size);
+    }
+
+    #[inline]
+    pub fn is_root(&self) -> bool {
+        self.is_root
+    }
+
+    pub fn get_font(&self) -> Option<&Font> {
         self.font.as_ref()
     }
 
-    pub fn resolve_font<'a, 'b: 'a, 'c: 'a>(
-        &'a self,
-        style: Option<&'b Style>,
-        theme: &'c Theme,
-    ) -> Option<&'a Font> {
-        self.font.as_ref().or_else(|| {
-            style
+    pub fn get_font_size(&self) -> Option<f64> {
+        if let Some(ref font) = self.font {
+            Some(font.get_size())
+        } else {
+            self.font_size
+        }
+    }
+
+    pub fn resolve_font(&mut self, style: Option<&Style>, theme: &Theme) {
+        if self.font_is_explicit {
+            assert!(self.font.is_some())
+        } else {
+            let mut font = style
                 .and_then(|s| s.get_font())
-                .or_else(|| theme.get_generic_font(GenericFontFamily::default()))
-        })
+                .or_else(|| theme.get_sans_serif_font())
+                .unwrap_or(&Self::DEFAULT_FONT)
+                .clone();
+
+            if let Some(size) = self.font_size {
+                font.set_size(size);
+            }
+
+            self.font = Some(font);
+        }
     }
 }

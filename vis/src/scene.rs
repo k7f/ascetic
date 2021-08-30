@@ -25,8 +25,18 @@ impl Scene {
     }
 
     #[inline]
+    pub fn get_crumb_mut(&mut self, crumb_id: CrumbId) -> Option<&mut Crumb> {
+        self.crumbs.get_mut(crumb_id.0)
+    }
+
+    #[inline]
     pub fn get_group(&self, group_id: GroupId) -> Option<&Group> {
         self.groups.get(group_id.0)
+    }
+
+    #[inline]
+    pub fn get_group_mut(&mut self, group_id: GroupId) -> Option<&mut Group> {
+        self.groups.get_mut(group_id.0)
     }
 
     pub fn add_line(&mut self, line: Line) -> CrumbId {
@@ -122,44 +132,6 @@ impl Scene {
 
         group_id
     }
-
-    // pub fn render<S, M, R>(
-    //     &self,
-    //     theme: &Theme,
-    //     out_size: S,
-    //     out_margin: M,
-    //     rc: &mut R,
-    // ) -> Result<(), Box<dyn Error>>
-    // where
-    //     S: Into<Size>,
-    //     M: Into<Size>,
-    //     R: RenderContext,
-    // {
-    //     let out_size = out_size.into();
-    //     let out_margin = out_margin.into();
-    //     let out_scale = ((out_size.width - 2. * out_margin.width) / self.size.width)
-    //         .min((out_size.height - 2. * out_margin.height) / self.size.height);
-
-    //     let root_ts =
-    //         TranslateScale::translate(out_margin.to_vec2()) * TranslateScale::scale(out_scale);
-
-    //     rc.clear(None, theme.get_bg_color());
-
-    //     for CrumbItem(crumb_id, ts, style_id) in self.all_crumbs(root_ts) {
-    //         if let Some(crumb) = self.crumbs.get(crumb_id.0) {
-    //             let style = theme.get_style(style_id);
-
-    //             crumb.vis(rc, ts, style, theme);
-    //         } else {
-    //             // FIXME
-    //             panic!()
-    //         }
-    //     }
-
-    //     rc.finish()?;
-
-    //     Ok(())
-    // }
 
     fn push_crumbs_of_a_group<'a>(
         &'a self,

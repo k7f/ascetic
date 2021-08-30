@@ -432,6 +432,11 @@ impl Theme {
     }
 
     #[inline]
+    pub fn get_marker_mut(&mut self, marker_id: Option<MarkerId>) -> Option<&mut Marker> {
+        marker_id.and_then(move |id| self.markers.get_mut(id.0))
+    }
+
+    #[inline]
     pub fn get_marker_by_name<S: AsRef<str>>(&self, name: S) -> Option<&Marker> {
         self.get_marker(self.named_markers.get(name.as_ref()).copied())
     }
@@ -467,8 +472,23 @@ impl Theme {
     }
 
     #[inline]
-    pub fn get_generic_font(&self, form: GenericFontFamily) -> Option<&Font> {
-        self.default_fonts.get(&form)
+    pub fn get_serif_font(&self) -> Option<&Font> {
+        self.default_fonts.get(&GenericFontFamily::Serif)
+    }
+
+    #[inline]
+    pub fn get_sans_serif_font(&self) -> Option<&Font> {
+        self.default_fonts.get(&GenericFontFamily::SansSerif)
+    }
+
+    #[inline]
+    pub fn get_sans_cursive_font(&self) -> Option<&Font> {
+        self.default_fonts.get(&GenericFontFamily::Cursive)
+    }
+
+    #[inline]
+    pub fn get_sans_monospace_font(&self) -> Option<&Font> {
+        self.default_fonts.get(&GenericFontFamily::Monospace)
     }
 
     pub fn simple_demo() -> Self {
