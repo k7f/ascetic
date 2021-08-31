@@ -1,7 +1,7 @@
 use kurbo::Point;
 use crate::{Theme, Style, Font};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) enum Anchor {
     Start,
     Middle,
@@ -16,15 +16,15 @@ pub(crate) enum Item {
 
 #[derive(Clone, Debug)]
 pub struct TextLabel {
-    pub(crate) origin:    Option<Point>,
-    pub(crate) dx:        Vec<f64>,
-    pub(crate) dy:        Vec<f64>,
-    pub(crate) anchor:    Anchor,
-    pub(crate) body:      Vec<Item>,
-    pub(crate) font:      Option<Font>,
-    is_root:              bool,
-    font_is_explicit:     bool,
-    pub(crate) font_size: Option<f64>,
+    origin:           Option<Point>,
+    dx:               Vec<f64>,
+    dy:               Vec<f64>,
+    anchor:           Anchor,
+    body:             Vec<Item>,
+    font:             Option<Font>,
+    is_root:          bool,
+    font_is_explicit: bool,
+    font_size:        Option<f64>,
 }
 
 impl TextLabel {
@@ -148,10 +148,42 @@ impl TextLabel {
         self.is_root
     }
 
+    #[inline]
+    pub fn get_origin(&self) -> Option<Point> {
+        self.origin
+    }
+
+    #[inline]
+    pub fn get_dx(&self) -> &[f64] {
+        self.dx.as_slice()
+    }
+
+    #[inline]
+    pub fn get_dy(&self) -> &[f64] {
+        self.dy.as_slice()
+    }
+
+    #[inline]
+    pub(crate) fn get_anchor(&self) -> Anchor {
+        self.anchor
+    }
+
+    #[inline]
+    pub(crate) fn get_body(&self) -> &[Item] {
+        self.body.as_slice()
+    }
+
+    #[inline]
+    pub(crate) fn get_body_mut(&mut self) -> &mut [Item] {
+        self.body.as_mut_slice()
+    }
+
+    #[inline]
     pub fn get_font(&self) -> Option<&Font> {
         self.font.as_ref()
     }
 
+    #[inline]
     pub fn get_font_size(&self) -> Option<f64> {
         if let Some(ref font) = self.font {
             Some(font.get_size())

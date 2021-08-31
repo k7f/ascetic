@@ -324,7 +324,7 @@ impl Vis<BitmapDevice> for Crumb {
 // FIXME compute `text_layout` for every item, store in a `Vec`, and cache somehow.
 impl Vis<BitmapDevice> for TextLabel {
     fn bbox(&self, rc: &mut BitmapDevice, ts: TranslateScale) -> Rect {
-        if let Some(body) = self.body.first() {
+        if let Some(body) = self.get_body().first() {
             if let crate::text::Item::Text(body) = body {
                 let text = rc.text();
                 let font = FontFamily::SANS_SERIF;
@@ -336,7 +336,7 @@ impl Vis<BitmapDevice> for TextLabel {
         }
 
         // FIXME
-        let origin = self.origin.unwrap_or_default();
+        let origin = self.get_origin().unwrap_or_default();
         ts * Rect::new(origin.x, origin.y, origin.x + 100.0, origin.y + 30.0)
     }
 
@@ -356,13 +356,13 @@ impl Vis<BitmapDevice> for TextLabel {
         let rc_font = rc_text.font_family(font_name).unwrap_or(FontFamily::SANS_SERIF);
 
         // FIXME draw all items
-        if let Some(body) = self.body.first() {
+        if let Some(body) = self.get_body().first() {
             if let crate::text::Item::Text(body) = body {
                 if let Ok(mut layout) =
                     rc_text.new_text_layout(body.clone()).font(rc_font, font_size).build()
                 {
                     // FIXME
-                    let origin = self.origin.unwrap_or_default();
+                    let origin = self.get_origin().unwrap_or_default();
                     rc.draw_text(&mut layout, ts * origin);
                 }
             }

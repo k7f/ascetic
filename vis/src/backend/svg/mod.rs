@@ -2,8 +2,8 @@ use std::io::Write;
 use kurbo::{Shape, Line, Rect, RoundedRect, Circle, Arc, BezPath, TranslateScale, Size};
 use piet::Color;
 use crate::{
-    Scene, Theme, Style, StyleId, Stroke, Fill, GradSpec, Marker, style::MarkerSuit, Crumb,
-    CrumbItem, TextLabel,
+    Scene, Theme, Style, Stroke, Fill, GradSpec, Marker, style::MarkerSuit, Crumb, CrumbItem,
+    TextLabel,
 };
 
 mod render_context;
@@ -76,9 +76,22 @@ impl ToSvg for Scene {
 
         let all_crumbs: Vec<_> = self.all_crumbs(root_ts).collect();
 
+        for CrumbItem(crumb_id, ts, style_id) in &all_crumbs {
+            if let Some(crumb) = self.get_crumb_mut(*crumb_id) {
+                let style = theme.get_style(*style_id);
+
+                crumb.preprocess_with_style(*ts, style, theme)?;
+            } else {
+                // FIXME
+                panic!()
+            }
+        }
+
         for CrumbItem(crumb_id, ts, style_id) in all_crumbs {
-            if let Some(crumb) = self.get_crumb_mut(crumb_id) {
-                crumb.write_svg_with_style_mut(&mut svg, ts, style_id, theme)?;
+            if let Some(crumb) = self.get_crumb(crumb_id) {
+                let style = theme.get_style(style_id);
+
+                crumb.write_svg_with_style(&mut svg, ts, style, theme)?;
             } else {
                 // FIXME
                 panic!()
@@ -98,22 +111,21 @@ pub trait WriteSvg {
 }
 
 pub trait WriteSvgWithStyle: WriteSvg {
-    // FIXME replace `_mut` variant with preprocessing stage
-    fn write_svg_with_style_mut<W: std::io::Write>(
+    // FIXME cross-backend?
+    fn preprocess_with_style(
         &mut self,
-        svg: W,
-        ts: TranslateScale,
-        style_id: Option<StyleId>,
-        theme: &Theme,
+        _ts: TranslateScale,
+        _style: Option<&Style>,
+        _theme: &Theme,
     ) -> std::io::Result<()> {
-        self.write_svg_with_style(svg, ts, style_id, theme)
+        Ok(())
     }
 
     fn write_svg_with_style<W: std::io::Write>(
         &self,
         svg: W,
         ts: TranslateScale,
-        style_id: Option<StyleId>,
+        style: Option<&Style>,
         theme: &Theme,
     ) -> std::io::Result<()>;
 }
@@ -188,22 +200,15 @@ impl WriteSvg for Crumb {
 
 impl WriteSvgWithStyle for Crumb {
     #[inline]
-    fn write_svg_with_style_mut<W: std::io::Write>(
+    fn preprocess_with_style(
         &mut self,
-        svg: W,
         ts: TranslateScale,
-        style_id: Option<StyleId>,
+        style: Option<&Style>,
         theme: &Theme,
     ) -> std::io::Result<()> {
         match self {
-            Crumb::Line(line) => line.write_svg_with_style(svg, ts, style_id, theme),
-            Crumb::Rect(rect) => rect.write_svg_with_style(svg, ts, style_id, theme),
-            Crumb::RoundedRect(rr) => rr.write_svg_with_style(svg, ts, style_id, theme),
-            Crumb::Circle(circ) => circ.write_svg_with_style(svg, ts, style_id, theme),
-            Crumb::Arc(arc) => arc.write_svg_with_style(svg, ts, style_id, theme),
-            Crumb::Path(path) => path.write_svg_with_style(svg, ts, style_id, theme),
-            Crumb::Pin(_) => Ok(()),
-            Crumb::Label(label) => label.write_svg_with_style_mut(svg, ts, style_id, theme),
+            Crumb::Label(label) => label.preprocess_with_style(ts, style, theme),
+            _ => Ok(()),
         }
     }
 
@@ -212,18 +217,18 @@ impl WriteSvgWithStyle for Crumb {
         &self,
         svg: W,
         ts: TranslateScale,
-        style_id: Option<StyleId>,
+        style: Option<&Style>,
         theme: &Theme,
     ) -> std::io::Result<()> {
         match self {
-            Crumb::Line(line) => line.write_svg_with_style(svg, ts, style_id, theme),
-            Crumb::Rect(rect) => rect.write_svg_with_style(svg, ts, style_id, theme),
-            Crumb::RoundedRect(rr) => rr.write_svg_with_style(svg, ts, style_id, theme),
-            Crumb::Circle(circ) => circ.write_svg_with_style(svg, ts, style_id, theme),
-            Crumb::Arc(arc) => arc.write_svg_with_style(svg, ts, style_id, theme),
-            Crumb::Path(path) => path.write_svg_with_style(svg, ts, style_id, theme),
+            Crumb::Line(line) => line.write_svg_with_style(svg, ts, style, theme),
+            Crumb::Rect(rect) => rect.write_svg_with_style(svg, ts, style, theme),
+            Crumb::RoundedRect(rr) => rr.write_svg_with_style(svg, ts, style, theme),
+            Crumb::Circle(circ) => circ.write_svg_with_style(svg, ts, style, theme),
+            Crumb::Arc(arc) => arc.write_svg_with_style(svg, ts, style, theme),
+            Crumb::Path(path) => path.write_svg_with_style(svg, ts, style, theme),
             Crumb::Pin(_) => Ok(()),
-            Crumb::Label(label) => label.write_svg_with_style(svg, ts, style_id, theme),
+            Crumb::Label(label) => label.write_svg_with_style(svg, ts, style, theme),
         }
     }
 }
@@ -243,12 +248,12 @@ impl WriteSvgWithStyle for Line {
         &self,
         mut svg: W,
         ts: TranslateScale,
-        style_id: Option<StyleId>,
+        style: Option<&Style>,
         theme: &Theme,
     ) -> std::io::Result<()> {
         let p0 = ts * self.p0;
         let p1 = ts * self.p1;
-        let style = theme.get_style(style_id).unwrap_or_else(|| theme.get_default_style());
+        let style = style.unwrap_or_else(|| theme.get_default_style());
 
         write!(svg, "  <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" ", p0.x, p0.y, p1.x, p1.y)?;
 
@@ -280,8 +285,8 @@ impl WriteSvgWithStyle for Rect {
         &self,
         mut svg: W,
         ts: TranslateScale,
-        style_id: Option<StyleId>,
-        theme: &Theme,
+        style: Option<&Style>,
+        _theme: &Theme,
     ) -> std::io::Result<()> {
         let rect = ts * *self;
 
@@ -294,7 +299,7 @@ impl WriteSvgWithStyle for Rect {
             rect.height()
         )?;
 
-        if let Some(style) = theme.get_style(style_id) {
+        if let Some(style) = style {
             style.write_svg(svg.by_ref())?;
         }
 
@@ -333,8 +338,8 @@ impl WriteSvgWithStyle for RoundedRect {
         &self,
         mut svg: W,
         ts: TranslateScale,
-        style_id: Option<StyleId>,
-        theme: &Theme,
+        style: Option<&Style>,
+        _theme: &Theme,
     ) -> std::io::Result<()> {
         let rr = ts * *self;
         let rect = &rr.rect();
@@ -359,7 +364,7 @@ impl WriteSvgWithStyle for RoundedRect {
             )?;
         }
 
-        if let Some(style) = theme.get_style(style_id) {
+        if let Some(style) = style {
             style.write_svg(svg.by_ref())?;
         }
 
@@ -382,15 +387,15 @@ impl WriteSvgWithStyle for Circle {
         &self,
         mut svg: W,
         ts: TranslateScale,
-        style_id: Option<StyleId>,
-        theme: &Theme,
+        style: Option<&Style>,
+        _theme: &Theme,
     ) -> std::io::Result<()> {
         let center = ts * self.center;
         let radius = ts.as_tuple().1 * self.radius;
 
         write!(svg, "  <circle cx=\"{}\" cy=\"{}\" r=\"{}\" ", center.x, center.y, radius)?;
 
-        if let Some(style) = theme.get_style(style_id) {
+        if let Some(style) = style {
             style.write_svg(svg.by_ref())?;
         }
 
@@ -412,13 +417,13 @@ impl WriteSvgWithStyle for Arc {
         &self,
         svg: W,
         ts: TranslateScale,
-        style_id: Option<StyleId>,
+        style: Option<&Style>,
         theme: &Theme,
     ) -> std::io::Result<()> {
         // FIXME use `A` path element
         let path = BezPath::from_vec(self.path_elements(0.1).collect());
 
-        path.write_svg_with_style(svg, ts, style_id, theme)
+        path.write_svg_with_style(svg, ts, style, theme)
     }
 }
 
@@ -435,14 +440,14 @@ impl WriteSvgWithStyle for BezPath {
         &self,
         mut svg: W,
         ts: TranslateScale,
-        style_id: Option<StyleId>,
-        theme: &Theme,
+        style: Option<&Style>,
+        _theme: &Theme,
     ) -> std::io::Result<()> {
         write!(svg, "  <path d=\"")?;
         (ts * self.clone()).write_to(svg.by_ref())?;
         write!(svg, "\" ")?;
 
-        if let Some(style) = theme.get_style(style_id) {
+        if let Some(style) = style {
             style.write_svg(svg.by_ref())?;
         }
 
@@ -453,14 +458,14 @@ impl WriteSvgWithStyle for BezPath {
 impl WriteSvg for TextLabel {
     fn write_svg<W: std::io::Write>(&self, mut svg: W) -> std::io::Result<()> {
         if self.is_root() {
-            let origin = self.origin.unwrap_or_default();
+            let origin = self.get_origin().unwrap_or_default();
             write!(svg, "  <text x=\"{}\" y=\"{}\"", origin.x, origin.y,)?;
-        } else if let Some(origin) = self.origin {
+        } else if let Some(origin) = self.get_origin() {
             write!(svg, "<tspan x=\"{}\" y=\"{}\"", origin.x, origin.y,)?;
         } else {
             write!(svg, "<tspan")?;
         }
-        match self.anchor {
+        match self.get_anchor() {
             crate::text::Anchor::Start => {
                 if !self.is_root() {
                     write!(svg, " text-anchor=\"start\"")?;
@@ -469,7 +474,7 @@ impl WriteSvg for TextLabel {
             crate::text::Anchor::Middle => write!(svg, " text-anchor=\"middle\"")?,
             crate::text::Anchor::End => write!(svg, " text-anchor=\"end\"")?,
         }
-        if let Some((head, tail)) = self.dx.split_first() {
+        if let Some((head, tail)) = self.get_dx().split_first() {
             if tail.is_empty() {
                 write!(svg, " dx=\"{}\"", head)?;
             } else {
@@ -480,7 +485,7 @@ impl WriteSvg for TextLabel {
                 write!(svg, "\"")?;
             }
         }
-        if let Some((head, tail)) = self.dy.split_first() {
+        if let Some((head, tail)) = self.get_dy().split_first() {
             if tail.is_empty() {
                 write!(svg, " dy=\"{}\"", head)?;
             } else {
@@ -499,7 +504,7 @@ impl WriteSvg for TextLabel {
         )?;
 
         let mut buffer = Vec::new();
-        for item in &self.body {
+        for item in self.get_body() {
             match item {
                 crate::text::Item::Text(text) => {
                     svg.write(text.as_bytes())?;
@@ -521,38 +526,46 @@ impl WriteSvg for TextLabel {
 }
 
 impl WriteSvgWithStyle for TextLabel {
-    fn write_svg_with_style<W: std::io::Write>(
-        &self,
-        _svg: W,
-        _ts: TranslateScale,
-        _style_id: Option<StyleId>,
-        _theme: &Theme,
-    ) -> std::io::Result<()> {
-        // FIXME this isn't robust (a temporary hack: cf. trait declaration)
-        unreachable!()
-    }
-
-    fn write_svg_with_style_mut<W: std::io::Write>(
+    fn preprocess_with_style(
         &mut self,
-        mut svg: W,
         ts: TranslateScale,
-        style_id: Option<StyleId>,
+        style: Option<&Style>,
         theme: &Theme,
     ) -> std::io::Result<()> {
-        let style = theme.get_style(style_id).unwrap_or_else(|| theme.get_default_style());
+        let resolved_style = Some(style.unwrap_or_else(|| theme.get_default_style()));
 
-        self.resolve_font(Some(style), theme);
+        self.resolve_font(resolved_style, theme);
+
+        for item in self.get_body_mut() {
+            match item {
+                crate::text::Item::Text(_) => {}
+                crate::text::Item::Span(span) => {
+                    span.preprocess_with_style(ts, style, theme)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn write_svg_with_style<W: std::io::Write>(
+        &self,
+        mut svg: W,
+        ts: TranslateScale,
+        style: Option<&Style>,
+        theme: &Theme,
+    ) -> std::io::Result<()> {
         if let Some(font) = self.get_font() {
             if self.is_root() {
-                let origin = ts * self.origin.unwrap_or_default();
+                let origin = ts * self.get_origin().unwrap_or_default();
                 write!(svg, "  <text x=\"{}\" y=\"{}\"", origin.x, origin.y,)?;
-            } else if let Some(origin) = self.origin {
+            } else if let Some(origin) = self.get_origin() {
                 let origin = ts * origin;
                 write!(svg, "<tspan x=\"{}\" y=\"{}\"", origin.x, origin.y,)?;
             } else {
                 write!(svg, "<tspan")?;
             }
-            match self.anchor {
+            match self.get_anchor() {
                 crate::text::Anchor::Start => {
                     if !self.is_root() {
                         write!(svg, " text-anchor=\"start\"")?;
@@ -561,7 +574,7 @@ impl WriteSvgWithStyle for TextLabel {
                 crate::text::Anchor::Middle => write!(svg, " text-anchor=\"middle\"")?,
                 crate::text::Anchor::End => write!(svg, " text-anchor=\"end\"")?,
             }
-            if let Some((head, tail)) = self.dx.split_first() {
+            if let Some((head, tail)) = self.get_dx().split_first() {
                 if tail.is_empty() {
                     write!(svg, " dx=\"{}\"", head)?;
                 } else {
@@ -572,7 +585,7 @@ impl WriteSvgWithStyle for TextLabel {
                     write!(svg, "\"")?;
                 }
             }
-            if let Some((head, tail)) = self.dy.split_first() {
+            if let Some((head, tail)) = self.get_dy().split_first() {
                 if tail.is_empty() {
                     write!(svg, " dy=\"{}\"", head)?;
                 } else {
@@ -591,14 +604,14 @@ impl WriteSvgWithStyle for TextLabel {
             )?;
 
             let mut buffer = Vec::new();
-            for item in &mut self.body {
+            for item in self.get_body() {
                 match item {
                     crate::text::Item::Text(text) => {
                         svg.write(text.as_bytes())?;
                     }
                     crate::text::Item::Span(span) => {
                         buffer.clear();
-                        span.write_svg_with_style_mut(&mut buffer, ts, style_id, theme)?;
+                        span.write_svg_with_style(&mut buffer, ts, style, theme)?;
                         svg.write(buffer.as_slice())?;
                     }
                 }
@@ -728,7 +741,7 @@ impl WriteSvgWithTheme for Marker {
         self.get_crumb().write_svg_with_style(
             svg.by_ref(),
             TranslateScale::default(),
-            self.get_style_name().and_then(|name| theme.get(name)),
+            self.get_style_name().and_then(|name| theme.get_style_by_name(name)),
             theme,
         )?;
 

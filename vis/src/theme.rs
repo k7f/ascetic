@@ -3,7 +3,7 @@ use std::{
     iter::FromIterator,
 };
 use piet::{Color, LinearGradient, RadialGradient, UnitPoint, GradientStops};
-use crate::{Style, StyleId, Stroke, Fill, GradSpec, Marker, MarkerId, Font, GenericFontFamily};
+use crate::{Style, StyleId, Stroke, Fill, GradSpec, Marker, MarkerId, Font, font::GenericFontFamily};
 
 const DEFAULT_NAME: &str = "default";
 const SCENE_NAME: &str = "scene";
