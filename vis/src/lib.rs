@@ -35,3 +35,12 @@ pub trait Vis<R: piet::RenderContext> {
 pub trait AsCss {
     fn as_css(&self) -> &str;
 }
+
+pub trait PreprocessWithStyle {
+    fn preprocess_with_style(
+        &mut self,
+        ts: TranslateScale,
+        style: Option<&Style>,
+        theme: &Theme,
+    ) -> std::io::Result<()>;
+}

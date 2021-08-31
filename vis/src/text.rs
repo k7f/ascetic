@@ -1,5 +1,5 @@
-use kurbo::Point;
-use crate::{Theme, Style, Font};
+use kurbo::{Point, TranslateScale};
+use crate::{Theme, Style, Font, PreprocessWithStyle};
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum Anchor {
@@ -208,5 +208,29 @@ impl TextLabel {
 
             self.font = Some(font);
         }
+    }
+}
+
+impl PreprocessWithStyle for TextLabel {
+    fn preprocess_with_style(
+        &mut self,
+        ts: TranslateScale,
+        style: Option<&Style>,
+        theme: &Theme,
+    ) -> std::io::Result<()> {
+        let resolved_style = Some(style.unwrap_or_else(|| theme.get_default_style()));
+
+        self.resolve_font(resolved_style, theme);
+
+        for item in self.get_body_mut() {
+            match item {
+                crate::text::Item::Text(_) => {}
+                crate::text::Item::Span(span) => {
+                    span.preprocess_with_style(ts, style, theme)?;
+                }
+            }
+        }
+
+        Ok(())
     }
 }

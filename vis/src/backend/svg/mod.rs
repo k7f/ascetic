@@ -3,7 +3,7 @@ use kurbo::{Shape, Line, Rect, RoundedRect, Circle, Arc, BezPath, TranslateScale
 use piet::Color;
 use crate::{
     Scene, Theme, Style, Stroke, Fill, GradSpec, Marker, style::MarkerSuit, Crumb, CrumbItem,
-    TextLabel,
+    TextLabel, PreprocessWithStyle,
 };
 
 mod render_context;
@@ -77,13 +77,17 @@ impl ToSvg for Scene {
         let all_crumbs: Vec<_> = self.all_crumbs(root_ts).collect();
 
         for CrumbItem(crumb_id, ts, style_id) in &all_crumbs {
-            if let Some(crumb) = self.get_crumb_mut(*crumb_id) {
-                let style = theme.get_style(*style_id);
+            match self.get_crumb_mut(*crumb_id) {
+                Some(Crumb::Label(label)) => {
+                    let style = theme.get_style(*style_id);
 
-                crumb.preprocess_with_style(*ts, style, theme)?;
-            } else {
-                // FIXME
-                panic!()
+                    label.preprocess_with_style(*ts, style, theme)?;
+                }
+                Some(_) => {}
+                None => {
+                    // FIXME
+                    panic!()
+                }
             }
         }
 
@@ -111,16 +115,6 @@ pub trait WriteSvg {
 }
 
 pub trait WriteSvgWithStyle: WriteSvg {
-    // FIXME cross-backend?
-    fn preprocess_with_style(
-        &mut self,
-        _ts: TranslateScale,
-        _style: Option<&Style>,
-        _theme: &Theme,
-    ) -> std::io::Result<()> {
-        Ok(())
-    }
-
     fn write_svg_with_style<W: std::io::Write>(
         &self,
         svg: W,
@@ -199,19 +193,6 @@ impl WriteSvg for Crumb {
 }
 
 impl WriteSvgWithStyle for Crumb {
-    #[inline]
-    fn preprocess_with_style(
-        &mut self,
-        ts: TranslateScale,
-        style: Option<&Style>,
-        theme: &Theme,
-    ) -> std::io::Result<()> {
-        match self {
-            Crumb::Label(label) => label.preprocess_with_style(ts, style, theme),
-            _ => Ok(()),
-        }
-    }
-
     #[inline]
     fn write_svg_with_style<W: std::io::Write>(
         &self,
@@ -526,28 +507,6 @@ impl WriteSvg for TextLabel {
 }
 
 impl WriteSvgWithStyle for TextLabel {
-    fn preprocess_with_style(
-        &mut self,
-        ts: TranslateScale,
-        style: Option<&Style>,
-        theme: &Theme,
-    ) -> std::io::Result<()> {
-        let resolved_style = Some(style.unwrap_or_else(|| theme.get_default_style()));
-
-        self.resolve_font(resolved_style, theme);
-
-        for item in self.get_body_mut() {
-            match item {
-                crate::text::Item::Text(_) => {}
-                crate::text::Item::Span(span) => {
-                    span.preprocess_with_style(ts, style, theme)?;
-                }
-            }
-        }
-
-        Ok(())
-    }
-
     fn write_svg_with_style<W: std::io::Write>(
         &self,
         mut svg: W,
