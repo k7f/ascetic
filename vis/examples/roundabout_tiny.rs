@@ -6,8 +6,8 @@ use std::{
     error::Error,
 };
 use ascetic_vis::{
-    Scene, Theme, Style, Stroke, Fill, Marker, Variation, Group, Crumb, Joint, TextLabel, Color,
-    UnitPoint,
+    Scene, Theme, Style, Stroke, Fill, Marker, Variation, Group, Crumb, Joint, Color, UnitPoint,
+    NodeLabelBuilder,
     kurbo::{Rect, Circle, Arc, BezPath, PathEl},
     backend::{
         usvg::AsUsvgTree, usvg::Tree as UsvgTree, usvg::FitTo, usvg::Pixmap,
@@ -96,7 +96,6 @@ fn roundabout_theme() -> Theme {
 fn roundabout_scene(theme: &Theme) -> Scene {
     let mut scene = Scene::new((1000., 1000.));
 
-    let node_names = ["A0", "A1", "A2", "A3", "A4"];
     let node_positions = vec![
         (200.0, 400.0),
         (200.0, 600.0),
@@ -110,13 +109,6 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         (600.0, 800.0),
         (800.0, 400.0),
         (800.0, 600.0),
-    ];
-    let label_positions = vec![
-        (node_positions[0].0 - 110.0, node_positions[0].1),
-        (node_positions[1].0 - 110.0, node_positions[1].1),
-        (node_positions[2].0 - 50.0, node_positions[2].1 + 75.0),
-        (node_positions[3].0 - 50.0, node_positions[3].1 + 75.0),
-        (node_positions[4].0 - 70.0, node_positions[4].1 + 70.0),
     ];
     let pin_positions = vec![
         (node_positions[0].0 - 135.0, node_positions[0].1 - 135.0),
@@ -225,32 +217,16 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         ),
     ]);
 
-    let labels = scene.add_grouped_crumbs((0..5).map(|ndx| {
-        (
-            Crumb::Label(
-                TextLabel::new()
-                    .with_text(node_names[ndx])
-                    .with_end_anchor()
-                    .with_origin(label_positions[ndx])
-                    .with_font_size(28.0)
-                    .with_span(
-                        TextLabel::new()
-                            .with_text("text")
-                            .with_origin(label_positions[ndx])
-                            .with_dy([-10.0])
-                            .with_font_size(22.0),
-                    )
-                    .with_span(
-                        TextLabel::new()
-                            .with_text("label")
-                            .with_origin(label_positions[ndx])
-                            .with_dy([10.0])
-                            .with_font_size(22.0),
-                    ),
-            ),
-            thin_style,
-        )
-    }));
+    let node_indices = [0, 1, 2, 5, 7];
+    let node_names = ["A0", "A1", "A2", "A5", "A7"];
+    let upper = ["", "", "upper"];
+    let lower = ["", "lower"];
+    let label_offsets =
+        vec![(-110.0, 0.0), (-110.0, 0.0), (-75.0, 75.0), (-50.0, -50.0), (-50.0, 70.0)];
+    let labels = NodeLabelBuilder::new(node_indices, node_names)
+        .with_spans(upper, lower)
+        .with_offsets(label_offsets)
+        .build(nodes, &mut scene);
 
     scene.add_root(Group::from_groups([
         labels,

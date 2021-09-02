@@ -101,6 +101,15 @@ impl TextLabel {
         self
     }
 
+    pub fn append_text<S: AsRef<str>>(&mut self, body: S) {
+        self.body.push(Item::Text(body.as_ref().to_string()));
+    }
+
+    pub fn append_span(&mut self, mut span: Self) {
+        span.is_root = false;
+        self.body.push(Item::Span(span));
+    }
+
     pub fn set_origin<P: Into<Point>>(&mut self, origin: P) {
         self.origin = Some(origin.into());
     }

@@ -7,6 +7,7 @@ mod scene;
 mod tweener;
 mod joint;
 mod text;
+mod builder;
 pub mod backend;
 
 pub use crumb::{Crumb, CrumbId, CrumbItem};
@@ -18,6 +19,7 @@ pub use theme::{Theme, Variation};
 pub use tweener::{Tweener, Tweenable, Steppable, LinearEasing};
 pub use joint::Joint;
 pub use text::TextLabel;
+pub use builder::NodeLabelBuilder;
 
 pub use piet::{Color, UnitPoint};
 pub use kurbo::{self, Line, Rect, RoundedRect, Circle, TranslateScale, Vec2};

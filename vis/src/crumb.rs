@@ -2,7 +2,7 @@ use piet::RenderContext;
 use kurbo::{Shape, Line, Rect, RoundedRect, Circle, Arc, BezPath, TranslateScale};
 use crate::{Vis, Theme, Style, StyleId, TextLabel};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct CrumbId(pub usize);
 
 #[derive(Clone, Copy, Debug)]

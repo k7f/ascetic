@@ -99,7 +99,7 @@ impl Scene {
     where
         I: IntoIterator<Item = (Crumb, Option<StyleId>)>,
     {
-        let crumbs = crumbs.into_iter().map(|(p, s)| (self.add_crumb(p), s));
+        let crumbs = crumbs.into_iter().map(|(c, s)| (self.add_crumb(c), s));
         let group = Group::from_crumbs(crumbs);
 
         self.add_group(group)
