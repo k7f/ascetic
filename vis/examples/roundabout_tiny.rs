@@ -217,16 +217,18 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         ),
     ]);
 
-    let node_indices = [0, 1, 2, 5, 7];
     let node_names = ["A0", "A1", "A2", "A5", "A7"];
+    let node_indices = [0, 1, 2, 5, 7];
     let upper = ["", "", "upper"];
     let lower = ["", "lower"];
     let label_offsets =
         vec![(-110.0, 0.0), (-110.0, 0.0), (-75.0, 75.0), (-50.0, -50.0), (-50.0, 70.0)];
-    let labels = NodeLabelBuilder::new(node_indices, node_names)
+    let labels = NodeLabelBuilder::new(node_names)
+        .with_group(nodes)
+        .with_indices(node_indices)
         .with_spans(upper, lower)
         .with_offsets(label_offsets)
-        .build(nodes, &mut scene);
+        .build(&mut scene);
 
     scene.add_root(Group::from_groups([
         labels,
