@@ -7,7 +7,7 @@ use std::{
 };
 use ascetic_vis::{
     Scene, Theme, Style, Stroke, Fill, Marker, Variation, Group, Crumb, Joint, Color, UnitPoint,
-    NodeLabelBuilder,
+    PinBuilder, NodeLabelBuilder,
     kurbo::{Rect, Circle, Arc, BezPath, PathEl},
     backend::{
         usvg::AsUsvgTree, usvg::Tree as UsvgTree, usvg::FitTo, usvg::Pixmap,
@@ -110,12 +110,6 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         (800.0, 400.0),
         (800.0, 600.0),
     ];
-    let pin_positions = vec![
-        (node_positions[0].0 - 135.0, node_positions[0].1 - 135.0),
-        (node_positions[1].0 - 135.0, node_positions[1].1 + 135.0),
-        (node_positions[10].0 + 135.0, node_positions[10].1 - 135.0),
-        (node_positions[11].0 + 135.0, node_positions[11].1 + 135.0),
-    ];
     let token_positions = vec![node_positions[0], node_positions[7], node_positions[9]];
 
     let node_style = theme.get("node");
@@ -125,9 +119,12 @@ fn roundabout_scene(theme: &Theme) -> Scene {
             .map(|(x, y)| (Crumb::Circle(Circle::new((x, y), 35.)), node_style)),
     );
 
-    let pins = scene.add_grouped_crumbs(
-        pin_positions.into_iter().map(|(x, y)| (Crumb::Pin(Circle::new((x, y), 35.)), None)),
-    );
+    let pin_offsets = vec![(-135.0, -135.0), (-135.0, 135.0), (135.0, -135.0), (135.0, 135.0)];
+    let pins = PinBuilder::new()
+        .with_group(nodes)
+        .with_indices([0, 1, 10, 11])
+        .with_offsets(pin_offsets)
+        .build(&mut scene);
 
     let thick_style = theme.get("line-thick");
     let thin_style = theme.get("line-thin");
@@ -217,15 +214,26 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         ),
     ]);
 
-    let node_names = ["A0", "A1", "A2", "A5", "A7"];
-    let node_indices = [0, 1, 2, 5, 7];
-    let upper = ["", "", "upper"];
-    let lower = ["", "lower"];
-    let label_offsets =
-        vec![(-110.0, 0.0), (-110.0, 0.0), (-75.0, 75.0), (-50.0, -50.0), (-50.0, 70.0)];
+    let node_names = ["w", "W", "N", "NW", "SW", "s", "n", "NE", "SE", "S", "E", "e"];
+    let upper = ["NW", "", "", "NE+N", "NW+W", "SW", "NE", "SE+E", "SW+S", "", "", "SE"];
+    let lower = ["", "SW", "NW", "SW+w", "SE+s", "", "", "NW+n", "NE+e", "SE", "NE", ""];
+    let label_offsets = vec![
+        (-95.0, 15.0),
+        (-90.0, 10.0),
+        (30.0, -50.0),
+        (-90.0, -60.0),
+        (-90.0, 75.0),
+        (40.0, -40.0),
+        (-50.0, 70.0),
+        (50.0, -50.0),
+        (60.0, 60.0),
+        (-50.0, 50.0),
+        (80.0, 0.0),
+        (70.0, 30.0),
+    ];
     let labels = NodeLabelBuilder::new(node_names)
         .with_group(nodes)
-        .with_indices(node_indices)
+        .with_indices(0..12)
         .with_spans(upper, lower)
         .with_offsets(label_offsets)
         .build(&mut scene);
