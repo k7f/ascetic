@@ -33,7 +33,12 @@ impl JointBuilder {
                         (
                             scene.add_line(
                                 scene
-                                    .line_joint(theme, (tail_group, *tail), (head_group, *head))
+                                    .line_joint(
+                                        style_id,
+                                        theme,
+                                        (tail_group, *tail),
+                                        (head_group, *head),
+                                    )
                                     .unwrap(),
                             ),
                             style_id,
@@ -46,6 +51,7 @@ impl JointBuilder {
                             scene.add_crumb(Crumb::Path(
                                 scene
                                     .polyline_joint(
+                                        style_id,
                                         theme,
                                         (tail_group, *tail),
                                         (head_group, *head),
@@ -63,6 +69,7 @@ impl JointBuilder {
                             scene.add_arc(
                                 scene
                                     .arc_joint(
+                                        style_id,
                                         theme,
                                         (tail_group, *tail),
                                         (head_group, *head),
@@ -83,6 +90,7 @@ impl JointBuilder {
                                         Crumb::Path(
                                             scene
                                                 .cubic_joint(
+                                                    style_id,
                                                     theme,
                                                     (tail_group, *tail),
                                                     (head_group, *head),
@@ -97,6 +105,7 @@ impl JointBuilder {
                                         Crumb::Path(
                                             scene
                                                 .quad_joint(
+                                                    style_id,
                                                     theme,
                                                     (tail_group, *tail),
                                                     (head_group, *head),
@@ -110,6 +119,7 @@ impl JointBuilder {
                                     Crumb::Line(
                                         scene
                                             .line_joint(
+                                                style_id,
                                                 theme,
                                                 (tail_group, *tail),
                                                 (head_group, *head),
@@ -209,6 +219,7 @@ impl Scene {
 
     pub fn line_joint(
         &self,
+        style_id: Option<StyleId>,
         theme: &Theme,
         tail: (GroupId, usize),
         head: (GroupId, usize),
@@ -236,14 +247,6 @@ impl Scene {
 
                                 let versor = (head_p0 - tail_p0) / (head_p0 - tail_p0).hypot();
 
-                                let mut marker_len = theme
-                                    .get_marker_by_name("arrowhead1")
-                                    .map(|m| m.get_width())
-                                    .unwrap_or(0.0);
-                                if let Some(stroke) = theme.get_stroke_by_name("line-thin") {
-                                    marker_len += 2.0 * stroke.get_width();
-                                }
-
                                 let tail_border_width = theme
                                     .get_stroke(*tail_style_id)
                                     .map(|s| s.get_width())
@@ -252,10 +255,13 @@ impl Scene {
                                     .get_stroke(*head_style_id)
                                     .map(|s| s.get_width())
                                     .unwrap_or(0.0);
+                                let (tail_marker_len, head_marker_len) =
+                                    theme.get_marker_width(style_id);
 
-                                let tail_p1 = tail_p0 + versor * (tail_r + tail_border_width);
-                                let head_p1 =
-                                    head_p0 - versor * (head_r + marker_len + head_border_width);
+                                let tail_p1 = tail_p0
+                                    + versor * (tail_r + 0.5 * tail_border_width + tail_marker_len);
+                                let head_p1 = head_p0
+                                    - versor * (head_r + 0.5 * head_border_width + head_marker_len);
 
                                 return Some(Line::new(tail_p1, head_p1))
                             }
@@ -269,6 +275,7 @@ impl Scene {
 
     pub fn polyline_joint(
         &self,
+        style_id: Option<StyleId>,
         theme: &Theme,
         tail: (GroupId, usize),
         head: (GroupId, usize),
@@ -295,14 +302,6 @@ impl Scene {
                                     _ => return None,
                                 };
 
-                                let mut marker_len = theme
-                                    .get_marker_by_name("arrowhead1")
-                                    .map(|m| m.get_width())
-                                    .unwrap_or(0.0);
-                                if let Some(stroke) = theme.get_stroke_by_name("line-thin") {
-                                    marker_len += 2.0 * stroke.get_width();
-                                }
-
                                 let tail_border_width = theme
                                     .get_stroke(*tail_style_id)
                                     .map(|s| s.get_width())
@@ -311,6 +310,8 @@ impl Scene {
                                     .get_stroke(*head_style_id)
                                     .map(|s| s.get_width())
                                     .unwrap_or(0.0);
+                                let (tail_marker_len, head_marker_len) =
+                                    theme.get_marker_width(style_id);
 
                                 if let Some(((pull1x, pull1y), rest)) = pull.split_first() {
                                     let mid_p1 = Point::new(
@@ -327,11 +328,16 @@ impl Scene {
                                             (tail_p0 - mid_p1) / (tail_p0 - mid_p1).hypot();
                                         let head_versor =
                                             (head_p0 - mid_p2) / (head_p0 - mid_p2).hypot();
-                                        let tail_p1 =
-                                            tail_p0 - tail_versor * (tail_r + tail_border_width);
+                                        let tail_p1 = tail_p0
+                                            - tail_versor
+                                                * (tail_r
+                                                    + 0.5 * tail_border_width
+                                                    + tail_marker_len);
                                         let head_p1 = head_p0
                                             - head_versor
-                                                * (head_r + marker_len + head_border_width);
+                                                * (head_r
+                                                    + 0.5 * head_border_width
+                                                    + head_marker_len);
 
                                         return Some(BezPath::from_vec(vec![
                                             PathEl::MoveTo(tail_p1),
@@ -344,11 +350,16 @@ impl Scene {
                                             (tail_p0 - mid_p1) / (tail_p0 - mid_p1).hypot();
                                         let head_versor =
                                             (head_p0 - mid_p1) / (head_p0 - mid_p1).hypot();
-                                        let tail_p1 =
-                                            tail_p0 - tail_versor * (tail_r + tail_border_width);
+                                        let tail_p1 = tail_p0
+                                            - tail_versor
+                                                * (tail_r
+                                                    + 0.5 * tail_border_width
+                                                    + tail_marker_len);
                                         let head_p1 = head_p0
                                             - head_versor
-                                                * (head_r + marker_len + head_border_width);
+                                                * (head_r
+                                                    + 0.5 * head_border_width
+                                                    + head_marker_len);
 
                                         return Some(BezPath::from_vec(vec![
                                             PathEl::MoveTo(tail_p1),
@@ -358,9 +369,12 @@ impl Scene {
                                     }
                                 } else {
                                     let versor = (head_p0 - tail_p0) / (head_p0 - tail_p0).hypot();
-                                    let tail_p1 = tail_p0 + versor * (tail_r + tail_border_width);
+                                    let tail_p1 = tail_p0
+                                        + versor
+                                            * (tail_r + 0.5 * tail_border_width + tail_marker_len);
                                     let head_p1 = head_p0
-                                        - versor * (head_r + marker_len + head_border_width);
+                                        - versor
+                                            * (head_r + 0.5 * head_border_width + head_marker_len);
 
                                     return Some(BezPath::from_vec(vec![
                                         PathEl::MoveTo(tail_p1),
@@ -378,6 +392,7 @@ impl Scene {
 
     pub fn arc_joint(
         &self,
+        style_id: Option<StyleId>,
         theme: &Theme,
         tail: (GroupId, usize),
         head: (GroupId, usize),
@@ -433,14 +448,6 @@ impl Scene {
                                 }
                                 .into();
 
-                                let mut marker_len = theme
-                                    .get_marker_by_name("arrowhead1")
-                                    .map(|m| m.get_width())
-                                    .unwrap_or(0.0);
-                                if let Some(stroke) = theme.get_stroke_by_name("line-thin") {
-                                    marker_len += 2.0 * stroke.get_width();
-                                }
-
                                 let tail_border_width = theme
                                     .get_stroke(*tail_style_id)
                                     .map(|s| s.get_width())
@@ -449,11 +456,16 @@ impl Scene {
                                     .get_stroke(*head_style_id)
                                     .map(|s| s.get_width())
                                     .unwrap_or(0.0);
+                                let (tail_marker_len, head_marker_len) =
+                                    theme.get_marker_width(style_id);
 
-                                let tail_apex_angle =
-                                    2.0 * ((tail_r + tail_border_width) / (2.0 * radius)).asin();
+                                let tail_apex_angle = 2.0
+                                    * ((tail_r + 0.5 * tail_border_width + tail_marker_len)
+                                        / (2.0 * radius))
+                                        .asin();
                                 let head_apex_angle = 2.0
-                                    * ((head_r + marker_len + head_border_width) / (2.0 * radius))
+                                    * ((head_r + 0.5 * head_border_width + head_marker_len)
+                                        / (2.0 * radius))
                                         .asin();
                                 let total_apex_angle = tail_apex_angle + head_apex_angle;
 
@@ -497,6 +509,7 @@ impl Scene {
 
     pub fn quad_joint(
         &self,
+        style_id: Option<StyleId>,
         theme: &Theme,
         tail: (GroupId, usize),
         head: (GroupId, usize),
@@ -532,27 +545,23 @@ impl Scene {
                                 let tail_versor = (tail_p0 - mid_p1) / (tail_p0 - mid_p1).hypot();
                                 let head_versor = (head_p0 - mid_p1) / (head_p0 - mid_p1).hypot();
 
-                                let mut marker_len = theme
-                                    .get_marker_by_name("arrowhead1")
-                                    .map(|m| m.get_width())
-                                    .unwrap_or(0.0);
-                                if let Some(stroke) = theme.get_stroke_by_name("line-thin") {
-                                    marker_len += 2.0 * stroke.get_width();
-                                }
-
                                 let tail_border_width = theme
                                     .get_stroke(*tail_style_id)
                                     .map(|s| s.get_width())
                                     .unwrap_or(0.0);
-
                                 let head_border_width = theme
                                     .get_stroke(*head_style_id)
                                     .map(|s| s.get_width())
                                     .unwrap_or(0.0);
+                                let (tail_marker_len, head_marker_len) =
+                                    theme.get_marker_width(style_id);
 
-                                let tail_p1 = tail_p0 - tail_versor * (tail_r + tail_border_width);
+                                let tail_p1 = tail_p0
+                                    - tail_versor
+                                        * (tail_r + 0.5 * tail_border_width + tail_marker_len);
                                 let head_p1 = head_p0
-                                    - head_versor * (head_r + marker_len + head_border_width);
+                                    - head_versor
+                                        * (head_r + 0.5 * head_border_width + head_marker_len);
 
                                 return Some(BezPath::from_vec(vec![
                                     PathEl::MoveTo(tail_p1),
@@ -569,6 +578,7 @@ impl Scene {
 
     pub fn cubic_joint(
         &self,
+        style_id: Option<StyleId>,
         theme: &Theme,
         tail: (GroupId, usize),
         head: (GroupId, usize),
@@ -611,27 +621,23 @@ impl Scene {
                                 let tail_versor = (tail_p0 - mid_p1) / (tail_p0 - mid_p1).hypot();
                                 let head_versor = (head_p0 - mid_p2) / (head_p0 - mid_p2).hypot();
 
-                                let mut marker_len = theme
-                                    .get_marker_by_name("arrowhead1")
-                                    .map(|m| m.get_width())
-                                    .unwrap_or(0.0);
-                                if let Some(stroke) = theme.get_stroke_by_name("line-thin") {
-                                    marker_len += 2.0 * stroke.get_width();
-                                }
-
                                 let tail_border_width = theme
                                     .get_stroke(*tail_style_id)
                                     .map(|s| s.get_width())
                                     .unwrap_or(0.0);
-
                                 let head_border_width = theme
                                     .get_stroke(*head_style_id)
                                     .map(|s| s.get_width())
                                     .unwrap_or(0.0);
+                                let (tail_marker_len, head_marker_len) =
+                                    theme.get_marker_width(style_id);
 
-                                let tail_p1 = tail_p0 - tail_versor * (tail_r + tail_border_width);
+                                let tail_p1 = tail_p0
+                                    - tail_versor
+                                        * (tail_r + 0.5 * tail_border_width + tail_marker_len);
                                 let head_p1 = head_p0
-                                    - head_versor * (head_r + marker_len + head_border_width);
+                                    - head_versor
+                                        * (head_r + 0.5 * head_border_width + head_marker_len);
 
                                 return Some(BezPath::from_vec(vec![
                                     PathEl::MoveTo(tail_p1),

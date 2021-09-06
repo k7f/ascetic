@@ -49,6 +49,28 @@ impl PinBuilder {
         self
     }
 
+    pub fn with_crumb_ids<I>(mut self, ids: I) -> Self
+    where
+        I: IntoIterator<Item = CrumbId>,
+    {
+        if self.pins.is_empty() {
+            self.pins.extend(ids.into_iter().map(|crumb_id| PinEntry {
+                node:   NodeRef::CrumbId(crumb_id),
+                offset: Vec2::ZERO,
+            }));
+        } else {
+            for (pin_ndx, crumb_id) in ids.into_iter().enumerate() {
+                if let Some(entry) = self.pins.get_mut(pin_ndx) {
+                    entry.node = NodeRef::CrumbId(crumb_id);
+                } else {
+                    // FIXME Err
+                    break
+                }
+            }
+        }
+        self
+    }
+
     pub fn with_offsets<I, V>(mut self, offsets: I) -> Self
     where
         I: IntoIterator<Item = V>,

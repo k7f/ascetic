@@ -441,6 +441,27 @@ impl Theme {
         self.get_marker(self.named_markers.get(name.as_ref()).copied())
     }
 
+    pub fn get_marker_width(&self, style_id: Option<StyleId>) -> (f64, f64) {
+        self
+            .get_style(style_id)
+            .map(|style| style.get_markers())
+            .map(|markers| {
+                (
+                    markers
+                        .get_start_name()
+                        .and_then(|name| self.get_marker_by_name(name))
+                        .map(|marker| marker.get_width())
+                        .unwrap_or(0.0),
+                    markers
+                        .get_end_name()
+                        .and_then(|name| self.get_marker_by_name(name))
+                        .map(|marker| marker.get_width())
+                        .unwrap_or(0.0),
+                )
+            })
+            .unwrap_or((0.0, 0.0))
+    }
+
     #[inline]
     pub fn get_bg_color(&self) -> Color {
         self.get_scene_style().get_fill_color().cloned().unwrap_or(Color::WHITE)

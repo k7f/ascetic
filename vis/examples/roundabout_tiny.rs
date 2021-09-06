@@ -68,21 +68,42 @@ fn roundabout_theme() -> Theme {
         ("line-thick", Style::new().with_named_stroke("line-thick")),
         ("line-thin", Style::new().with_named_stroke("line-thin")),
         ("arrow1", Style::new().with_named_stroke("line-thin").with_named_end_marker("arrowhead1")),
+        (
+            "arrow2",
+            Style::new()
+                .with_named_stroke("line-thin")
+                .with_named_start_marker("arrowhead2")
+                .with_named_end_marker("arrowhead1"),
+        ),
         ("head1", Style::new().with_named_fill("black")),
     ];
 
-    let markers = vec![(
-        "arrowhead1",
-        Marker::new(Crumb::Path(BezPath::from_vec(vec![
-            PathEl::MoveTo((0.0, 0.0).into()),
-            PathEl::LineTo((0.0, 7.0).into()),
-            PathEl::LineTo((6.0, 3.5).into()),
-            PathEl::ClosePath,
-        ])))
-        .with_size(12.0, 7.0)
-        .with_refxy(0.0, 3.5)
-        .with_named_style("head1"),
-    )];
+    let markers = vec![
+        (
+            "arrowhead1",
+            Marker::new(Crumb::Path(BezPath::from_vec(vec![
+                PathEl::MoveTo((0.0, 0.0).into()),
+                PathEl::LineTo((0.0, 7.0).into()),
+                PathEl::LineTo((6.0, 3.5).into()),
+                PathEl::ClosePath,
+            ])))
+            .with_size(9.0, 7.0) // FIXME
+            .with_refxy(0.0, 3.5)
+            .with_named_style("head1"),
+        ),
+        (
+            "arrowhead2",
+            Marker::new(Crumb::Path(BezPath::from_vec(vec![
+                PathEl::MoveTo((6.0, 0.0).into()),
+                PathEl::LineTo((6.0, 7.0).into()),
+                PathEl::LineTo((0.0, 3.5).into()),
+                PathEl::ClosePath,
+            ])))
+            .with_size(9.0, 7.0) // FIXME
+            .with_refxy(6.0, 3.5)
+            .with_named_style("head1"),
+        ),
+    ];
 
     Theme::new()
         .with_gradients(linear_gradients, radial_gradients)
@@ -109,6 +130,7 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         (600.0, 800.0),
         (800.0, 400.0),
         (800.0, 600.0),
+        (500.0, 500.0),
     ];
     let token_positions = vec![node_positions[0], node_positions[7], node_positions[9]];
 
@@ -129,10 +151,16 @@ fn roundabout_scene(theme: &Theme) -> Scene {
     let thick_style = theme.get("line-thick");
     let thin_style = theme.get("line-thin");
     let arrow_style = theme.get("arrow1");
+    let mid_arrow_style = theme.get("arrow2");
 
     let lines = scene
         .join(nodes, nodes)
         .with_lines(arrow_style, [(2, 3), (3, 0), (1, 4), (4, 5), (9, 8), (8, 11), (10, 7), (7, 6)])
+        .as_group(theme);
+
+    let mid_lines = scene
+        .join(nodes, nodes)
+        .with_lines(mid_arrow_style, [(3, 12), (4, 12), (7, 12), (8, 12)])
         .as_group(theme);
 
     let source_lines = scene
@@ -214,9 +242,11 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         ),
     ]);
 
-    let node_names = ["w", "W", "N", "NW", "SW", "s", "n", "NE", "SE", "S", "E", "e"];
-    let upper = ["NW", "", "", "NE+N", "NW+W", "SW", "NE", "SE+E", "SW+S", "", "", "SE"];
-    let lower = ["", "SW", "NW", "SW+w", "SE+s", "", "", "NW+n", "NE+e", "SE", "NE", ""];
+    let node_names = ["w", "W", "N", "NW", "SW", "s", "n", "NE", "SE", "S", "E", "e", "M"];
+    let upper =
+        ["NW", "", "", "NE+N", "NW+W", "SW", "NE", "SE+E", "SW+S", "", "", "SE", "SE+NE+NW+SW"];
+    let lower =
+        ["", "SW", "NW", "SW+w", "SE+s", "", "", "NW+n", "NE+e", "SE", "NE", "", "SE+NE+NW+SW"];
     let label_offsets = vec![
         (-95.0, 15.0),
         (-90.0, 10.0),
@@ -230,6 +260,7 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         (-50.0, 50.0),
         (80.0, 0.0),
         (70.0, 30.0),
+        (70.0, 10.0),
     ];
     let labels = NodeLabelBuilder::new(node_names)
         .with_group(nodes)
@@ -239,10 +270,11 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         .build(&mut scene);
 
     scene.add_root(Group::from_groups([
+        lines,
+        mid_lines,
         labels,
         tokens,
         nodes,
-        lines,
         source_lines,
         sink_lines,
         arcs,
@@ -281,7 +313,8 @@ struct App {
 impl App {
     const DEFAULT_PNG_PATH: &'static str = "test.png";
     const DEFAULT_OUT_SIZE: (f64, f64) = (800., 450.);
-    const DEFAULT_OUT_MARGIN: (f64, f64) = (10., 10.);
+    //const DEFAULT_OUT_MARGIN: (f64, f64) = (10., 10.);
+    const DEFAULT_OUT_MARGIN: (f64, f64) = (0., 0.);
     const DEFAULT_PNG_COLOR_TYPE: png::ColorType = png::ColorType::Rgba;
     const DEFAULT_PNG_BIT_DEPTH: png::BitDepth = png::BitDepth::Eight;
     const DEFAULT_PNG_COMPRESSION: png::Compression = png::Compression::Fast;
