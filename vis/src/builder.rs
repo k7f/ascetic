@@ -346,7 +346,7 @@ impl Iterator for NodeLabelIter<'_> {
                             TextLabel::new()
                                 .with_text(upper)
                                 .with_origin(origin)
-                                .with_dy([-10.0])
+                                .with_dy([-16.0])
                                 .with_font_size(22.0),
                         );
                     }
@@ -356,7 +356,7 @@ impl Iterator for NodeLabelIter<'_> {
                             TextLabel::new()
                                 .with_text(lower)
                                 .with_origin(origin)
-                                .with_dy([10.0])
+                                .with_dy([12.0])
                                 .with_font_size(22.0),
                         );
                     }

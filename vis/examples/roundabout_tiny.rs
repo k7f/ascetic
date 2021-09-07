@@ -83,24 +83,24 @@ fn roundabout_theme() -> Theme {
             "arrowhead1",
             Marker::new(Crumb::Path(BezPath::from_vec(vec![
                 PathEl::MoveTo((0.0, 0.0).into()),
-                PathEl::LineTo((0.0, 7.0).into()),
-                PathEl::LineTo((6.0, 3.5).into()),
+                PathEl::LineTo((0.0, 14.0).into()),
+                PathEl::LineTo((12.0, 7.0).into()),
                 PathEl::ClosePath,
             ])))
-            .with_size(9.0, 7.0) // FIXME
-            .with_refxy(0.0, 3.5)
+            .with_size(12.0, 14.0)
+            .with_refxy(0.0, 7.0)
             .with_named_style("head1"),
         ),
         (
             "arrowhead2",
             Marker::new(Crumb::Path(BezPath::from_vec(vec![
-                PathEl::MoveTo((6.0, 0.0).into()),
-                PathEl::LineTo((6.0, 7.0).into()),
-                PathEl::LineTo((0.0, 3.5).into()),
+                PathEl::MoveTo((12.0, 0.0).into()),
+                PathEl::LineTo((12.0, 14.0).into()),
+                PathEl::LineTo((0.0, 7.0).into()),
                 PathEl::ClosePath,
             ])))
-            .with_size(9.0, 7.0) // FIXME
-            .with_refxy(6.0, 3.5)
+            .with_size(12.0, 14.0)
+            .with_refxy(12.0, 7.0)
             .with_named_style("head1"),
         ),
     ];
@@ -244,22 +244,22 @@ fn roundabout_scene(theme: &Theme) -> Scene {
 
     let node_names = ["w", "W", "N", "NW", "SW", "s", "n", "NE", "SE", "S", "E", "e", "M"];
     let upper =
-        ["NW", "", "", "NE+N", "NW+W", "SW", "NE", "SE+E", "SW+S", "", "", "SE", "SE+NE+NW+SW"];
+        ["NW", "w+e", "n", "NE+N•M", "NW+W•M", "SW", "NE", "SE+E•M", "SW+S•M", "s", "w+e", "SE", "SE+NE+NW+SW"];
     let lower =
-        ["", "SW", "NW", "SW+w", "SE+s", "", "", "NW+n", "NE+e", "SE", "NE", "", "SE+NE+NW+SW"];
+        ["W+E", "SW", "NW", "SW+w•M", "SE+s•M", "S", "N", "NW+n•M", "NE+e•M", "SE", "NE", "W+E", "SE+NE+NW+SW"];
     let label_offsets = vec![
-        (-95.0, 15.0),
-        (-90.0, 10.0),
+        (-105.0, 0.0),
+        (-100.0, 20.0),
         (30.0, -50.0),
-        (-90.0, -60.0),
-        (-90.0, 75.0),
+        (-70.0, -65.0),
+        (-70.0, 75.0),
         (40.0, -40.0),
         (-50.0, 70.0),
         (50.0, -50.0),
-        (60.0, 60.0),
-        (-50.0, 50.0),
-        (80.0, 0.0),
-        (70.0, 30.0),
+        (55.0, 60.0),
+        (-45.0, 60.0),
+        (75.0, 0.0),
+        (65.0, 25.0),
         (70.0, 10.0),
     ];
     let labels = NodeLabelBuilder::new(node_names)
@@ -270,11 +270,11 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         .build(&mut scene);
 
     scene.add_root(Group::from_groups([
-        lines,
-        mid_lines,
         labels,
         tokens,
         nodes,
+        lines,
+        mid_lines,
         source_lines,
         sink_lines,
         arcs,
@@ -313,8 +313,7 @@ struct App {
 impl App {
     const DEFAULT_PNG_PATH: &'static str = "test.png";
     const DEFAULT_OUT_SIZE: (f64, f64) = (800., 450.);
-    //const DEFAULT_OUT_MARGIN: (f64, f64) = (10., 10.);
-    const DEFAULT_OUT_MARGIN: (f64, f64) = (0., 0.);
+    const DEFAULT_OUT_MARGIN: (f64, f64) = (10., 10.);
     const DEFAULT_PNG_COLOR_TYPE: png::ColorType = png::ColorType::Rgba;
     const DEFAULT_PNG_BIT_DEPTH: png::BitDepth = png::BitDepth::Eight;
     const DEFAULT_PNG_COMPRESSION: png::Compression = png::Compression::Fast;

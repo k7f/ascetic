@@ -60,7 +60,7 @@ impl ToSvg for Scene {
 
         for (name, id) in theme.get_named_marker_ids() {
             if let Some(marker) = theme.get_marker(Some(*id)) {
-                marker.write_svg_with_theme(&mut svg, name, theme)?;
+                marker.write_svg_with_theme(&mut svg, out_scale, name, theme)?;
             } else {
                 // FIXME error
                 panic!()
@@ -111,7 +111,7 @@ impl ToSvg for Scene {
 }
 
 pub trait WriteSvg {
-    fn write_svg<W: std::io::Write>(&self, svg: W) -> std::io::Result<()>;
+    fn write_svg<W: std::io::Write>(&self, svg: W, scale_factor: f64) -> std::io::Result<()>;
 }
 
 pub trait WriteSvgWithStyle: WriteSvg {
@@ -125,14 +125,14 @@ pub trait WriteSvgWithStyle: WriteSvg {
 }
 
 impl WriteSvg for Stroke {
-    fn write_svg<W: std::io::Write>(&self, mut svg: W) -> std::io::Result<()> {
+    fn write_svg<W: std::io::Write>(&self, mut svg: W, scale_factor: f64) -> std::io::Result<()> {
         self.get_brush().write_svg_with_name(svg.by_ref(), "stroke")?;
-        write!(svg, " stroke-width=\"{}\"", self.get_width())
+        write!(svg, " stroke-width=\"{}\"", self.get_width() * scale_factor)
     }
 }
 
 impl WriteSvg for Fill {
-    fn write_svg<W: std::io::Write>(&self, mut svg: W) -> std::io::Result<()> {
+    fn write_svg<W: std::io::Write>(&self, mut svg: W, _scale_factor: f64) -> std::io::Result<()> {
         match self {
             Fill::Color(ref color) => color.write_svg_with_name(svg, "fill"),
             Fill::Linear(ref name) => write!(svg, "fill=\"url(#{})\"", name),
@@ -142,7 +142,7 @@ impl WriteSvg for Fill {
 }
 
 impl WriteSvg for MarkerSuit {
-    fn write_svg<W: std::io::Write>(&self, mut svg: W) -> std::io::Result<()> {
+    fn write_svg<W: std::io::Write>(&self, mut svg: W, _scale_factor: f64) -> std::io::Result<()> {
         if let Some(name) = self.get_start_name() {
             write!(svg, " marker-start=\"url(#{})\"", name)?;
         }
@@ -160,34 +160,34 @@ impl WriteSvg for MarkerSuit {
 }
 
 impl WriteSvg for Style {
-    fn write_svg<W: std::io::Write>(&self, mut svg: W) -> std::io::Result<()> {
+    fn write_svg<W: std::io::Write>(&self, mut svg: W, scale_factor: f64) -> std::io::Result<()> {
         if let Some(stroke) = self.get_stroke() {
-            stroke.write_svg(svg.by_ref())?;
+            stroke.write_svg(svg.by_ref(), scale_factor)?;
             write!(svg, " ")?;
         }
 
         if let Some(fill) = self.get_fill() {
-            fill.write_svg(svg.by_ref())?;
+            fill.write_svg(svg.by_ref(), scale_factor)?;
         } else {
             write!(svg, "fill=\"none\"")?;
         }
 
-        self.get_markers().write_svg(svg)
+        self.get_markers().write_svg(svg, scale_factor)
     }
 }
 
 impl WriteSvg for Crumb {
     #[inline]
-    fn write_svg<W: std::io::Write>(&self, svg: W) -> std::io::Result<()> {
+    fn write_svg<W: std::io::Write>(&self, svg: W, scale_factor: f64) -> std::io::Result<()> {
         match self {
-            Crumb::Line(line) => line.write_svg(svg),
-            Crumb::Rect(rect) => rect.write_svg(svg),
-            Crumb::RoundedRect(rr) => rr.write_svg(svg),
-            Crumb::Circle(circ) => circ.write_svg(svg),
-            Crumb::Arc(arc) => arc.write_svg(svg),
-            Crumb::Path(path) => path.write_svg(svg),
+            Crumb::Line(line) => line.write_svg(svg, scale_factor),
+            Crumb::Rect(rect) => rect.write_svg(svg, scale_factor),
+            Crumb::RoundedRect(rr) => rr.write_svg(svg, scale_factor),
+            Crumb::Circle(circ) => circ.write_svg(svg, scale_factor),
+            Crumb::Arc(arc) => arc.write_svg(svg, scale_factor),
+            Crumb::Path(path) => path.write_svg(svg, scale_factor),
             Crumb::Pin(_) => Ok(()),
-            Crumb::Label(label) => label.write_svg(svg),
+            Crumb::Label(label) => label.write_svg(svg, scale_factor),
         }
     }
 }
@@ -215,7 +215,7 @@ impl WriteSvgWithStyle for Crumb {
 }
 
 impl WriteSvg for Line {
-    fn write_svg<W: std::io::Write>(&self, mut svg: W) -> std::io::Result<()> {
+    fn write_svg<W: std::io::Write>(&self, mut svg: W, _scale_factor: f64) -> std::io::Result<()> {
         writeln!(
             svg,
             "  <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" />",
@@ -235,21 +235,22 @@ impl WriteSvgWithStyle for Line {
         let p0 = ts * self.p0;
         let p1 = ts * self.p1;
         let style = style.unwrap_or_else(|| theme.get_default_style());
+        let (_, scale_factor) = ts.as_tuple();
 
         write!(svg, "  <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" ", p0.x, p0.y, p1.x, p1.y)?;
 
         if let Some(stroke) = style.get_stroke() {
-            stroke.write_svg(svg.by_ref())?;
+            stroke.write_svg(svg.by_ref(), scale_factor)?;
         }
 
-        style.get_markers().write_svg(svg.by_ref())?;
+        style.get_markers().write_svg(svg.by_ref(), scale_factor)?;
 
         writeln!(svg, " />")
     }
 }
 
 impl WriteSvg for Rect {
-    fn write_svg<W: std::io::Write>(&self, mut svg: W) -> std::io::Result<()> {
+    fn write_svg<W: std::io::Write>(&self, mut svg: W, _scale_factor: f64) -> std::io::Result<()> {
         writeln!(
             svg,
             "  <rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\" />",
@@ -270,6 +271,7 @@ impl WriteSvgWithStyle for Rect {
         _theme: &Theme,
     ) -> std::io::Result<()> {
         let rect = ts * *self;
+        let (_, scale_factor) = ts.as_tuple();
 
         write!(
             svg,
@@ -281,7 +283,7 @@ impl WriteSvgWithStyle for Rect {
         )?;
 
         if let Some(style) = style {
-            style.write_svg(svg.by_ref())?;
+            style.write_svg(svg.by_ref(), scale_factor)?;
         }
 
         writeln!(svg, "/>")
@@ -289,7 +291,7 @@ impl WriteSvgWithStyle for Rect {
 }
 
 impl WriteSvg for RoundedRect {
-    fn write_svg<W: std::io::Write>(&self, mut svg: W) -> std::io::Result<()> {
+    fn write_svg<W: std::io::Write>(&self, mut svg: W, _scale_factor: f64) -> std::io::Result<()> {
         let rect = &self.rect();
         if let Some(radius) = self.radii().as_single_radius() {
             writeln!(
@@ -324,6 +326,8 @@ impl WriteSvgWithStyle for RoundedRect {
     ) -> std::io::Result<()> {
         let rr = ts * *self;
         let rect = &rr.rect();
+        let (_, scale_factor) = ts.as_tuple();
+
         if let Some(radius) = rr.radii().as_single_radius() {
             write!(
                 svg,
@@ -346,7 +350,7 @@ impl WriteSvgWithStyle for RoundedRect {
         }
 
         if let Some(style) = style {
-            style.write_svg(svg.by_ref())?;
+            style.write_svg(svg.by_ref(), scale_factor)?;
         }
 
         writeln!(svg, "/>")
@@ -354,7 +358,7 @@ impl WriteSvgWithStyle for RoundedRect {
 }
 
 impl WriteSvg for Circle {
-    fn write_svg<W: std::io::Write>(&self, mut svg: W) -> std::io::Result<()> {
+    fn write_svg<W: std::io::Write>(&self, mut svg: W, _scale_factor: f64) -> std::io::Result<()> {
         writeln!(
             svg,
             "  <circle cx=\"{}\" cy=\"{}\" r=\"{}\" />",
@@ -372,12 +376,13 @@ impl WriteSvgWithStyle for Circle {
         _theme: &Theme,
     ) -> std::io::Result<()> {
         let center = ts * self.center;
-        let radius = ts.as_tuple().1 * self.radius;
+        let (_, scale_factor) = ts.as_tuple();
+        let radius = self.radius * scale_factor;
 
         write!(svg, "  <circle cx=\"{}\" cy=\"{}\" r=\"{}\" ", center.x, center.y, radius)?;
 
         if let Some(style) = style {
-            style.write_svg(svg.by_ref())?;
+            style.write_svg(svg.by_ref(), scale_factor)?;
         }
 
         writeln!(svg, "/>")
@@ -385,11 +390,11 @@ impl WriteSvgWithStyle for Circle {
 }
 
 impl WriteSvg for Arc {
-    fn write_svg<W: std::io::Write>(&self, svg: W) -> std::io::Result<()> {
+    fn write_svg<W: std::io::Write>(&self, svg: W, scale_factor: f64) -> std::io::Result<()> {
         // FIXME use `A` path element
         let path = BezPath::from_vec(self.path_elements(0.1).collect());
 
-        path.write_svg(svg)
+        path.write_svg(svg, scale_factor)
     }
 }
 
@@ -409,7 +414,7 @@ impl WriteSvgWithStyle for Arc {
 }
 
 impl WriteSvg for BezPath {
-    fn write_svg<W: std::io::Write>(&self, mut svg: W) -> std::io::Result<()> {
+    fn write_svg<W: std::io::Write>(&self, mut svg: W, _scale_factor: f64) -> std::io::Result<()> {
         write!(svg, "  <path d=\"")?;
         self.write_to(svg.by_ref())?;
         writeln!(svg, "\" />")
@@ -424,12 +429,14 @@ impl WriteSvgWithStyle for BezPath {
         style: Option<&Style>,
         _theme: &Theme,
     ) -> std::io::Result<()> {
+        let (_, scale_factor) = ts.as_tuple();
+
         write!(svg, "  <path d=\"")?;
         (ts * self.clone()).write_to(svg.by_ref())?;
         write!(svg, "\" ")?;
 
         if let Some(style) = style {
-            style.write_svg(svg.by_ref())?;
+            style.write_svg(svg.by_ref(), scale_factor)?;
         }
 
         writeln!(svg, "/>")
@@ -437,12 +444,12 @@ impl WriteSvgWithStyle for BezPath {
 }
 
 impl WriteSvg for TextLabel {
-    fn write_svg<W: std::io::Write>(&self, mut svg: W) -> std::io::Result<()> {
+    fn write_svg<W: std::io::Write>(&self, mut svg: W, scale_factor: f64) -> std::io::Result<()> {
         if self.is_root() {
             let origin = self.get_origin().unwrap_or_default();
-            write!(svg, "  <text x=\"{}\" y=\"{}\"", origin.x, origin.y,)?;
+            write!(svg, "  <text x=\"{}\" y=\"{}\"", origin.x * scale_factor, origin.y * scale_factor)?;
         } else if let Some(origin) = self.get_origin() {
-            write!(svg, "<tspan x=\"{}\" y=\"{}\"", origin.x, origin.y,)?;
+            write!(svg, "<tspan x=\"{}\" y=\"{}\"", origin.x * scale_factor, origin.y * scale_factor)?;
         } else {
             write!(svg, "<tspan")?;
         }
@@ -457,9 +464,9 @@ impl WriteSvg for TextLabel {
         }
         if let Some((head, tail)) = self.get_dx().split_first() {
             if tail.is_empty() {
-                write!(svg, " dx=\"{}\"", head)?;
+                write!(svg, " dx=\"{}\"", head * scale_factor)?;
             } else {
-                write!(svg, " dx=\"{}", head)?;
+                write!(svg, " dx=\"{}", head * scale_factor)?;
                 for dx in tail {
                     write!(svg, " {}", dx)?;
                 }
@@ -468,9 +475,9 @@ impl WriteSvg for TextLabel {
         }
         if let Some((head, tail)) = self.get_dy().split_first() {
             if tail.is_empty() {
-                write!(svg, " dy=\"{}\"", head)?;
+                write!(svg, " dy=\"{}\"", head * scale_factor)?;
             } else {
-                write!(svg, " dy=\"{}", head)?;
+                write!(svg, " dy=\"{}", head * scale_factor)?;
                 for dy in tail {
                     write!(svg, " {}", dy)?;
                 }
@@ -492,7 +499,7 @@ impl WriteSvg for TextLabel {
                 }
                 crate::text::Item::Span(span) => {
                     buffer.clear();
-                    span.write_svg(&mut buffer)?;
+                    span.write_svg(&mut buffer, scale_factor)?;
                     svg.write(buffer.as_slice())?;
                 }
             }
@@ -514,6 +521,8 @@ impl WriteSvgWithStyle for TextLabel {
         style: Option<&Style>,
         theme: &Theme,
     ) -> std::io::Result<()> {
+        let (_, scale_factor) = ts.as_tuple();
+
         if let Some(font) = self.get_font() {
             if self.is_root() {
                 let origin = ts * self.get_origin().unwrap_or_default();
@@ -535,9 +544,9 @@ impl WriteSvgWithStyle for TextLabel {
             }
             if let Some((head, tail)) = self.get_dx().split_first() {
                 if tail.is_empty() {
-                    write!(svg, " dx=\"{}\"", head)?;
+                    write!(svg, " dx=\"{}\"", head * scale_factor)?;
                 } else {
-                    write!(svg, " dx=\"{}", head)?;
+                    write!(svg, " dx=\"{}", head * scale_factor)?;
                     for dx in tail {
                         write!(svg, " {}", dx)?;
                     }
@@ -546,9 +555,9 @@ impl WriteSvgWithStyle for TextLabel {
             }
             if let Some((head, tail)) = self.get_dy().split_first() {
                 if tail.is_empty() {
-                    write!(svg, " dy=\"{}\"", head)?;
+                    write!(svg, " dy=\"{}\"", head * scale_factor)?;
                 } else {
-                    write!(svg, " dy=\"{}", head)?;
+                    write!(svg, " dy=\"{}", head * scale_factor)?;
                     for dy in tail {
                         write!(svg, " {}", dy)?;
                     }
@@ -559,7 +568,7 @@ impl WriteSvgWithStyle for TextLabel {
                 svg,
                 " font-family=\"{}\" font-size=\"{}\">",
                 font.get_family_name(),
-                ts.as_tuple().1 * font.get_size(),
+                font.get_size() * scale_factor,
             )?;
 
             let mut buffer = Vec::new();
@@ -582,8 +591,8 @@ impl WriteSvgWithStyle for TextLabel {
                 writeln!(svg, "</tspan>")
             }
         } else {
-            // FIXME ts
-            self.write_svg(svg)
+            // FIXME translation?
+            self.write_svg(svg, scale_factor)
         }
     }
 }
@@ -671,6 +680,7 @@ pub trait WriteSvgWithTheme {
     fn write_svg_with_theme<W: std::io::Write, S: AsRef<str>>(
         &self,
         svg: W,
+        scale_factor: f64,
         name: S,
         theme: &Theme,
     ) -> std::io::Result<()>;
@@ -680,6 +690,7 @@ impl WriteSvgWithTheme for Marker {
     fn write_svg_with_theme<W: std::io::Write, S: AsRef<str>>(
         &self,
         mut svg: W,
+        scale_factor: f64,
         name: S,
         theme: &Theme,
     ) -> std::io::Result<()> {
@@ -691,15 +702,20 @@ impl WriteSvgWithTheme for Marker {
         }
         writeln!(
             svg,
-            "            markerWidth=\"{}\" markerHeight=\"{}\"",
-            self.get_width(),
-            self.get_height()
+            "            markerUnits=\"userSpaceOnUse\" markerWidth=\"{}\" markerHeight=\"{}\"",
+            self.get_width() * scale_factor,
+            self.get_height() * scale_factor,
         )?;
-        writeln!(svg, "            refX=\"{}\" refY=\"{}\">", self.get_refx(), self.get_refy())?;
+        writeln!(
+            svg,
+            "            refX=\"{}\" refY=\"{}\">",
+            self.get_refx() * scale_factor,
+            self.get_refy() * scale_factor
+        )?;
 
         self.get_crumb().write_svg_with_style(
             svg.by_ref(),
-            TranslateScale::default(),
+            TranslateScale::scale(scale_factor),
             self.get_style_name().and_then(|name| theme.get_style_by_name(name)),
             theme,
         )?;
