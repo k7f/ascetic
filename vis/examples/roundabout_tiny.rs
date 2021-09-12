@@ -6,8 +6,8 @@ use std::{
     error::Error,
 };
 use ascetic_vis::{
-    Scene, Theme, Style, Stroke, Fill, Marker, Variation, Group, Crumb, Joint, Color, UnitPoint,
-    PinBuilder, NodeLabelBuilder,
+    Scene, Theme, Style, Stroke, Fill, Marker, Variation, Group, Crumb, CrumbItem, Joint, Color,
+    UnitPoint, PinBuilder, NodeLabelBuilder,
     kurbo::{Rect, Circle, Arc, BezPath, PathEl},
     backend::{
         usvg::AsUsvgTree, usvg::Tree as UsvgTree, usvg::FitTo, usvg::Pixmap,
@@ -220,32 +220,33 @@ fn roundabout_scene(theme: &Theme) -> Scene {
     let frame = scene.add_named_crumbs(
         "frame",
         [
-        (Crumb::Rect(Rect::new(0., 0., 1000., 1000.)), theme.get("frame")),
-        (
-            Crumb::Arc(Arc {
-                center:      (500.0, 500.0).into(),
-                radii:       (radius, radius).into(),
-                start_angle: 0.0,
-                sweep_angle: std::f64::consts::PI,
-                x_rotation:  0.0,
-            }),
-            thin_style,
-        ),
-        (
-            Crumb::Arc(Arc {
-                center:      (500.0, 500.0).into(),
-                radii:       (radius, radius).into(),
-                start_angle: std::f64::consts::PI,
-                sweep_angle: std::f64::consts::PI,
-                x_rotation:  0.0,
-            }),
-            thin_style,
-        ),
-        (
-            Crumb::Circle(Circle { center: (500.0, 500.0).into(), radius: radius - 10.0 }),
-            thick_style,
-        ),
-    ]);
+            (Crumb::Rect(Rect::new(0., 0., 1000., 1000.)), theme.get("frame")),
+            (
+                Crumb::Arc(Arc {
+                    center:      (500.0, 500.0).into(),
+                    radii:       (radius, radius).into(),
+                    start_angle: 0.0,
+                    sweep_angle: std::f64::consts::PI,
+                    x_rotation:  0.0,
+                }),
+                thin_style,
+            ),
+            (
+                Crumb::Arc(Arc {
+                    center:      (500.0, 500.0).into(),
+                    radii:       (radius, radius).into(),
+                    start_angle: std::f64::consts::PI,
+                    sweep_angle: std::f64::consts::PI,
+                    x_rotation:  0.0,
+                }),
+                thin_style,
+            ),
+            (
+                Crumb::Circle(Circle { center: (500.0, 500.0).into(), radius: radius - 10.0 }),
+                thick_style,
+            ),
+        ],
+    );
 
     let node_names = ["w", "W", "N", "NW", "SW", "s", "n", "NE", "SE", "S", "E", "e", "M"];
     let upper = [
@@ -301,19 +302,51 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         .with_offsets(label_offsets)
         .build(&mut scene);
 
-    scene.add_layer_by_id(tokens);
+    scene.add_layer_by_id(frame);
+    scene.set_z_index(frame, -1);
+
     scene.add_layer_by_id(labels);
     scene.add_layer(Group::from_groups([nodes, pins]).with_name("nodes-and-pins"));
-    scene.add_layer(Group::from_groups([
-        lines,
-        mid_lines,
-        source_lines,
-        sink_lines,
-        arcs,
-        quads,
-        cubics,
-    ]).with_name("joints"));
-    scene.add_layer_by_id(frame);
+    scene.add_layer(
+        Group::from_groups([lines, mid_lines, source_lines, sink_lines, arcs, quads, cubics])
+            .with_name("joints"),
+    );
+
+    scene.add_layer_by_id(tokens);
+    scene.set_z_index(tokens, 1);
+
+    let all_crumbs: Vec<_> = scene
+        .all_crumbs(kurbo::TranslateScale::scale(1.0))
+        .map(|(level, CrumbItem(crumb_id, ..))| {
+            if let Some(crumb) = scene.get_crumb(crumb_id) {
+                let variant = match crumb {
+                    Crumb::Line(_) => "Line",
+                    Crumb::Rect(_) => "Rect",
+                    Crumb::RoundedRect(_) => "RoundedRect",
+                    Crumb::Circle(_) => "Circle",
+                    Crumb::Arc(_) => "Arc",
+                    Crumb::Path(_) => "BezPath",
+                    Crumb::Pin(_) => "Circle",
+                    Crumb::Label(_) => "TextLabel",
+                };
+                (level, crumb_id.0, variant)
+            } else {
+                panic!()
+            }
+        })
+        .collect();
+    eprintln!("Crumbs {:?}", all_crumbs);
+
+    let all_groups: Vec<_> = scene
+        .all_groups()
+        .map(|(level, group_id)| {
+            (
+                level,
+                scene.get_group(group_id).and_then(|group| group.get_name()).unwrap_or("<unnamed>"),
+            )
+        })
+        .collect();
+    eprintln!("\nGroups {:?}\n", all_groups);
 
     scene
 }

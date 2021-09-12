@@ -49,7 +49,7 @@ impl AsUsvgTree for Scene {
 
         theme.append_background_to_usvg_tree(&mut rtree);
 
-        for CrumbItem(crumb_id, ts, style_id) in self.all_crumbs(root_ts) {
+        for (_level, CrumbItem(crumb_id, ts, style_id)) in self.all_visible_crumbs(root_ts) {
             if let Some(crumb) = self.get_crumb(crumb_id) {
                 let (node_kind, more_kinds) = crumb.as_usvg_node_with_style(ts, style_id, theme);
 

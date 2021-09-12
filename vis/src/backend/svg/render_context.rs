@@ -261,7 +261,7 @@ impl Scene {
 
         rc.clear(None, theme.get_bg_color());
 
-        for CrumbItem(crumb_id, ts, style_id) in self.all_crumbs(root_ts) {
+        for (_level, CrumbItem(crumb_id, ts, style_id)) in self.all_visible_crumbs(root_ts) {
             if let Some(crumb) = self.get_crumb(crumb_id) {
                 let style = theme.get_style(style_id);
 

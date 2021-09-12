@@ -106,9 +106,9 @@ impl ToSvg for Scene {
         bg_color.write_svg_with_name(&mut svg, "fill")?;
         writeln!(&mut svg, " />")?;
 
-        let all_crumbs: Vec<_> = self.all_crumbs(root_ts).collect();
+        let all_crumbs: Vec<_> = self.all_visible_crumbs(root_ts).collect();
 
-        for CrumbItem(crumb_id, ts, style_id) in &all_crumbs {
+        for (_level, CrumbItem(crumb_id, ts, style_id)) in &all_crumbs {
             match self.get_crumb_mut(*crumb_id) {
                 Some(Crumb::Label(label)) => {
                     let style = theme.get_style(*style_id);
@@ -123,7 +123,7 @@ impl ToSvg for Scene {
             }
         }
 
-        for CrumbItem(crumb_id, ts, style_id) in all_crumbs {
+        for (_level, CrumbItem(crumb_id, ts, style_id)) in all_crumbs {
             if let Some(crumb) = self.get_crumb(crumb_id) {
                 let style = theme.get_style(style_id);
 
