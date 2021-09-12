@@ -8,18 +8,24 @@ enum NodeRef {
 }
 
 struct PinEntry {
-    node:   NodeRef,
-    offset: Vec2,
+    node_ref: NodeRef,
+    offset:   Vec2,
 }
 
 pub struct PinBuilder {
+    name:     Option<String>,
     pins:     Vec<PinEntry>,
     group_id: Option<GroupId>,
 }
 
 impl PinBuilder {
     pub fn new() -> Self {
-        PinBuilder { pins: Vec::new(), group_id: None }
+        PinBuilder { name: None, pins: Vec::new(), group_id: None }
+    }
+
+    pub fn with_name<S: AsRef<str>>(mut self, name: S) -> Self {
+        self.name = Some(name.as_ref().to_string());
+        self
     }
 
     pub fn with_group(mut self, group_id: GroupId) -> Self {
@@ -33,13 +39,13 @@ impl PinBuilder {
     {
         if self.pins.is_empty() {
             self.pins.extend(indices.into_iter().map(|crumb_ndx| PinEntry {
-                node:   NodeRef::GroupIndex(crumb_ndx),
-                offset: Vec2::ZERO,
+                node_ref: NodeRef::GroupIndex(crumb_ndx),
+                offset:   Vec2::ZERO,
             }));
         } else {
             for (pin_ndx, crumb_ndx) in indices.into_iter().enumerate() {
                 if let Some(entry) = self.pins.get_mut(pin_ndx) {
-                    entry.node = NodeRef::GroupIndex(crumb_ndx);
+                    entry.node_ref = NodeRef::GroupIndex(crumb_ndx);
                 } else {
                     // FIXME Err
                     break
@@ -55,13 +61,13 @@ impl PinBuilder {
     {
         if self.pins.is_empty() {
             self.pins.extend(ids.into_iter().map(|crumb_id| PinEntry {
-                node:   NodeRef::CrumbId(crumb_id),
-                offset: Vec2::ZERO,
+                node_ref: NodeRef::CrumbId(crumb_id),
+                offset:   Vec2::ZERO,
             }));
         } else {
             for (pin_ndx, crumb_id) in ids.into_iter().enumerate() {
                 if let Some(entry) = self.pins.get_mut(pin_ndx) {
-                    entry.node = NodeRef::CrumbId(crumb_id);
+                    entry.node_ref = NodeRef::CrumbId(crumb_id);
                 } else {
                     // FIXME Err
                     break
@@ -93,7 +99,7 @@ impl PinBuilder {
                 let crumbs = group.get_crumb_items();
 
                 for entry in &mut self.pins {
-                    let crumb_id = match entry.node {
+                    let crumb_id = match entry.node_ref {
                         NodeRef::GroupIndex(index) => {
                             if let Some(CrumbItem(id, ..)) = crumbs.get(index) {
                                 *id
@@ -106,13 +112,10 @@ impl PinBuilder {
                         NodeRef::Geometry(_) => continue,
                     };
 
-                    match scene.get_crumb(crumb_id) {
-                        Some(Crumb::Circle(circle)) => {
-                            entry.node = NodeRef::Geometry(circle.center)
-                        }
-                        _ => {
-                            // FIXME
-                        }
+                    if let Some(Crumb::Circle(circle)) = scene.get_crumb(crumb_id) {
+                        entry.node_ref = NodeRef::Geometry(circle.center)
+                    } else {
+                        // FIXME
                     }
                 }
             } else {
@@ -126,7 +129,17 @@ impl PinBuilder {
 
         let pins = PinIter { entries: self.pins.iter() };
 
-        scene.add_grouped_crumbs(pins)
+        if let Some(ref name) = self.name {
+            scene.add_named_crumbs(name, pins)
+        } else {
+            scene.add_grouped_crumbs(pins)
+        }
+    }
+}
+
+impl Default for PinBuilder {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -140,8 +153,9 @@ impl Iterator for PinIter<'_> {
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            if let Some(PinEntry { node, offset }) = self.entries.next() {
-                if let NodeRef::Geometry(center) = node {
+            #[allow(clippy::collapsible_match)]
+            if let Some(PinEntry { node_ref, offset }) = self.entries.next() {
+                if let NodeRef::Geometry(center) = node_ref {
                     let origin = *center + *offset;
                     let pin = Circle::new((origin.x, origin.y), 35.);
 
@@ -157,14 +171,15 @@ impl Iterator for PinIter<'_> {
 }
 
 struct NodeLabelEntry {
-    name:   String,
-    node:   NodeRef,
-    offset: Vec2,
-    upper:  Option<String>,
-    lower:  Option<String>,
+    node_name: String,
+    node_ref:  NodeRef,
+    offset:    Vec2,
+    upper:     Option<String>,
+    lower:     Option<String>,
 }
 
 pub struct NodeLabelBuilder {
+    name:     Option<String>,
     labels:   Vec<NodeLabelEntry>,
     group_id: Option<GroupId>,
 }
@@ -178,16 +193,21 @@ impl NodeLabelBuilder {
         let labels = node_names
             .into_iter()
             .enumerate()
-            .map(|(ndx, name)| NodeLabelEntry {
-                name:   name.as_ref().to_string(),
-                node:   NodeRef::GroupIndex(ndx),
-                offset: Vec2::ZERO,
-                upper:  None,
-                lower:  None,
+            .map(|(ndx, node_name)| NodeLabelEntry {
+                node_name: node_name.as_ref().to_string(),
+                node_ref:  NodeRef::GroupIndex(ndx),
+                offset:    Vec2::ZERO,
+                upper:     None,
+                lower:     None,
             })
             .collect();
 
-        NodeLabelBuilder { labels, group_id: None }
+        NodeLabelBuilder { name: None, labels, group_id: None }
+    }
+
+    pub fn with_name<S: AsRef<str>>(mut self, name: S) -> Self {
+        self.name = Some(name.as_ref().to_string());
+        self
     }
 
     pub fn with_group(mut self, group_id: GroupId) -> Self {
@@ -201,7 +221,7 @@ impl NodeLabelBuilder {
     {
         for (label_ndx, crumb_ndx) in indices.into_iter().enumerate() {
             if let Some(entry) = self.labels.get_mut(label_ndx) {
-                entry.node = NodeRef::GroupIndex(crumb_ndx);
+                entry.node_ref = NodeRef::GroupIndex(crumb_ndx);
             } else {
                 // FIXME Err
                 break
@@ -216,7 +236,7 @@ impl NodeLabelBuilder {
     {
         for (label_ndx, crumb_id) in ids.into_iter().enumerate() {
             if let Some(entry) = self.labels.get_mut(label_ndx) {
-                entry.node = NodeRef::CrumbId(crumb_id);
+                entry.node_ref = NodeRef::CrumbId(crumb_id);
             } else {
                 // FIXME Err
                 break
@@ -285,7 +305,7 @@ impl NodeLabelBuilder {
                 let crumbs = group.get_crumb_items();
 
                 for entry in &mut self.labels {
-                    let crumb_id = match entry.node {
+                    let crumb_id = match entry.node_ref {
                         NodeRef::GroupIndex(index) => {
                             if let Some(CrumbItem(id, ..)) = crumbs.get(index) {
                                 *id
@@ -298,13 +318,10 @@ impl NodeLabelBuilder {
                         NodeRef::Geometry(_) => continue,
                     };
 
-                    match scene.get_crumb(crumb_id) {
-                        Some(Crumb::Circle(circle)) => {
-                            entry.node = NodeRef::Geometry(circle.center)
-                        }
-                        _ => {
-                            // FIXME
-                        }
+                    if let Some(Crumb::Circle(circle)) = scene.get_crumb(crumb_id) {
+                        entry.node_ref = NodeRef::Geometry(circle.center)
+                    } else {
+                        // FIXME
                     }
                 }
             } else {
@@ -318,7 +335,11 @@ impl NodeLabelBuilder {
 
         let labels = NodeLabelIter { entries: self.labels.iter() };
 
-        scene.add_grouped_crumbs(labels)
+        if let Some(ref name) = self.name {
+            scene.add_named_crumbs(name, labels)
+        } else {
+            scene.add_grouped_crumbs(labels)
+        }
     }
 }
 
@@ -332,11 +353,14 @@ impl Iterator for NodeLabelIter<'_> {
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            if let Some(NodeLabelEntry { name, node, offset, upper, lower }) = self.entries.next() {
-                if let NodeRef::Geometry(center) = node {
+            #[allow(clippy::collapsible_match)]
+            if let Some(NodeLabelEntry { node_name, node_ref, offset, upper, lower }) =
+                self.entries.next()
+            {
+                if let NodeRef::Geometry(center) = node_ref {
                     let origin = *center + *offset;
                     let mut label = TextLabel::new()
-                        .with_text(name)
+                        .with_text(node_name)
                         .with_end_anchor()
                         .with_origin(origin)
                         .with_font_size(28.0);

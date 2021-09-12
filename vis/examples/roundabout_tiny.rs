@@ -135,7 +135,8 @@ fn roundabout_scene(theme: &Theme) -> Scene {
     let token_positions = vec![node_positions[0], node_positions[7], node_positions[9]];
 
     let node_style = theme.get("node");
-    let nodes = scene.add_grouped_crumbs(
+    let nodes = scene.add_named_crumbs(
+        "nodes",
         node_positions
             .into_iter()
             .map(|(x, y)| (Crumb::Circle(Circle::new((x, y), 35.)), node_style)),
@@ -143,6 +144,7 @@ fn roundabout_scene(theme: &Theme) -> Scene {
 
     let pin_offsets = vec![(-135.0, -135.0), (-135.0, 135.0), (135.0, -135.0), (135.0, 135.0)];
     let pins = PinBuilder::new()
+        .with_name("pins")
         .with_group(nodes)
         .with_indices([0, 1, 10, 11])
         .with_offsets(pin_offsets)
@@ -156,12 +158,12 @@ fn roundabout_scene(theme: &Theme) -> Scene {
     let lines = scene
         .join(nodes, nodes)
         .with_lines(arrow_style, [(2, 3), (3, 0), (1, 4), (4, 5), (9, 8), (8, 11), (10, 7), (7, 6)])
-        .as_group(theme);
+        .into_named_group("lines", theme);
 
     let mid_lines = scene
         .join(nodes, nodes)
         .with_lines(mid_arrow_style, [(3, 12), (4, 12), (7, 12), (8, 12)])
-        .as_group(theme);
+        .into_named_group("mid_lines", theme);
 
     let source_lines = scene
         .join(pins, nodes)
@@ -169,7 +171,7 @@ fn roundabout_scene(theme: &Theme) -> Scene {
             arrow_style,
             [(1, 1, [(20.0, 0.0), (-30.0, 10.0)]), (2, 10, [(-30.0, 10.0), (20.0, 0.0)])],
         )
-        .as_group(theme);
+        .into_named_group("source_lines", theme);
 
     let sink_lines = scene
         .join(nodes, pins)
@@ -177,13 +179,13 @@ fn roundabout_scene(theme: &Theme) -> Scene {
             arrow_style,
             [(0, 0, [(0.0, -20.0), (10.0, 30.0)]), (11, 3, [(10.0, 30.0), (0.0, -20.0)])],
         )
-        .as_group(theme);
+        .into_named_group("sink_lines", theme);
 
     let radius = 2f64.sqrt() * 100.0;
     let arcs = scene
         .join(nodes, nodes)
         .with_arcs(arrow_style, [(7, 3, radius), (3, 4, -radius), (4, 8, radius), (8, 7, -radius)])
-        .as_group(theme);
+        .into_named_group("arcs", theme);
 
     let quads = scene
         .join(nodes, nodes)
@@ -196,7 +198,7 @@ fn roundabout_scene(theme: &Theme) -> Scene {
                 (0, 1, [(-270.0, 0.0)]),
             ],
         )
-        .as_group(theme);
+        .into_named_group("quads", theme);
 
     let cubics = scene
         .join(nodes, nodes)
@@ -204,17 +206,20 @@ fn roundabout_scene(theme: &Theme) -> Scene {
             arrow_style,
             [(6, 2, [(-20.0, -200.0), (20.0, 200.0)]), (5, 9, [(20.0, 200.0), (-20.0, -200.0)])],
         )
-        .as_group(theme);
+        .into_named_group("cubics", theme);
 
     let token_style = theme.get("token");
-    let tokens = scene.add_grouped_crumbs(
+    let tokens = scene.add_named_crumbs(
+        "tokens",
         token_positions
             .into_iter()
             .map(|(x, y)| (Crumb::Circle(Circle::new((x, y), 10.)), token_style)),
     );
 
     let radius = 500.0;
-    let frame = scene.add_grouped_crumbs([
+    let frame = scene.add_named_crumbs(
+        "frame",
+        [
         (Crumb::Rect(Rect::new(0., 0., 1000., 1000.)), theme.get("frame")),
         (
             Crumb::Arc(Arc {
@@ -243,10 +248,36 @@ fn roundabout_scene(theme: &Theme) -> Scene {
     ]);
 
     let node_names = ["w", "W", "N", "NW", "SW", "s", "n", "NE", "SE", "S", "E", "e", "M"];
-    let upper =
-        ["NW", "w+e", "n", "NE+N•M", "NW+W•M", "SW", "NE", "SE+E•M", "SW+S•M", "s", "w+e", "SE", "SE+NE+NW+SW"];
-    let lower =
-        ["W+E", "SW", "NW", "SW+w•M", "SE+s•M", "S", "N", "NW+n•M", "NE+e•M", "SE", "NE", "W+E", "SE+NE+NW+SW"];
+    let upper = [
+        "NW",
+        "w+e",
+        "n",
+        "NE+N•M",
+        "NW+W•M",
+        "SW",
+        "NE",
+        "SE+E•M",
+        "SW+S•M",
+        "s",
+        "w+e",
+        "SE",
+        "SE+NE+NW+SW",
+    ];
+    let lower = [
+        "W+E",
+        "SW",
+        "NW",
+        "SW+w•M",
+        "SE+s•M",
+        "S",
+        "N",
+        "NW+n•M",
+        "NE+e•M",
+        "SE",
+        "NE",
+        "W+E",
+        "SE+NE+NW+SW",
+    ];
     let label_offsets = vec![
         (-105.0, 0.0),
         (-100.0, 20.0),
@@ -263,16 +294,17 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         (70.0, 10.0),
     ];
     let labels = NodeLabelBuilder::new(node_names)
+        .with_name("labels")
         .with_group(nodes)
         .with_indices(0..12)
         .with_spans(upper, lower)
         .with_offsets(label_offsets)
         .build(&mut scene);
 
-    scene.add_root(Group::from_groups([
-        labels,
-        tokens,
-        nodes,
+    scene.add_layer_by_id(tokens);
+    scene.add_layer_by_id(labels);
+    scene.add_layer(Group::from_groups([nodes, pins]).with_name("nodes-and-pins"));
+    scene.add_layer(Group::from_groups([
         lines,
         mid_lines,
         source_lines,
@@ -280,9 +312,8 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         arcs,
         quads,
         cubics,
-        frame,
-        pins,
-    ]));
+    ]).with_name("joints"));
+    scene.add_layer_by_id(frame);
 
     scene
 }

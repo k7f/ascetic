@@ -220,6 +220,12 @@ impl TextLabel {
     }
 }
 
+impl Default for TextLabel {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PreprocessWithStyle for TextLabel {
     fn preprocess_with_style(
         &mut self,

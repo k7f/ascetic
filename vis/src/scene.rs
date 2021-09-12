@@ -6,7 +6,7 @@ pub struct Scene {
     size:   Size,
     crumbs: Vec<Crumb>,
     groups: Vec<Group>,
-    roots:  Vec<GroupId>,
+    layers: Vec<GroupId>,
 }
 
 impl Scene {
@@ -105,6 +105,17 @@ impl Scene {
         self.add_group(group)
     }
 
+    pub fn add_named_crumbs<S, I>(&mut self, name: S, crumbs: I) -> GroupId
+    where
+        S: AsRef<str>,
+        I: IntoIterator<Item = (Crumb, Option<StyleId>)>,
+    {
+        let crumbs = crumbs.into_iter().map(|(c, s)| (self.add_crumb(c), s));
+        let group = Group::from_crumbs(crumbs).with_name(name);
+
+        self.add_group(group)
+    }
+
     pub fn add_grouped_crumb_items<I>(&mut self, crumbs: I) -> GroupId
     where
         I: IntoIterator<Item = CrumbItem>,
@@ -124,13 +135,21 @@ impl Scene {
         self.add_group(group)
     }
 
-    pub fn add_root(&mut self, group: Group) -> GroupId {
+    pub fn add_layer(&mut self, group: Group) -> GroupId {
         let group_id = GroupId(self.groups.len());
 
         self.groups.push(group);
-        self.roots.push(group_id);
+        self.layers.push(group_id);
 
         group_id
+    }
+
+    pub fn add_layer_by_id(&mut self, group_id: GroupId) {
+        if self.all_groups().any(|id| id == group_id) {
+            // FIXME error
+        } else {
+            self.layers.push(group_id);
+        }
     }
 
     fn push_crumbs_of_a_group<'a>(
@@ -154,12 +173,12 @@ impl Scene {
     /// Collects all crumbs of a scene.
     ///
     /// Returns an iterator listing [`CrumbItem`]s containing their
-    /// effective transformations computed in the depth-first
-    /// traversal of the scene tree.
+    /// effective transformations computed in the bottom-up traversal
+    /// of the scene tree.
     pub fn all_crumbs(&self, root_ts: TranslateScale) -> CrumbChainIter {
         let mut crumb_chain = Vec::new();
 
-        for group_id in self.roots.iter() {
+        for group_id in self.layers.iter() {
             if let Some(group) = self.groups.get(group_id.0) {
                 self.push_crumbs_of_a_group(group, root_ts, &mut crumb_chain);
             } else {
@@ -169,6 +188,42 @@ impl Scene {
         }
 
         CrumbChainIter { crumb_chain }
+    }
+
+    fn push_subgroups_of_a_group<'a>(
+        &'a self,
+        group: &'a Group,
+        group_chain: &mut Vec<GroupList<'a>>,
+    ) {
+        group_chain.push(GroupList::Items(group.get_group_items().iter()));
+
+        for GroupItem(group_id, ..) in group.get_group_items().iter() {
+            if let Some(group) = self.groups.get(group_id.0) {
+                self.push_subgroups_of_a_group(group, group_chain);
+            } else {
+                // FIXME
+                panic!()
+            }
+        }
+    }
+
+    /// Collects all groups of a scene.
+    ///
+    /// Returns an iterator listing [`GroupId`]s in the bottom-up
+    /// level order traversal of the scene tree.
+    pub fn all_groups(&self) -> GroupChainIter {
+        let mut group_chain = vec![GroupList::Ids(self.layers.iter())];
+
+        for group_id in self.layers.iter() {
+            if let Some(group) = self.groups.get(group_id.0) {
+                self.push_subgroups_of_a_group(group, &mut group_chain);
+            } else {
+                // FIXME
+                panic!()
+            }
+        }
+
+        GroupChainIter { group_chain }
     }
 
     pub fn simple_demo(theme: &Theme) -> Self {
@@ -206,7 +261,7 @@ impl Scene {
                 )),
         );
 
-        scene.add_root(
+        scene.add_layer(
             Group::from_crumbs(vec![(border, theme.get("border"))])
                 .with_group(triple_group)
                 .with_group_item(GroupItem(
@@ -239,6 +294,41 @@ impl<'a> Iterator for CrumbChainIter<'a> {
                 self.crumb_chain.push((crumb_list, ts));
 
                 return Some(CrumbItem(item.0, item.1 * ts, item.2))
+            }
+        }
+
+        None
+    }
+}
+
+enum GroupList<'a> {
+    Ids(std::slice::Iter<'a, GroupId>),
+    Items(std::slice::Iter<'a, GroupItem>),
+}
+
+/// An iterator traversing all [`GroupId`]s referenced in a [`Scene`].
+pub struct GroupChainIter<'a> {
+    group_chain: Vec<GroupList<'a>>,
+}
+
+impl<'a> Iterator for GroupChainIter<'a> {
+    type Item = GroupId;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(mut group_list) = self.group_chain.pop() {
+            if let Some(group_id) = match group_list {
+                GroupList::Ids(ref mut ids) => ids.next(),
+                GroupList::Items(ref mut items) => {
+                    if let Some(GroupItem(group_id, ..)) = items.next() {
+                        Some(group_id)
+                    } else {
+                        None
+                    }
+                }
+            } {
+                self.group_chain.push(group_list);
+
+                return Some(*group_id)
             }
         }
 

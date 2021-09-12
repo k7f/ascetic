@@ -9,6 +9,7 @@ enum Joints {
 }
 
 pub struct JointBuilder {
+    name:       Option<String>,
     tail_group: GroupId,
     head_group: GroupId,
     joints:     Vec<(Option<StyleId>, Joints)>,
@@ -16,15 +17,29 @@ pub struct JointBuilder {
 
 impl JointBuilder {
     fn new(tail_group: GroupId, head_group: GroupId) -> Self {
-        let joints = Vec::new();
 
-        JointBuilder { tail_group, head_group, joints }
+        JointBuilder { name: None, tail_group, head_group, joints: Vec::new() }
+    }
+
+    #[inline]
+    fn with_name<S: AsRef<str>>(mut self, name: S) -> Self {
+        self.set_name(name);
+        self
+    }
+
+    #[inline]
+    fn set_name<S: AsRef<str>>(&mut self, name: S) {
+        self.name = Some(name.as_ref().to_string());
     }
 
     fn build(self, scene: &mut Scene, theme: &Theme) -> GroupId {
         let tail_group = self.tail_group;
         let head_group = self.head_group;
         let mut joints_group = Group::default();
+
+        if let Some(name) = self.name {
+            joints_group.set_name(name);
+        }
 
         for (style_id, joints) in self.joints {
             match joints {
@@ -85,8 +100,8 @@ impl JointBuilder {
                     joints_group.add_crumbs(curves.iter().map(|(tail, head, pull)| {
                         (
                             scene.add_crumb(
-                                if let Some(((pull1x, pull1y), rest)) = pull.split_first() {
-                                    if let Some((pull2x, pull2y)) = rest.last() {
+                                if let Some((pull1, rest)) = pull.split_first() {
+                                    if let Some(pull2) = rest.last() {
                                         Crumb::Path(
                                             scene
                                                 .cubic_joint(
@@ -94,10 +109,8 @@ impl JointBuilder {
                                                     theme,
                                                     (tail_group, *tail),
                                                     (head_group, *head),
-                                                    *pull1x,
-                                                    *pull1y,
-                                                    *pull2x,
-                                                    *pull2y,
+                                                    *pull1,
+                                                    *pull2,
                                                 )
                                                 .unwrap(),
                                         )
@@ -109,8 +122,7 @@ impl JointBuilder {
                                                     theme,
                                                     (tail_group, *tail),
                                                     (head_group, *head),
-                                                    *pull1x,
-                                                    *pull1y,
+                                                    *pull1,
                                                 )
                                                 .unwrap(),
                                         )
@@ -158,7 +170,9 @@ pub trait Joint {
         I: IntoIterator<Item = (usize, usize, J)>,
         J: IntoIterator<Item = (f64, f64)>;
 
-    fn as_group(self, theme: &Theme) -> GroupId;
+    fn into_group(self, theme: &Theme) -> GroupId;
+
+    fn into_named_group<S: AsRef<str>>(self, name: S, theme: &Theme) -> GroupId;
 }
 
 impl Joint for (&mut Scene, JointBuilder) {
@@ -207,7 +221,13 @@ impl Joint for (&mut Scene, JointBuilder) {
     }
 
     #[inline]
-    fn as_group(self, theme: &Theme) -> GroupId {
+    fn into_group(self, theme: &Theme) -> GroupId {
+        self.1.build(self.0, theme)
+    }
+
+    #[inline]
+    fn into_named_group<S: AsRef<str>>(mut self, name: S, theme: &Theme) -> GroupId {
+        self.1.set_name(name);
         self.1.build(self.0, theme)
     }
 }
@@ -513,8 +533,7 @@ impl Scene {
         theme: &Theme,
         tail: (GroupId, usize),
         head: (GroupId, usize),
-        pullx: f64,
-        pully: f64,
+        pull: (f64, f64),
     ) -> Option<BezPath> {
         if let Some(tail_group) = self.get_group(tail.0) {
             if let Some(head_group) = self.get_group(head.0) {
@@ -538,8 +557,8 @@ impl Scene {
                                 };
 
                                 let mid_p1 = Point::new(
-                                    (head_p0.x + tail_p0.x) * 0.5 + pullx,
-                                    (head_p0.y + tail_p0.y) * 0.5 + pully,
+                                    (head_p0.x + tail_p0.x) * 0.5 + pull.0,
+                                    (head_p0.y + tail_p0.y) * 0.5 + pull.1,
                                 );
 
                                 let tail_versor = (tail_p0 - mid_p1) / (tail_p0 - mid_p1).hypot();
@@ -582,10 +601,8 @@ impl Scene {
         theme: &Theme,
         tail: (GroupId, usize),
         head: (GroupId, usize),
-        pull1x: f64,
-        pull1y: f64,
-        pull2x: f64,
-        pull2y: f64,
+        pull1: (f64, f64),
+        pull2: (f64, f64),
     ) -> Option<BezPath> {
         if let Some(tail_group) = self.get_group(tail.0) {
             if let Some(head_group) = self.get_group(head.0) {
@@ -609,13 +626,13 @@ impl Scene {
                                 };
 
                                 let mid_p1 = Point::new(
-                                    (head_p0.x + tail_p0.x) * 0.5 + pull1x,
-                                    (head_p0.y + tail_p0.y) * 0.5 + pull1y,
+                                    (head_p0.x + tail_p0.x) * 0.5 + pull1.0,
+                                    (head_p0.y + tail_p0.y) * 0.5 + pull1.1,
                                 );
 
                                 let mid_p2 = Point::new(
-                                    (head_p0.x + tail_p0.x) * 0.5 + pull2x,
-                                    (head_p0.y + tail_p0.y) * 0.5 + pull2y,
+                                    (head_p0.x + tail_p0.x) * 0.5 + pull2.0,
+                                    (head_p0.y + tail_p0.y) * 0.5 + pull2.1,
                                 );
 
                                 let tail_versor = (tail_p0 - mid_p1) / (tail_p0 - mid_p1).hypot();

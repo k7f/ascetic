@@ -3,7 +3,7 @@ use crate::{CrumbId, CrumbItem, StyleId};
 
 const IDENTITY: TranslateScale = TranslateScale::scale(1.0);
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct GroupId(pub usize);
 
 #[derive(Clone, Copy, Debug)]
@@ -11,6 +11,7 @@ pub struct GroupItem(pub GroupId, pub TranslateScale);
 
 #[derive(Clone, Default, Debug)]
 pub struct Group {
+    name:   Option<String>,
     crumbs: Vec<CrumbItem>,
     groups: Vec<GroupItem>,
 }
@@ -23,7 +24,7 @@ impl Group {
         let crumbs = crumbs.into_iter().collect();
         let groups = Vec::new();
 
-        Group { crumbs, groups }
+        Group { name: None, crumbs, groups }
     }
 
     pub fn from_group_items<I>(groups: I) -> Self
@@ -33,7 +34,7 @@ impl Group {
         let crumbs = Vec::new();
         let groups = groups.into_iter().collect();
 
-        Group { crumbs, groups }
+        Group { name: None, crumbs, groups }
     }
 
     pub fn from_crumbs<I>(crumbs: I) -> Self
@@ -43,7 +44,7 @@ impl Group {
         let crumbs = crumbs.into_iter().map(|(p, s)| CrumbItem(p, IDENTITY, s)).collect();
         let groups = Vec::new();
 
-        Group { crumbs, groups }
+        Group { name: None, crumbs, groups }
     }
 
     pub fn from_groups<I>(groups: I) -> Self
@@ -53,14 +54,22 @@ impl Group {
         let crumbs = Vec::new();
         let groups = groups.into_iter().map(|g| GroupItem(g, IDENTITY)).collect();
 
-        Group { crumbs, groups }
+        Group { name: None, crumbs, groups }
     }
 
+    #[inline]
+    pub fn with_name<S: AsRef<str>>(mut self, name: S) -> Self {
+        self.set_name(name);
+        self
+    }
+
+    #[inline]
     pub fn with_crumb_item(mut self, crumb: CrumbItem) -> Self {
         self.crumbs.push(crumb);
         self
     }
 
+    #[inline]
     pub fn with_group_item(mut self, group: GroupItem) -> Self {
         self.groups.push(group);
         self
@@ -78,6 +87,7 @@ impl Group {
         self
     }
 
+    #[inline]
     pub fn with_crumb_items<I>(mut self, crumbs: I) -> Self
     where
         I: IntoIterator<Item = CrumbItem>,
@@ -86,6 +96,7 @@ impl Group {
         self
     }
 
+    #[inline]
     pub fn with_group_items<I>(mut self, groups: I) -> Self
     where
         I: IntoIterator<Item = GroupItem>,
@@ -110,6 +121,11 @@ impl Group {
     {
         self.groups.extend(groups.into_iter().map(|g| GroupItem(g, IDENTITY)));
         self
+    }
+
+    #[inline]
+    pub fn set_name<S: AsRef<str>>(&mut self, name: S) {
+        self.name = Some(name.as_ref().to_string());
     }
 
     #[inline]
@@ -138,10 +154,17 @@ impl Group {
         self.groups.extend(groups.into_iter().map(|g| GroupItem(g, IDENTITY)));
     }
 
+    #[inline]
+    pub fn get_name(&self) -> Option<&str> {
+        self.name.as_deref()
+    }
+
+    #[inline]
     pub fn get_crumb_items(&self) -> &[CrumbItem] {
         self.crumbs.as_slice()
     }
 
+    #[inline]
     pub fn get_group_items(&self) -> &[GroupItem] {
         self.groups.as_slice()
     }
