@@ -7,7 +7,7 @@ use std::{
 };
 use ascetic_vis::{
     Scene, Theme, Style, Stroke, Fill, Marker, Variation, Group, Crumb, CrumbItem, Joint, Color,
-    UnitPoint, PinBuilder, NodeLabelBuilder,
+    UnitPoint, PinBuilder, NodeLabelBuilder, VisError,
     kurbo::{Rect, Circle, Arc, BezPath, PathEl},
     backend::{
         usvg::AsUsvgTree, usvg::Tree as UsvgTree, usvg::FitTo, usvg::Pixmap,
@@ -114,7 +114,7 @@ fn roundabout_theme() -> Theme {
         .with_styles(styles)
 }
 
-fn roundabout_scene(theme: &Theme) -> Scene {
+fn roundabout_scene(theme: &Theme) -> Result<Scene, VisError> {
     let mut scene = Scene::new((1000., 1000.));
 
     let node_positions = vec![
@@ -146,9 +146,9 @@ fn roundabout_scene(theme: &Theme) -> Scene {
     let pins = PinBuilder::new()
         .with_name("pins")
         .with_group(nodes)
-        .with_indices([0, 1, 10, 11])
-        .with_offsets(pin_offsets)
-        .build(&mut scene);
+        .with_indices([0, 1, 10, 11])?
+        .with_offsets(pin_offsets)?
+        .build(&mut scene)?;
 
     let thick_style = theme.get("line-thick");
     let thin_style = theme.get("line-thin");
@@ -297,26 +297,26 @@ fn roundabout_scene(theme: &Theme) -> Scene {
     let labels = NodeLabelBuilder::new(node_names)
         .with_name("labels")
         .with_group(nodes)
-        .with_indices(0..12)
-        .with_spans(upper, lower)
-        .with_offsets(label_offsets)
-        .build(&mut scene);
+        .with_indices(0..12)?
+        .with_spans(upper, lower)?
+        .with_offsets(label_offsets)?
+        .build(&mut scene)?;
 
-    scene.add_layer_by_id(frame);
-    scene.set_z_index(frame, -1);
+    scene.add_layer_by_id(frame)?;
+    scene.set_z_index(frame, -1)?;
 
-    scene.add_layer_by_id(labels);
+    scene.add_layer_by_id(labels)?;
     scene.add_layer(Group::from_groups([nodes, pins]).with_name("nodes-and-pins"));
     scene.add_layer(
         Group::from_groups([lines, mid_lines, source_lines, sink_lines, arcs, quads, cubics])
             .with_name("joints"),
     );
 
-    scene.add_layer_by_id(tokens);
-    scene.set_z_index(tokens, 1);
+    scene.add_layer_by_id(tokens)?;
+    scene.set_z_index(tokens, 1)?;
 
     let all_crumbs: Vec<_> = scene
-        .all_crumbs(kurbo::TranslateScale::scale(1.0))
+        .all_crumbs(kurbo::TranslateScale::scale(1.0))?
         .map(|(level, CrumbItem(crumb_id, ..))| {
             if let Some(crumb) = scene.get_crumb(crumb_id) {
                 let variant = match crumb {
@@ -331,14 +331,14 @@ fn roundabout_scene(theme: &Theme) -> Scene {
                 };
                 (level, crumb_id.0, variant)
             } else {
-                panic!()
+                panic!("Crumb is missing for {:?}", crumb_id)
             }
         })
         .collect();
     eprintln!("Crumbs {:?}", all_crumbs);
 
     let all_groups: Vec<_> = scene
-        .all_groups()
+        .all_groups()?
         .map(|(level, group_id)| {
             (
                 level,
@@ -348,7 +348,7 @@ fn roundabout_scene(theme: &Theme) -> Scene {
         .collect();
     eprintln!("\nGroups {:?}\n", all_groups);
 
-    scene
+    Ok(scene)
 }
 
 #[inline]
@@ -483,7 +483,7 @@ impl App {
 
     fn render_to_png(&self, scene: &Scene, theme: &Theme) -> Result<&Path, Box<dyn Error>> {
         let start_time = self.start("Rendering to usvg...");
-        let rtree = scene.as_usvg_tree(theme, self.out_size, self.out_margin);
+        let rtree = scene.as_usvg_tree(theme, self.out_size, self.out_margin)?;
         done_in_micros(start_time);
 
         self.save_bitmap_image(&rtree)
@@ -509,7 +509,7 @@ impl App {
 fn main() -> Result<(), Box<dyn Error>> {
     let app = App::new()?;
     let mut theme = roundabout_theme();
-    let mut scene = roundabout_scene(&theme);
+    let mut scene = roundabout_scene(&theme)?;
 
     if app.verbosity > 1 {
         if app.verbosity > 2 {

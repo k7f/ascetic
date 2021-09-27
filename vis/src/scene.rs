@@ -1,5 +1,5 @@
 use kurbo::{Line, Rect, RoundedRect, Circle, Arc, TranslateScale, Size};
-use crate::{Crumb, CrumbId, CrumbItem, Group, GroupId, GroupItem, StyleId, Theme};
+use crate::{Crumb, CrumbId, CrumbItem, Group, GroupId, GroupItem, StyleId, Theme, VisError};
 
 #[derive(Clone, Debug)]
 struct Layer {
@@ -158,37 +158,41 @@ impl Scene {
         group_id
     }
 
-    pub fn add_layer_by_id(&mut self, group_id: GroupId) {
-        if self.all_groups().any(|(_, id)| id == group_id) {
-            // FIXME error
+    pub fn add_layer_by_id(&mut self, group_id: GroupId) -> Result<(), VisError> {
+        if self.all_groups()?.any(|(_, id)| id == group_id) {
+            Err(VisError::group_reuse_attempt(group_id))
         } else {
             let layer = Layer::new(group_id);
 
             self.layers.push(layer);
+            Ok(())
         }
     }
 
-    pub fn set_z_index(&mut self, group_id: GroupId, z_index: i64) {
+    pub fn set_z_index(&mut self, group_id: GroupId, z_index: i64) -> Result<(), VisError> {
         if let Some(layer) = self.layers.iter_mut().find(|layer| layer.group_id == group_id) {
             layer.z_index = z_index;
+            Ok(())
         } else {
-            // FIXME error
+            Err(VisError::layer_missing_for_id(group_id))
         }
     }
 
-    pub fn hide_layer(&mut self, group_id: GroupId) {
+    pub fn hide_layer(&mut self, group_id: GroupId) -> Result<(), VisError> {
         if let Some(layer) = self.layers.iter_mut().find(|layer| layer.group_id == group_id) {
             layer.is_visible = false;
+            Ok(())
         } else {
-            // FIXME error
+            Err(VisError::layer_missing_for_id(group_id))
         }
     }
 
-    pub fn show_layer(&mut self, group_id: GroupId) {
+    pub fn show_layer(&mut self, group_id: GroupId) -> Result<(), VisError> {
         if let Some(layer) = self.layers.iter_mut().find(|layer| layer.group_id == group_id) {
             layer.is_visible = true;
+            Ok(())
         } else {
-            // FIXME error
+            Err(VisError::layer_missing_for_id(group_id))
         }
     }
 
@@ -218,33 +222,36 @@ impl Scene {
         mut level: usize,
         ts: TranslateScale,
         crumb_chain: &mut Vec<(usize, CrumbList<'a>, TranslateScale)>,
-    ) {
+    ) -> Result<(), VisError> {
         level += 1;
         crumb_chain.push((level, group.get_crumb_items().iter(), ts));
 
         for GroupItem(group_id, group_ts) in group.get_group_items().iter() {
             if let Some(group) = self.groups.get(group_id.0) {
-                self.push_crumbs_of_a_group(group, level, ts * *group_ts, crumb_chain);
+                self.push_crumbs_of_a_group(group, level, ts * *group_ts, crumb_chain)?;
             } else {
-                // FIXME
-                panic!()
+                return Err(VisError::group_missing_for_id(*group_id))
             }
         }
+        Ok(())
     }
 
-    fn traverse_crumbs(&self, z_stack: Vec<GroupId>, root_ts: TranslateScale) -> CrumbChainIter {
+    fn traverse_crumbs(
+        &self,
+        z_stack: Vec<GroupId>,
+        root_ts: TranslateScale,
+    ) -> Result<CrumbChainIter, VisError> {
         let mut crumb_chain = Vec::new();
 
         for group_id in z_stack.iter() {
             if let Some(group) = self.groups.get(group_id.0) {
-                self.push_crumbs_of_a_group(group, 0, root_ts, &mut crumb_chain);
+                self.push_crumbs_of_a_group(group, 0, root_ts, &mut crumb_chain)?;
             } else {
-                // FIXME
-                panic!()
+                return Err(VisError::group_missing_for_id(*group_id))
             }
         }
 
-        CrumbChainIter { crumb_chain }
+        Ok(CrumbChainIter { crumb_chain })
     }
 
     /// Collects all crumbs of a scene.
@@ -254,7 +261,7 @@ impl Scene {
     /// post-order traversal of the scene tree.  Stacking order of
     /// layers is respected.
     #[inline]
-    pub fn all_crumbs(&self, root_ts: TranslateScale) -> CrumbChainIter {
+    pub fn all_crumbs(&self, root_ts: TranslateScale) -> Result<CrumbChainIter, VisError> {
         self.traverse_crumbs(self.get_layers(), root_ts)
     }
 
@@ -265,7 +272,7 @@ impl Scene {
     /// post-order traversal of the scene tree.  Stacking order of
     /// layers is respected.
     #[inline]
-    pub fn all_visible_crumbs(&self, root_ts: TranslateScale) -> CrumbChainIter {
+    pub fn all_visible_crumbs(&self, root_ts: TranslateScale) -> Result<CrumbChainIter, VisError> {
         self.traverse_crumbs(self.get_visible_layers(), root_ts)
     }
 
@@ -274,18 +281,18 @@ impl Scene {
         group: &'a Group,
         mut level: usize,
         group_chain: &mut Vec<(usize, GroupList<'a>)>,
-    ) {
+    ) -> Result<(), VisError> {
         level += 1;
         group_chain.push((level, GroupList::Items(group.get_group_items().iter())));
 
         for GroupItem(group_id, ..) in group.get_group_items().iter() {
             if let Some(group) = self.groups.get(group_id.0) {
-                self.push_subgroups_of_a_group(group, level, group_chain);
+                self.push_subgroups_of_a_group(group, level, group_chain)?;
             } else {
-                // FIXME
-                panic!()
+                return Err(VisError::group_missing_for_id(*group_id))
             }
         }
+        Ok(())
     }
 
     /// Collects all groups of a scene.
@@ -293,19 +300,18 @@ impl Scene {
     /// Returns an iterator listing [`GroupId`]s in the bottom-up
     /// level order traversal of the scene tree.  Stacking order of
     /// layers is ignored.
-    pub fn all_groups(&self) -> GroupChainIter {
+    pub fn all_groups(&self) -> Result<GroupChainIter, VisError> {
         let mut group_chain = vec![(0, GroupList::Layers(self.layers.iter()))];
 
         for Layer { group_id, .. } in self.layers.iter() {
             if let Some(group) = self.groups.get(group_id.0) {
-                self.push_subgroups_of_a_group(group, 0, &mut group_chain);
+                self.push_subgroups_of_a_group(group, 0, &mut group_chain)?;
             } else {
-                // FIXME
-                panic!()
+                return Err(VisError::group_missing_for_id(*group_id))
             }
         }
 
-        GroupChainIter { group_chain }
+        Ok(GroupChainIter { group_chain })
     }
 
     pub fn simple_demo(theme: &Theme) -> Self {

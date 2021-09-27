@@ -2,7 +2,7 @@ use std::f64::consts::PI;
 use kurbo::{Point, Line, Rect, RoundedRect, Circle, Arc, BezPath, Shape, TranslateScale, Size};
 use piet::GradientStop;
 use usvg::NodeExt;
-use crate::{Scene, Theme, Style, StyleId, Stroke, Fill, GradSpec, Crumb, CrumbItem, TextLabel};
+use crate::{Scene, Theme, Style, StyleId, Stroke, Fill, GradSpec, Crumb, CrumbItem, TextLabel, VisError};
 
 pub use usvg::{Tree, FitTo};
 pub use tiny_skia::Pixmap;
@@ -12,14 +12,14 @@ mod render_context;
 pub use render_context::BitmapDevice;
 
 pub trait AsUsvgTree {
-    fn as_usvg_tree<S, M>(&self, theme: &Theme, out_size: S, out_margin: M) -> usvg::Tree
+    fn as_usvg_tree<S, M>(&self, theme: &Theme, out_size: S, out_margin: M) -> Result<usvg::Tree, VisError>
     where
         S: Into<Size>,
         M: Into<Size>;
 }
 
 impl AsUsvgTree for Scene {
-    fn as_usvg_tree<S, M>(&self, theme: &Theme, out_size: S, out_margin: M) -> usvg::Tree
+    fn as_usvg_tree<S, M>(&self, theme: &Theme, out_size: S, out_margin: M) -> Result<usvg::Tree, VisError>
     where
         S: Into<Size>,
         M: Into<Size>,
@@ -49,7 +49,7 @@ impl AsUsvgTree for Scene {
 
         theme.append_background_to_usvg_tree(&mut rtree);
 
-        for (_level, CrumbItem(crumb_id, ts, style_id)) in self.all_visible_crumbs(root_ts) {
+        for (_level, CrumbItem(crumb_id, ts, style_id)) in self.all_visible_crumbs(root_ts)? {
             if let Some(crumb) = self.get_crumb(crumb_id) {
                 let (node_kind, more_kinds) = crumb.as_usvg_node_with_style(ts, style_id, theme);
 
@@ -61,12 +61,11 @@ impl AsUsvgTree for Scene {
                     root_node.append(usvg::Node::new(kind));
                 }
             } else {
-                // FIXME
-                panic!()
+                return Err(VisError::crumb_missing_for_id(crumb_id))
             }
         }
 
-        rtree
+        Ok(rtree)
     }
 }
 
@@ -605,13 +604,13 @@ impl AsUsvgStroke for Stroke {
 
         if alpha == 0xff {
             usvg::Stroke {
-                paint: usvg::Paint::Color(usvg::Color::new(red, green, blue)),
+                paint: usvg::Paint::Color(usvg::Color::new_rgb(red, green, blue)),
                 width: self.get_width().into(),
                 ..Default::default()
             }
         } else {
             usvg::Stroke {
-                paint: usvg::Paint::Color(usvg::Color::new(red, green, blue)),
+                paint: usvg::Paint::Color(usvg::Color::new_rgb(red, green, blue)),
                 opacity: (alpha as f64 / 255.0).into(),
                 width: self.get_width().into(),
                 ..Default::default()
@@ -630,7 +629,7 @@ impl AsUsvgFill for Fill {
             Fill::Color(color) => {
                 let (red, green, blue, alpha) = color.as_rgba8();
 
-                (usvg::Paint::Color(usvg::Color::new(red, green, blue)), alpha)
+                (usvg::Paint::Color(usvg::Color::new_rgb(red, green, blue)), alpha)
             }
             Fill::Linear(name) | Fill::Radial(name) => (usvg::Paint::Link(name.into()), 0xff),
         };
@@ -653,7 +652,7 @@ impl AsUsvgStop for GradientStop {
 
         usvg::Stop {
             offset:  usvg::StopOffset::new(self.pos.into()),
-            color:   usvg::Color::new(red, green, blue),
+            color:   usvg::Color::new_rgb(red, green, blue),
             opacity: if alpha == 0xff { 1.0.into() } else { (alpha as f64 / 255.0).into() },
         }
     }

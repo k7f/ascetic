@@ -1,8 +1,8 @@
 use kurbo::{Vec2, Point, Circle};
-use crate::{Crumb, CrumbId, CrumbItem, GroupId, StyleId, Scene, TextLabel};
+use crate::{Crumb, CrumbId, CrumbItem, GroupId, StyleId, Scene, TextLabel, VisError};
 
 enum NodeRef {
-    GroupIndex(usize),
+    CrumbInAGroupIndex(usize),
     CrumbId(CrumbId),
     Geometry(Point),
 }
@@ -33,29 +33,28 @@ impl PinBuilder {
         self
     }
 
-    pub fn with_indices<I>(mut self, indices: I) -> Self
+    pub fn with_indices<I>(mut self, indices: I) -> Result<Self, VisError>
     where
         I: IntoIterator<Item = usize>,
     {
         if self.pins.is_empty() {
             self.pins.extend(indices.into_iter().map(|crumb_ndx| PinEntry {
-                node_ref: NodeRef::GroupIndex(crumb_ndx),
+                node_ref: NodeRef::CrumbInAGroupIndex(crumb_ndx),
                 offset:   Vec2::ZERO,
             }));
         } else {
             for (pin_ndx, crumb_ndx) in indices.into_iter().enumerate() {
                 if let Some(entry) = self.pins.get_mut(pin_ndx) {
-                    entry.node_ref = NodeRef::GroupIndex(crumb_ndx);
+                    entry.node_ref = NodeRef::CrumbInAGroupIndex(crumb_ndx);
                 } else {
-                    // FIXME Err
-                    break
+                    return Err(VisError::builder_overflow("pins", self.pins.len()))
                 }
             }
         }
-        self
+        Ok(self)
     }
 
-    pub fn with_crumb_ids<I>(mut self, ids: I) -> Self
+    pub fn with_crumb_ids<I>(mut self, ids: I) -> Result<Self, VisError>
     where
         I: IntoIterator<Item = CrumbId>,
     {
@@ -69,15 +68,14 @@ impl PinBuilder {
                 if let Some(entry) = self.pins.get_mut(pin_ndx) {
                     entry.node_ref = NodeRef::CrumbId(crumb_id);
                 } else {
-                    // FIXME Err
-                    break
+                    return Err(VisError::builder_overflow("pins", self.pins.len()))
                 }
             }
         }
-        self
+        Ok(self)
     }
 
-    pub fn with_offsets<I, V>(mut self, offsets: I) -> Self
+    pub fn with_offsets<I, V>(mut self, offsets: I) -> Result<Self, VisError>
     where
         I: IntoIterator<Item = V>,
         V: Into<Vec2>,
@@ -86,53 +84,56 @@ impl PinBuilder {
             if let Some(entry) = self.pins.get_mut(ndx) {
                 entry.offset = new_offset.into();
             } else {
-                // FIXME Err
-                break
+                return Err(VisError::builder_overflow("pins", self.pins.len()))
             }
         }
-        self
+        Ok(self)
     }
 
-    fn resolve_indices(&mut self, scene: &Scene) {
+    fn resolve_indices(&mut self, scene: &Scene) -> Result<(), VisError> {
         if let Some(group_id) = self.group_id {
             if let Some(group) = scene.get_group(group_id) {
                 let crumbs = group.get_crumb_items();
 
                 for entry in &mut self.pins {
                     let crumb_id = match entry.node_ref {
-                        NodeRef::GroupIndex(index) => {
+                        NodeRef::CrumbInAGroupIndex(index) => {
                             if let Some(CrumbItem(id, ..)) = crumbs.get(index) {
                                 *id
                             } else {
-                                // FIXME Err
-                                break
+                                return Err(VisError::crumbs_of_a_group_overflow(group_id, index))
                             }
                         }
                         NodeRef::CrumbId(id) => id,
                         NodeRef::Geometry(_) => continue,
                     };
 
-                    if let Some(Crumb::Circle(circle)) = scene.get_crumb(crumb_id) {
-                        entry.node_ref = NodeRef::Geometry(circle.center)
-                    } else {
-                        // FIXME
+                    match scene.get_crumb(crumb_id) {
+                        Some(Crumb::Circle(circle)) => {
+                            entry.node_ref = NodeRef::Geometry(circle.center);
+                        }
+                        Some(crumb) => {
+                            return Err(VisError::crumb_mismatch("Circle", crumb.clone(), crumb_id))
+                        }
+                        None => return Err(VisError::crumb_missing_for_id(crumb_id)),
                     }
                 }
             } else {
-                // FIXME Err
+                return Err(VisError::group_missing_for_id(group_id))
             }
         }
+        Ok(())
     }
 
-    pub fn build(&mut self, scene: &mut Scene) -> GroupId {
-        self.resolve_indices(scene);
+    pub fn build(&mut self, scene: &mut Scene) -> Result<GroupId, VisError> {
+        self.resolve_indices(scene)?;
 
         let pins = PinIter { entries: self.pins.iter() };
 
         if let Some(ref name) = self.name {
-            scene.add_named_crumbs(name, pins)
+            Ok(scene.add_named_crumbs(name, pins))
         } else {
-            scene.add_grouped_crumbs(pins)
+            Ok(scene.add_grouped_crumbs(pins))
         }
     }
 }
@@ -195,7 +196,7 @@ impl NodeLabelBuilder {
             .enumerate()
             .map(|(ndx, node_name)| NodeLabelEntry {
                 node_name: node_name.as_ref().to_string(),
-                node_ref:  NodeRef::GroupIndex(ndx),
+                node_ref:  NodeRef::CrumbInAGroupIndex(ndx),
                 offset:    Vec2::ZERO,
                 upper:     None,
                 lower:     None,
@@ -215,22 +216,21 @@ impl NodeLabelBuilder {
         self
     }
 
-    pub fn with_indices<I>(mut self, indices: I) -> Self
+    pub fn with_indices<I>(mut self, indices: I) -> Result<Self, VisError>
     where
         I: IntoIterator<Item = usize>,
     {
         for (label_ndx, crumb_ndx) in indices.into_iter().enumerate() {
             if let Some(entry) = self.labels.get_mut(label_ndx) {
-                entry.node_ref = NodeRef::GroupIndex(crumb_ndx);
+                entry.node_ref = NodeRef::CrumbInAGroupIndex(crumb_ndx);
             } else {
-                // FIXME Err
-                break
+                return Err(VisError::builder_overflow("labels", self.labels.len()))
             }
         }
-        self
+        Ok(self)
     }
 
-    pub fn with_crumb_ids<I>(mut self, ids: I) -> Self
+    pub fn with_crumb_ids<I>(mut self, ids: I) -> Result<Self, VisError>
     where
         I: IntoIterator<Item = CrumbId>,
     {
@@ -238,14 +238,13 @@ impl NodeLabelBuilder {
             if let Some(entry) = self.labels.get_mut(label_ndx) {
                 entry.node_ref = NodeRef::CrumbId(crumb_id);
             } else {
-                // FIXME Err
-                break
+                return Err(VisError::builder_overflow("labels", self.labels.len()))
             }
         }
-        self
+        Ok(self)
     }
 
-    pub fn with_offsets<I, V>(mut self, offsets: I) -> Self
+    pub fn with_offsets<I, V>(mut self, offsets: I) -> Result<Self, VisError>
     where
         I: IntoIterator<Item = V>,
         V: Into<Vec2>,
@@ -254,14 +253,13 @@ impl NodeLabelBuilder {
             if let Some(entry) = self.labels.get_mut(ndx) {
                 entry.offset = new_offset.into();
             } else {
-                // FIXME Err
-                break
+                return Err(VisError::builder_overflow("labels", self.labels.len()))
             }
         }
-        self
+        Ok(self)
     }
 
-    pub fn with_spans<I, J, S, T>(mut self, upper: I, lower: J) -> Self
+    pub fn with_spans<I, J, S, T>(mut self, upper: I, lower: J) -> Result<Self, VisError>
     where
         I: IntoIterator<Item = S>,
         J: IntoIterator<Item = T>,
@@ -278,8 +276,7 @@ impl NodeLabelBuilder {
                     entry.upper = Some(span.to_string());
                 }
             } else {
-                // FIXME Err
-                break
+                return Err(VisError::builder_overflow("labels", self.labels.len()))
             }
         }
         for (ndx, span) in lower.into_iter().enumerate() {
@@ -292,53 +289,56 @@ impl NodeLabelBuilder {
                     entry.lower = Some(span.to_string());
                 }
             } else {
-                // FIXME Err
-                break
+                return Err(VisError::builder_overflow("labels", self.labels.len()))
             }
         }
-        self
+        Ok(self)
     }
 
-    fn resolve_indices(&mut self, scene: &Scene) {
+    fn resolve_indices(&mut self, scene: &Scene) -> Result<(), VisError> {
         if let Some(group_id) = self.group_id {
             if let Some(group) = scene.get_group(group_id) {
                 let crumbs = group.get_crumb_items();
 
                 for entry in &mut self.labels {
                     let crumb_id = match entry.node_ref {
-                        NodeRef::GroupIndex(index) => {
+                        NodeRef::CrumbInAGroupIndex(index) => {
                             if let Some(CrumbItem(id, ..)) = crumbs.get(index) {
                                 *id
                             } else {
-                                // FIXME Err
-                                break
+                                return Err(VisError::crumbs_of_a_group_overflow(group_id, index))
                             }
                         }
                         NodeRef::CrumbId(id) => id,
                         NodeRef::Geometry(_) => continue,
                     };
 
-                    if let Some(Crumb::Circle(circle)) = scene.get_crumb(crumb_id) {
-                        entry.node_ref = NodeRef::Geometry(circle.center)
-                    } else {
-                        // FIXME
+                    match scene.get_crumb(crumb_id) {
+                        Some(Crumb::Circle(circle)) => {
+                            entry.node_ref = NodeRef::Geometry(circle.center);
+                        }
+                        Some(crumb) => {
+                            return Err(VisError::crumb_mismatch("Circle", crumb.clone(), crumb_id))
+                        }
+                        None => return Err(VisError::crumb_missing_for_id(crumb_id)),
                     }
                 }
             } else {
-                // FIXME Err
+                return Err(VisError::group_missing_for_id(group_id))
             }
         }
+        Ok(())
     }
 
-    pub fn build(&mut self, scene: &mut Scene) -> GroupId {
-        self.resolve_indices(scene);
+    pub fn build(&mut self, scene: &mut Scene) -> Result<GroupId, VisError> {
+        self.resolve_indices(scene)?;
 
         let labels = NodeLabelIter { entries: self.labels.iter() };
 
         if let Some(ref name) = self.name {
-            scene.add_named_crumbs(name, labels)
+            Ok(scene.add_named_crumbs(name, labels))
         } else {
-            scene.add_grouped_crumbs(labels)
+            Ok(scene.add_grouped_crumbs(labels))
         }
     }
 }

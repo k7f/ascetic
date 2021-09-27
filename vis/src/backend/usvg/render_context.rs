@@ -5,7 +5,7 @@ use piet::{
     InterpolationMode, IntoBrush, LineMetric, RenderContext, StrokeStyle, Text, TextAlignment,
     TextAttribute, TextLayout, TextLayoutBuilder, TextStorage,
 };
-use crate::{Vis, Scene, Theme, Style, Fill, Crumb, CrumbItem, TextLabel};
+use crate::{Vis, Scene, Theme, Style, Fill, Crumb, CrumbItem, TextLabel, VisError};
 use super::{AsUsvgNodeWithName, AsUsvgTheme};
 
 pub struct BitmapDevice {
@@ -42,7 +42,8 @@ impl BitmapDevice {
 impl std::fmt::Display for BitmapDevice {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.rtree.to_string(Default::default()))
+        let options = usvg::XmlOptions::default();
+        write!(f, "{}", self.rtree.to_string(&options))
     }
 }
 
@@ -276,14 +277,13 @@ impl Scene {
 
         rc.clear(None, theme.get_bg_color());
 
-        for (_level, CrumbItem(crumb_id, ts, style_id)) in self.all_visible_crumbs(root_ts) {
+        for (_level, CrumbItem(crumb_id, ts, style_id)) in self.all_visible_crumbs(root_ts)? {
             if let Some(crumb) = self.get_crumb(crumb_id) {
                 let style = theme.get_style(style_id);
 
                 crumb.vis(rc, ts, style, theme);
             } else {
-                // FIXME
-                panic!()
+                return Err(VisError::crumb_missing_for_id(crumb_id).into())
             }
         }
 

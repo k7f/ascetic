@@ -35,7 +35,7 @@ impl App {
     const DEFAULT_PNG_PATH: &'static str = "test.png";
     const DEFAULT_OUT_SIZE: (f64, f64) = (800., 450.);
     const DEFAULT_OUT_MARGIN: (f64, f64) = (10., 10.);
-    const DEFAULT_PNG_COLOR_TYPE: png::ColorType = png::ColorType::RGBA;
+    const DEFAULT_PNG_COLOR_TYPE: png::ColorType = png::ColorType::Rgba;
     const DEFAULT_PNG_BIT_DEPTH: png::BitDepth = png::BitDepth::Eight;
     const DEFAULT_PNG_COMPRESSION: png::Compression = png::Compression::Fast;
     const DEFAULT_PNG_FILTER: png::FilterType = png::FilterType::NoFilter;
@@ -116,7 +116,7 @@ impl App {
         }
     }
 
-    fn render_to_svg(&self, scene: &Scene, theme: &Theme) -> Result<Option<&Path>, Box<dyn Error>> {
+    fn render_to_svg(&self, scene: &mut Scene, theme: &Theme) -> Result<Option<&Path>, Box<dyn Error>> {
         if let Some(ref svg_path) = self.svg_path {
             let start_time = self.start("Rendering to svg...");
             let svg = scene.to_svg(theme, self.out_size, self.out_margin)?;
@@ -179,7 +179,7 @@ impl App {
 fn main() -> Result<(), Box<dyn Error>> {
     let app = App::new()?;
     let mut theme = Theme::simple_demo();
-    let scene = Scene::simple_demo(&theme);
+    let mut scene = Scene::simple_demo(&theme);
 
     if app.verbosity > 1 {
         if app.verbosity > 2 {
@@ -201,7 +201,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         eprintln!("\n{:?}", theme);
     }
 
-    app.render_to_svg(&scene, &theme)?;
+    app.render_to_svg(&mut scene, &theme)?;
 
     let path = app.render_to_png(&scene, &theme)?;
     println!("{}", path.display());

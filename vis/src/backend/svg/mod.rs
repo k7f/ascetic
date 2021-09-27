@@ -106,7 +106,7 @@ impl ToSvg for Scene {
         bg_color.write_svg_with_name(&mut svg, "fill")?;
         writeln!(&mut svg, " />")?;
 
-        let all_crumbs: Vec<_> = self.all_visible_crumbs(root_ts).collect();
+        let all_crumbs: Vec<_> = self.all_visible_crumbs(root_ts)?.collect();
 
         for (_level, CrumbItem(crumb_id, ts, style_id)) in &all_crumbs {
             match self.get_crumb_mut(*crumb_id) {

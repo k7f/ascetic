@@ -8,6 +8,7 @@ mod tweener;
 mod joint;
 mod text;
 mod builder;
+mod error;
 pub mod backend;
 
 pub use crumb::{Crumb, CrumbId, CrumbItem};
@@ -20,6 +21,7 @@ pub use tweener::{Tweener, Tweenable, Steppable, LinearEasing};
 pub use joint::Joint;
 pub use text::TextLabel;
 pub use builder::{PinBuilder, NodeLabelBuilder};
+pub use error::VisError;
 
 pub use piet::{Color, UnitPoint};
 pub use kurbo::{self, Line, Rect, RoundedRect, Circle, TranslateScale, Vec2};
