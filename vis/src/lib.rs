@@ -1,3 +1,4 @@
+#![feature(try_trait_v2)]
 mod crumb;
 mod group;
 mod style;
@@ -11,12 +12,12 @@ mod builder;
 mod error;
 pub mod backend;
 
-pub use crumb::{Crumb, CrumbId, CrumbItem};
+pub use crumb::{Crumb, CrumbId, CrumbItem, CrumbSet};
 pub use group::{Group, GroupId, GroupItem};
 pub use style::{Style, StyleId, Stroke, Fill, GradSpec, Marker, MarkerId};
 pub use font::Font;
 pub use scene::Scene;
-pub use theme::{Theme, Variation};
+pub use theme::{Theme, Variation, NamedMarkersIter};
 pub use tweener::{Tweener, Tweenable, Steppable, LinearEasing};
 pub use joint::Joint;
 pub use text::TextLabel;
@@ -46,5 +47,5 @@ pub trait PreprocessWithStyle {
         ts: TranslateScale,
         style: Option<&Style>,
         theme: &Theme,
-    ) -> std::io::Result<()>;
+    ) -> Result<(), VisError>;
 }

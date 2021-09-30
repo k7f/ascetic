@@ -1,5 +1,5 @@
 use kurbo::{Point, TranslateScale};
-use crate::{Theme, Style, Font, PreprocessWithStyle};
+use crate::{Theme, Style, Font, PreprocessWithStyle, VisError};
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum Anchor {
@@ -232,7 +232,7 @@ impl PreprocessWithStyle for TextLabel {
         ts: TranslateScale,
         style: Option<&Style>,
         theme: &Theme,
-    ) -> std::io::Result<()> {
+    ) -> Result<(), VisError> {
         let resolved_style = Some(style.unwrap_or_else(|| theme.get_default_style()));
 
         self.resolve_font(resolved_style, theme);

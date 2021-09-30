@@ -1,4 +1,4 @@
-use crate::{Crumb, CrumbId, GroupId};
+use crate::{Crumb, CrumbId, GroupId, MarkerId};
 
 pub(crate) trait DetailedError {
     fn with_string(self, details: String) -> VisError;
@@ -22,10 +22,12 @@ enum InnerError {
     CrumbMissingForId(CrumbId),
     GroupMissingForId(GroupId),
     LayerMissingForId(GroupId),
+    MarkerMissingForId(MarkerId),
     GroupReuseAttempt(GroupId),
     CrumbsOfAGroupOverflow(GroupId, usize),
     GroupsOfAGroupOverflow(GroupId, usize),
     BuilderOverflow(String, usize),
+    BuilderUnresolved(String),
 }
 
 macro_rules! impl_inner_error {
@@ -73,6 +75,7 @@ impl std::fmt::Display for InnerError {
             CrumbMissingForId(crumb_id) => write!(f, "Crumb missing for {:?}", crumb_id),
             GroupMissingForId(group_id) => write!(f, "Group missing for {:?}", group_id),
             LayerMissingForId(group_id) => write!(f, "Layer missing for {:?}", group_id),
+            MarkerMissingForId(marker_id) => write!(f, "Marker missing for {:?}", marker_id),
             GroupReuseAttempt(group_id) => write!(f, "Reuse attempt for {:?}", group_id),
             CrumbsOfAGroupOverflow(group_id, index) => {
                 write!(f, "Index {} overflows grouped crumbs for {:?}", index, group_id)
@@ -85,6 +88,7 @@ impl std::fmt::Display for InnerError {
                 "Attempt to override declared number of {} {} in a builder",
                 num_items, name
             ),
+            BuilderUnresolved(name) => write!(f, "Unresolved {} in a builder", name),
         }
     }
 }
@@ -112,6 +116,10 @@ impl VisError {
         InnerError::LayerMissingForId(group_id).into()
     }
 
+    pub(crate) fn marker_missing_for_id(marker_id: MarkerId) -> Self {
+        InnerError::MarkerMissingForId(marker_id).into()
+    }
+
     pub(crate) fn group_reuse_attempt(group_id: GroupId) -> Self {
         InnerError::GroupReuseAttempt(group_id).into()
     }
@@ -126,6 +134,10 @@ impl VisError {
 
     pub(crate) fn builder_overflow<S: AsRef<str>>(name: S, num_items: usize) -> Self {
         InnerError::BuilderOverflow(name.as_ref().to_string(), num_items).into()
+    }
+
+    pub(crate) fn builder_unresolved<S: AsRef<str>>(name: S) -> Self {
+        InnerError::BuilderUnresolved(name.as_ref().to_string()).into()
     }
 
     pub(crate) fn std_io<E>(err: E) -> Self

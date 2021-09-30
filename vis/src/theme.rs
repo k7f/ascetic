@@ -3,7 +3,7 @@ use std::{
     iter::FromIterator,
 };
 use piet::{Color, LinearGradient, RadialGradient, UnitPoint, GradientStops};
-use crate::{Style, StyleId, Stroke, Fill, GradSpec, Marker, MarkerId, Font, font::GenericFontFamily};
+use crate::{Style, StyleId, Stroke, Fill, GradSpec, Marker, MarkerId, Font, font::GenericFontFamily, VisError};
 
 const DEFAULT_NAME: &str = "default";
 const SCENE_NAME: &str = "scene";
@@ -488,6 +488,11 @@ impl Theme {
     }
 
     #[inline]
+    pub fn get_named_markers(&self) -> NamedMarkersIter {
+        NamedMarkersIter { theme: self, entries: self.named_markers.iter() }
+    }
+
+    #[inline]
     pub fn get_font(&self, style_id: Option<StyleId>) -> Option<&Font> {
         self.get_style(style_id).and_then(|s| s.get_font())
     }
@@ -567,5 +572,26 @@ impl Theme {
             .with_fills(fills)
             .with_variations(variations)
             .with_styles(styles)
+    }
+}
+
+pub struct NamedMarkersIter<'a> {
+    theme:   &'a Theme,
+    entries: hash_map::Iter<'a, String, MarkerId>,
+}
+
+impl<'a> Iterator for NamedMarkersIter<'a> {
+    type Item = Result<(&'a str, &'a Marker), VisError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some((name, marker_id)) = self.entries.next() {
+            if let Some(marker) = self.theme.get_marker(Some(*marker_id)) {
+                Some(Ok((name, marker)))
+            } else {
+                Some(Err(VisError::marker_missing_for_id(*marker_id)))
+            }
+        } else {
+            None
+        }
     }
 }

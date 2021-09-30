@@ -2,7 +2,7 @@ use std::io::Write;
 use kurbo::{Shape, Line, Rect, RoundedRect, Circle, Arc, BezPath, TranslateScale, Size};
 use piet::Color;
 use crate::{
-    Scene, Theme, Style, Stroke, Fill, GradSpec, Marker, style::MarkerSuit, Crumb, CrumbItem,
+    Scene, Theme, Style, Stroke, Fill, GradSpec, Marker, style::MarkerSuit, Crumb, CrumbSet,
     TextLabel, PreprocessWithStyle,
 };
 
@@ -90,13 +90,10 @@ impl ToSvg for Scene {
             spec.write_svg_with_name(&mut svg, name)?;
         }
 
-        for (name, id) in theme.get_named_marker_ids() {
-            if let Some(marker) = theme.get_marker(Some(*id)) {
-                marker.write_svg_with_theme(&mut svg, scale_factor, name, theme)?;
-            } else {
-                // FIXME error
-                panic!()
-            }
+        for entry in theme.get_named_markers() {
+            let (name, marker) = entry?;
+
+            marker.write_svg_with_theme(&mut svg, scale_factor, name, theme)?;
         }
 
         writeln!(&mut svg, "  </defs>")?;
@@ -106,32 +103,20 @@ impl ToSvg for Scene {
         bg_color.write_svg_with_name(&mut svg, "fill")?;
         writeln!(&mut svg, " />")?;
 
-        let all_crumbs: Vec<_> = self.all_visible_crumbs(root_ts)?.collect();
+        //let all_crumbs: Vec<_> = self.all_visible_crumbs(root_ts)?.collect();
+        let visible_crumbs: CrumbSet = self.all_visible_crumbs(root_ts)?.collect();
 
-        for (_level, CrumbItem(crumb_id, ts, style_id)) in &all_crumbs {
-            match self.get_crumb_mut(*crumb_id) {
-                Some(Crumb::Label(label)) => {
-                    let style = theme.get_style(*style_id);
+        visible_crumbs.try_for_each_label(self, |label, ts, style_id| {
+            let style = theme.get_style(style_id);
 
-                    label.preprocess_with_style(*ts, style, theme)?;
-                }
-                Some(_) => {}
-                None => {
-                    // FIXME
-                    panic!()
-                }
-            }
-        }
+            label.preprocess_with_style(ts, style, theme)
+        })?;
 
-        for (_level, CrumbItem(crumb_id, ts, style_id)) in all_crumbs {
-            if let Some(crumb) = self.get_crumb(crumb_id) {
-                let style = theme.get_style(style_id);
+        for item in visible_crumbs.get_crumbs(self) {
+            let (crumb, ts, style_id) = item?;
+            let style = theme.get_style(style_id);
 
-                crumb.write_svg_with_style(&mut svg, ts, style, theme)?;
-            } else {
-                // FIXME
-                panic!()
-            }
+            crumb.write_svg_with_style(&mut svg, ts, style, theme)?;
         }
 
         writeln!(&mut svg, "</svg>")?;

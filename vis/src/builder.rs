@@ -1,5 +1,5 @@
 use kurbo::{Vec2, Point, Circle};
-use crate::{Crumb, CrumbId, CrumbItem, GroupId, StyleId, Scene, TextLabel, VisError};
+use crate::{Crumb, CrumbId, CrumbItem, Group, GroupId, StyleId, Scene, TextLabel, VisError};
 
 enum NodeRef {
     CrumbInAGroupIndex(usize),
@@ -128,13 +128,20 @@ impl PinBuilder {
     pub fn build(&mut self, scene: &mut Scene) -> Result<GroupId, VisError> {
         self.resolve_indices(scene)?;
 
-        let pins = PinIter { entries: self.pins.iter() };
+        let mut group = Group::default();
 
         if let Some(ref name) = self.name {
-            Ok(scene.add_named_crumbs(name, pins))
-        } else {
-            Ok(scene.add_grouped_crumbs(pins))
+            group.set_name(name);
         }
+
+        for pin in (PinIter { entries: self.pins.iter() }) {
+            let (crumb, style_id) = pin?;
+            let crumb_id = scene.add_crumb(crumb);
+
+            group.add_crumb(crumb_id, style_id);
+        }
+
+        Ok(scene.add_group(group))
     }
 }
 
@@ -149,24 +156,22 @@ struct PinIter<'a> {
 }
 
 impl Iterator for PinIter<'_> {
-    type Item = (Crumb, Option<StyleId>);
+    type Item = Result<(Crumb, Option<StyleId>), VisError>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            #[allow(clippy::collapsible_match)]
-            if let Some(PinEntry { node_ref, offset }) = self.entries.next() {
-                if let NodeRef::Geometry(center) = node_ref {
-                    let origin = *center + *offset;
-                    let pin = Circle::new((origin.x, origin.y), 35.);
+        #[allow(clippy::collapsible_match)]
+        if let Some(PinEntry { node_ref, offset }) = self.entries.next() {
+            if let NodeRef::Geometry(center) = node_ref {
+                let origin = *center + *offset;
+                let pin = Circle::new((origin.x, origin.y), 35.);
 
-                    return Some((Crumb::Pin(pin), None))
-                } else {
-                    // FIXME error unresolved index
-                }
+                Some(Ok((Crumb::Pin(pin), None)))
             } else {
-                return None
+                Some(Err(VisError::builder_unresolved("Pin")))
             }
+        } else {
+            None
         }
     }
 }
@@ -333,13 +338,20 @@ impl NodeLabelBuilder {
     pub fn build(&mut self, scene: &mut Scene) -> Result<GroupId, VisError> {
         self.resolve_indices(scene)?;
 
-        let labels = NodeLabelIter { entries: self.labels.iter() };
+        let mut group = Group::default();
 
         if let Some(ref name) = self.name {
-            Ok(scene.add_named_crumbs(name, labels))
-        } else {
-            Ok(scene.add_grouped_crumbs(labels))
+            group.set_name(name);
         }
+
+        for label in (NodeLabelIter { entries: self.labels.iter() }) {
+            let (crumb, style_id) = label?;
+            let crumb_id = scene.add_crumb(crumb);
+
+            group.add_crumb(crumb_id, style_id);
+        }
+
+        Ok(scene.add_group(group))
     }
 }
 
@@ -348,50 +360,48 @@ struct NodeLabelIter<'a> {
 }
 
 impl Iterator for NodeLabelIter<'_> {
-    type Item = (Crumb, Option<StyleId>);
+    type Item = Result<(Crumb, Option<StyleId>), VisError>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            #[allow(clippy::collapsible_match)]
-            if let Some(NodeLabelEntry { node_name, node_ref, offset, upper, lower }) =
-                self.entries.next()
-            {
-                if let NodeRef::Geometry(center) = node_ref {
-                    let origin = *center + *offset;
-                    let mut label = TextLabel::new()
-                        .with_text(node_name)
-                        .with_end_anchor()
-                        .with_origin(origin)
-                        .with_font_size(28.0);
+        #[allow(clippy::collapsible_match)]
+        if let Some(NodeLabelEntry { node_name, node_ref, offset, upper, lower }) =
+            self.entries.next()
+        {
+            if let NodeRef::Geometry(center) = node_ref {
+                let origin = *center + *offset;
+                let mut label = TextLabel::new()
+                    .with_text(node_name)
+                    .with_end_anchor()
+                    .with_origin(origin)
+                    .with_font_size(28.0);
 
-                    if let Some(upper) = upper {
-                        label.append_span(
-                            TextLabel::new()
-                                .with_text(upper)
-                                .with_origin(origin)
-                                .with_dy([-16.0])
-                                .with_font_size(22.0),
-                        );
-                    }
-
-                    if let Some(lower) = lower {
-                        label.append_span(
-                            TextLabel::new()
-                                .with_text(lower)
-                                .with_origin(origin)
-                                .with_dy([12.0])
-                                .with_font_size(22.0),
-                        );
-                    }
-
-                    return Some((Crumb::Label(label), None))
-                } else {
-                    // FIXME error unresolved index
+                if let Some(upper) = upper {
+                    label.append_span(
+                        TextLabel::new()
+                            .with_text(upper)
+                            .with_origin(origin)
+                            .with_dy([-16.0])
+                            .with_font_size(22.0),
+                    );
                 }
+
+                if let Some(lower) = lower {
+                    label.append_span(
+                        TextLabel::new()
+                            .with_text(lower)
+                            .with_origin(origin)
+                            .with_dy([12.0])
+                            .with_font_size(22.0),
+                    );
+                }
+
+                Some(Ok((Crumb::Label(label), None)))
             } else {
-                return None
+                Some(Err(VisError::builder_unresolved("Label")))
             }
+        } else {
+            None
         }
     }
 }
