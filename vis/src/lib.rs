@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 #![feature(try_trait_v2)]
 mod crumb;
 mod group;
@@ -14,7 +15,10 @@ pub mod backend;
 
 pub use crumb::{Crumb, CrumbId, CrumbItem, CrumbSet};
 pub use group::{Group, GroupId, GroupItem};
-pub use style::{Style, StyleId, Stroke, Fill, GradSpec, Marker, MarkerId};
+pub use style::{
+    Style, StyleId, Color, Rgba, Stroke, Fill, UnitPoint, ScaleMode, GradientStop, GradientStops,
+    Gradient, Marker, MarkerId,
+};
 pub use font::Font;
 pub use scene::Scene;
 pub use theme::{Theme, Variation, NamedMarkersIter};
@@ -24,18 +28,7 @@ pub use text::TextLabel;
 pub use builder::{PinBuilder, NodeLabelBuilder};
 pub use error::VisError;
 
-pub use piet::{Color, UnitPoint};
 pub use kurbo::{self, Line, Rect, RoundedRect, Circle, TranslateScale, Vec2};
-
-pub trait Vis<R: piet::RenderContext> {
-    fn bbox(&self, rc: &mut R, ts: TranslateScale) -> Rect;
-
-    fn vis(&self, rc: &mut R, ts: TranslateScale, style: Option<&Style>, theme: &Theme);
-
-    fn vis_mut(&mut self, rc: &mut R, ts: TranslateScale, style: Option<&Style>, theme: &Theme) {
-        self.vis(rc, ts, style, theme)
-    }
-}
 
 pub trait AsCss {
     fn as_css(&self) -> &str;

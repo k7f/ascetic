@@ -13,19 +13,19 @@ readme = "README.md"
 
 default = ["tiny"]
 tiny = ["usvg", "resvg", "tiny-skia"]
-cairo = ["piet-cairo", "cairo-rs"]
+cairo = ["piet", "piet-cairo", "cairo-rs"]
 svg = []
 
 [dependencies]
 
 kurbo = "0.8"
-piet = "0.4"
 png = "0.17"
 usvg = { git = "https://github.com/RazrFalcon/resvg", rev = "bd4574d", optional = true }
 resvg = { git = "https://github.com/RazrFalcon/resvg", rev = "bd4574d", optional = true }
 # usvg = { version = "0.14", optional = true }
 # resvg = { version = "0.14", optional = true }
 tiny-skia = { version = "0.6", optional = true }
+piet = { version = "0.4", optional = true }
 piet-cairo = { version = "0.4", optional = true }
 cairo-rs = { version = "0.9", optional = true }
 

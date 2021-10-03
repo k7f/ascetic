@@ -1,13 +1,9 @@
 use std::io::Write;
 use kurbo::{Shape, Line, Rect, RoundedRect, Circle, Arc, BezPath, TranslateScale, Size};
-use piet::Color;
 use crate::{
-    Scene, Theme, Style, Stroke, Fill, GradSpec, Marker, style::MarkerSuit, Crumb, CrumbSet,
+    Scene, Theme, Style, Color, Stroke, Fill, Gradient, Marker, style::MarkerSuit, Crumb, CrumbSet,
     TextLabel, PreprocessWithStyle,
 };
-
-mod render_context;
-pub use render_context::XmlDevice;
 
 pub trait ToSvg {
     fn to_svg<S, M>(
@@ -528,7 +524,7 @@ impl WriteSvgWithName for Color {
         mut svg: W,
         name: S,
     ) -> std::io::Result<()> {
-        let rgba = self.as_rgba_u32();
+        let rgba = self.as_u32();
         let name = name.as_ref();
         let stem = name.find('-').and_then(|pos| name.get(..pos)).unwrap_or(name);
 
@@ -544,14 +540,14 @@ impl WriteSvgWithName for Color {
     }
 }
 
-impl WriteSvgWithName for GradSpec {
+impl WriteSvgWithName for Gradient {
     fn write_svg_with_name<W: std::io::Write, S: AsRef<str>>(
         &self,
         mut svg: W,
         name: S,
     ) -> std::io::Result<()> {
         match self {
-            GradSpec::Linear(start, end, stops) => {
+            Gradient::Linear(start, end, stops) => {
                 let start = start.resolve(Rect::new(0., 0., 100., 100.));
                 let end = end.resolve(Rect::new(0., 0., 100., 100.));
 
@@ -573,7 +569,7 @@ impl WriteSvgWithName for GradSpec {
 
                 writeln!(svg, "    </linearGradient>")
             }
-            GradSpec::Radial(radius, stops) => {
+            Gradient::Radial(radius, stops) => {
                 writeln!(
                     svg,
                     "    <radialGradient id=\"{}\" r=\"{}%\">",

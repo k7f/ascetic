@@ -2,8 +2,10 @@ use std::{
     collections::{HashMap, hash_map},
     iter::FromIterator,
 };
-use piet::{Color, LinearGradient, RadialGradient, UnitPoint, GradientStops};
-use crate::{Style, StyleId, Stroke, Fill, GradSpec, Marker, MarkerId, Font, font::GenericFontFamily, VisError};
+use crate::{
+    Style, StyleId, Color, Stroke, Fill, UnitPoint, GradientStops, Gradient, Marker, MarkerId,
+    Font, font::GenericFontFamily, VisError,
+};
 
 const DEFAULT_NAME: &str = "default";
 const SCENE_NAME: &str = "scene";
@@ -137,15 +139,13 @@ impl Variation {
 
 #[derive(Debug)]
 pub struct Theme {
-    original:         Variation,
-    styles:           Vec<Style>,
-    markers:          Vec<Marker>,
-    named_styles:     HashMap<String, StyleId>,
-    named_markers:    HashMap<String, MarkerId>,
-    named_gradspecs:  HashMap<String, GradSpec>,
-    linear_gradients: HashMap<String, LinearGradient>,
-    radial_gradients: HashMap<String, RadialGradient>,
-    default_fonts:    HashMap<GenericFontFamily, Font>,
+    original:        Variation,
+    styles:          Vec<Style>,
+    markers:         Vec<Marker>,
+    named_styles:    HashMap<String, StyleId>,
+    named_markers:   HashMap<String, MarkerId>,
+    named_gradspecs: HashMap<String, Gradient>,
+    default_fonts:   HashMap<GenericFontFamily, Font>,
 }
 
 impl Default for Theme {
@@ -162,8 +162,6 @@ impl Default for Theme {
         ]);
         let named_markers = HashMap::default();
         let named_gradspecs = HashMap::default();
-        let linear_gradients = HashMap::default();
-        let radial_gradients = HashMap::default();
         let default_fonts = HashMap::default();
 
         Theme {
@@ -173,8 +171,6 @@ impl Default for Theme {
             named_styles,
             named_markers,
             named_gradspecs,
-            linear_gradients,
-            radial_gradients,
             default_fonts,
         }
     }
@@ -262,19 +258,13 @@ impl Theme {
         J: IntoIterator<Item = (S, f64, G)>,
     {
         for (name, start, end, stops) in linear_gradients.into_iter() {
-            let stops = stops.to_vec();
-            let gradient = LinearGradient::new(start, end, stops.clone());
-
-            self.named_gradspecs.insert(name.as_ref().into(), GradSpec::Linear(start, end, stops));
-            self.linear_gradients.insert(name.as_ref().into(), gradient);
+            self.named_gradspecs
+                .insert(name.as_ref().into(), Gradient::Linear(start, end, stops.into_vec()));
         }
 
         for (name, radius, stops) in radial_gradients.into_iter() {
-            let stops = stops.to_vec();
-            let gradient = RadialGradient::new(radius, stops.clone());
-
-            self.named_gradspecs.insert(name.as_ref().into(), GradSpec::Radial(radius, stops));
-            self.radial_gradients.insert(name.as_ref().into(), gradient);
+            self.named_gradspecs
+                .insert(name.as_ref().into(), Gradient::Radial(radius, stops.into_vec()));
         }
 
         for style in self.styles.iter_mut() {
@@ -412,17 +402,7 @@ impl Theme {
     }
 
     #[inline]
-    pub fn get_linear_gradient<S: AsRef<str>>(&self, name: S) -> Option<&LinearGradient> {
-        self.linear_gradients.get(name.as_ref())
-    }
-
-    #[inline]
-    pub fn get_radial_gradient<S: AsRef<str>>(&self, name: S) -> Option<&RadialGradient> {
-        self.radial_gradients.get(name.as_ref())
-    }
-
-    #[inline]
-    pub fn get_gradspec<S: AsRef<str>>(&self, name: S) -> Option<&GradSpec> {
+    pub fn get_gradspec<S: AsRef<str>>(&self, name: S) -> Option<&Gradient> {
         self.named_gradspecs.get(name.as_ref())
     }
 
@@ -442,8 +422,7 @@ impl Theme {
     }
 
     pub fn get_marker_width(&self, style_id: Option<StyleId>) -> (f64, f64) {
-        self
-            .get_style(style_id)
+        self.get_style(style_id)
             .map(|style| style.get_markers())
             .map(|markers| {
                 (
@@ -468,17 +447,7 @@ impl Theme {
     }
 
     #[inline]
-    pub fn get_linear_gradients(&self) -> hash_map::Iter<String, LinearGradient> {
-        self.linear_gradients.iter()
-    }
-
-    #[inline]
-    pub fn get_radial_gradients(&self) -> hash_map::Iter<String, RadialGradient> {
-        self.radial_gradients.iter()
-    }
-
-    #[inline]
-    pub fn get_named_gradspecs(&self) -> hash_map::Iter<String, GradSpec> {
+    pub fn get_named_gradspecs(&self) -> hash_map::Iter<String, Gradient> {
         self.named_gradspecs.iter()
     }
 

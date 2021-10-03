@@ -1,25 +1,34 @@
 use std::f64::consts::PI;
 use kurbo::{Point, Line, Rect, RoundedRect, Circle, Arc, BezPath, Shape, TranslateScale, Size};
-use piet::GradientStop;
 use usvg::NodeExt;
-use crate::{Scene, Theme, Style, StyleId, Stroke, Fill, GradSpec, Crumb, CrumbItem, TextLabel, VisError};
+use crate::{
+    Scene, Theme, Style, StyleId, Stroke, Fill, GradientStop, Gradient, Crumb, CrumbItem,
+    TextLabel, VisError,
+};
 
 pub use usvg::{Tree, FitTo};
 pub use tiny_skia::Pixmap;
 pub use resvg::render as render_to_pixmap;
 
-mod render_context;
-pub use render_context::BitmapDevice;
-
 pub trait AsUsvgTree {
-    fn as_usvg_tree<S, M>(&self, theme: &Theme, out_size: S, out_margin: M) -> Result<usvg::Tree, VisError>
+    fn as_usvg_tree<S, M>(
+        &self,
+        theme: &Theme,
+        out_size: S,
+        out_margin: M,
+    ) -> Result<usvg::Tree, VisError>
     where
         S: Into<Size>,
         M: Into<Size>;
 }
 
 impl AsUsvgTree for Scene {
-    fn as_usvg_tree<S, M>(&self, theme: &Theme, out_size: S, out_margin: M) -> Result<usvg::Tree, VisError>
+    fn as_usvg_tree<S, M>(
+        &self,
+        theme: &Theme,
+        out_size: S,
+        out_margin: M,
+    ) -> Result<usvg::Tree, VisError>
     where
         S: Into<Size>,
         M: Into<Size>,
@@ -501,10 +510,10 @@ pub trait AsUsvgNodeWithName {
     fn as_usvg_node_with_name<S: AsRef<str>>(&self, name: S) -> usvg::NodeKind;
 }
 
-impl AsUsvgNodeWithName for GradSpec {
+impl AsUsvgNodeWithName for Gradient {
     fn as_usvg_node_with_name<S: AsRef<str>>(&self, name: S) -> usvg::NodeKind {
         match self {
-            GradSpec::Linear(start, end, stops) => {
+            Gradient::Linear(start, end, stops) => {
                 let start = start.resolve(Rect::new(0., 0., 1., 1.));
                 let end = end.resolve(Rect::new(0., 0., 1., 1.));
 
@@ -522,7 +531,7 @@ impl AsUsvgNodeWithName for GradSpec {
                     },
                 })
             }
-            GradSpec::Radial(radius, stops) => {
+            Gradient::Radial(radius, stops) => {
                 usvg::NodeKind::RadialGradient(usvg::RadialGradient {
                     id:   name.as_ref().into(),
                     r:    (*radius).into(),

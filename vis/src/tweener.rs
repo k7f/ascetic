@@ -1,8 +1,6 @@
-use std::fmt;
-use piet::Color;
-use crate::{Stroke, Fill};
+use crate::{Color, Rgba, Stroke, Fill};
 
-pub trait Steppable: fmt::Debug {
+pub trait Steppable: std::fmt::Debug {
     /// Note: `amount` is interpreted in tween space; the caller is
     /// assumed to constrain `amount` to the open unit interval.
     fn step(&mut self, target: &Self, amount: f64);
@@ -164,139 +162,6 @@ impl Easing for LinearEasing {
     }
 }
 
-trait AsRgba {
-    /// Returns four components, red, green, blue, and alpha, all in
-    /// the range [0..255].
-    fn as_rgba(&self) -> (u32, u32, u32, u32);
-
-    /// Returns four components, red, green, blue, and alpha, all in
-    /// the range [0..255].
-    fn as_rgba_f64(&self) -> (f64, f64, f64, f64);
-}
-
-trait AsHsva {
-    /// _Hue_ should be `None` iff _saturation_ is zero (for any
-    /// _value_ of gray).
-    fn as_hsva(&self) -> (Option<f64>, f64, f64, f64);
-}
-
-trait FromHsva {
-    fn from_hsva(hue: f64, saturation: f64, value: f64, alpha: f64) -> Self;
-}
-
-impl AsRgba for Color {
-    fn as_rgba(&self) -> (u32, u32, u32, u32) {
-        let rgba = self.as_rgba_u32();
-
-        ((rgba >> 24) & 255, (rgba >> 16) & 255, (rgba >> 8) & 255, rgba & 255)
-    }
-
-    fn as_rgba_f64(&self) -> (f64, f64, f64, f64) {
-        let rgba = self.as_rgba_u32();
-
-        (
-            ((rgba >> 24) & 255) as f64,
-            ((rgba >> 16) & 255) as f64,
-            ((rgba >> 8) & 255) as f64,
-            (rgba & 255) as f64,
-        )
-    }
-}
-
-impl AsHsva for Color {
-    fn as_hsva(&self) -> (Option<f64>, f64, f64, f64) {
-        let (red, green, blue, alpha) = self.as_rgba_f64();
-        let gb = green - blue;
-        let br = blue - red;
-        let rg = red - green;
-
-        if gb > 0.0 {
-            if rg > 0.0 {
-                // r > g > b
-                // chroma = red - blue
-                (Some(gb / -br), -br / red, red, alpha)
-            } else if br > 0.0 {
-                // g > b > r
-                // chroma = green - red
-                (Some(br / -rg + 2.0), -rg / green, green, alpha)
-            } else {
-                // r <= g > b <= r
-                // chroma = green - blue
-                (Some(br / gb + 2.0), gb / green, green, alpha)
-            }
-        } else if br > 0.0 {
-            if rg > 0.0 {
-                // b > r > g
-                // chroma = blue - green
-                (Some(rg / -gb + 4.0), -gb / blue, blue, alpha)
-            } else {
-                // g <= b > r <= g
-                // chroma = blue - red
-                (Some(rg / br + 4.0), br / blue, blue, alpha)
-            }
-        } else if rg > 0.0 {
-            // b <= r > g <= b
-            // chroma = red - green
-            (Some(gb / rg + 6.0), rg / red, red, alpha)
-        } else {
-            // r = g = b
-            (None, 0.0, red, alpha)
-        }
-    }
-}
-
-impl FromHsva for Color {
-    fn from_hsva(hue: f64, saturation: f64, value: f64, alpha: f64) -> Self {
-        let hue = if hue < 0.0 {
-            hue + 6.0
-        } else if hue >= 6.0 {
-            hue - 6.0
-        } else {
-            hue
-        };
-        let chroma = value * saturation;
-        let hue_trunc = hue.trunc();
-        let fract = (hue - hue_trunc) * chroma;
-        let bottom = value - chroma;
-        let red;
-        let green;
-        let blue;
-
-        if hue_trunc < 1.0 {
-            red = value;
-            blue = bottom;
-            green = bottom + fract;
-        } else if hue_trunc < 2.0 {
-            green = value;
-            blue = bottom;
-            red = value - fract;
-        } else if hue_trunc < 3.0 {
-            green = value;
-            red = bottom;
-            blue = bottom + fract;
-        } else if hue_trunc < 4.0 {
-            blue = value;
-            red = bottom;
-            green = value - fract;
-        } else if hue_trunc < 5.0 {
-            blue = value;
-            green = bottom;
-            red = bottom + fract;
-        } else {
-            red = value;
-            green = bottom;
-            blue = value - fract;
-        }
-
-        Color::rgba8(
-            red.trunc() as u8,
-            green.trunc() as u8,
-            blue.trunc() as u8,
-            alpha.trunc() as u8,
-        )
-    }
-}
-
 impl Steppable for (f64, f64) {
     fn step(&mut self, target: &Self, amount: f64) {
         *self = (
@@ -319,8 +184,8 @@ impl Steppable for (f64, f64, f64, f64) {
 
 impl Steppable for Color {
     fn step(&mut self, target: &Self, amount: f64) {
-        let (r0, g0, b0, a0) = self.as_rgba_f64();
-        let (r1, g1, b1, a1) = target.as_rgba_f64();
+        let Rgba::<f64>(r0, g0, b0, a0) = self.clone().into();
+        let Rgba::<f64>(r1, g1, b1, a1) = target.clone().into();
 
         #[inline]
         fn lerp(v0: f64, v1: f64, amount: f64) -> u8 {

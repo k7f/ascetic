@@ -6,8 +6,8 @@ use std::{
     error::Error,
 };
 use ascetic_vis::{
-    Scene, Theme, Style, Stroke, Fill, Marker, Variation, Group, Crumb, CrumbItem, Joint, Color,
-    UnitPoint, PinBuilder, NodeLabelBuilder, VisError,
+    Scene, Theme, Style, Color, Stroke, Fill, UnitPoint, Marker, Variation, Group, Crumb, CrumbItem, Joint,
+    PinBuilder, NodeLabelBuilder, VisError,
     kurbo::{Rect, Circle, Arc, BezPath, PathEl},
     backend::{
         usvg::AsUsvgTree, usvg::Tree as UsvgTree, usvg::FitTo, usvg::Pixmap,
