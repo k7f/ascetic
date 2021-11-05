@@ -17,7 +17,6 @@ pub struct JointBuilder {
 
 impl JointBuilder {
     fn new(tail_group: GroupId, head_group: GroupId) -> Self {
-
         JointBuilder { name: None, tail_group, head_group, joints: Vec::new() }
     }
 
@@ -99,47 +98,45 @@ impl JointBuilder {
                 Joints::Curves(curves) => {
                     joints_group.add_crumbs(curves.iter().map(|(tail, head, pull)| {
                         (
-                            scene.add_crumb(
-                                if let Some((pull1, rest)) = pull.split_first() {
-                                    if let Some(pull2) = rest.last() {
-                                        Crumb::Path(
-                                            scene
-                                                .cubic_joint(
-                                                    style_id,
-                                                    theme,
-                                                    (tail_group, *tail),
-                                                    (head_group, *head),
-                                                    *pull1,
-                                                    *pull2,
-                                                )
-                                                .unwrap(),
-                                        )
-                                    } else {
-                                        Crumb::Path(
-                                            scene
-                                                .quad_joint(
-                                                    style_id,
-                                                    theme,
-                                                    (tail_group, *tail),
-                                                    (head_group, *head),
-                                                    *pull1,
-                                                )
-                                                .unwrap(),
-                                        )
-                                    }
-                                } else {
-                                    Crumb::Line(
+                            scene.add_crumb(if let Some((pull1, rest)) = pull.split_first() {
+                                if let Some(pull2) = rest.last() {
+                                    Crumb::Path(
                                         scene
-                                            .line_joint(
+                                            .cubic_joint(
                                                 style_id,
                                                 theme,
                                                 (tail_group, *tail),
                                                 (head_group, *head),
+                                                *pull1,
+                                                *pull2,
                                             )
                                             .unwrap(),
                                     )
-                                },
-                            ),
+                                } else {
+                                    Crumb::Path(
+                                        scene
+                                            .quad_joint(
+                                                style_id,
+                                                theme,
+                                                (tail_group, *tail),
+                                                (head_group, *head),
+                                                *pull1,
+                                            )
+                                            .unwrap(),
+                                    )
+                                }
+                            } else {
+                                Crumb::Line(
+                                    scene
+                                        .line_joint(
+                                            style_id,
+                                            theme,
+                                            (tail_group, *tail),
+                                            (head_group, *head),
+                                        )
+                                        .unwrap(),
+                                )
+                            }),
                             style_id,
                         )
                     }))

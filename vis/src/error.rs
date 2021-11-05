@@ -23,6 +23,8 @@ enum InnerError {
     GroupMissingForId(GroupId),
     LayerMissingForId(GroupId),
     MarkerMissingForId(MarkerId),
+    GradientMismatchForName(String),
+    GradientMissingForName(String),
     GroupReuseAttempt(GroupId),
     CrumbsOfAGroupOverflow(GroupId, usize),
     GroupsOfAGroupOverflow(GroupId, usize),
@@ -76,6 +78,8 @@ impl std::fmt::Display for InnerError {
             GroupMissingForId(group_id) => write!(f, "Group missing for {:?}", group_id),
             LayerMissingForId(group_id) => write!(f, "Layer missing for {:?}", group_id),
             MarkerMissingForId(marker_id) => write!(f, "Marker missing for {:?}", marker_id),
+            GradientMismatchForName(name) => write!(f, "Gradient mismatch for '{}'", name),
+            GradientMissingForName(name) => write!(f, "Gradient missing for '{}'", name),
             GroupReuseAttempt(group_id) => write!(f, "Reuse attempt for {:?}", group_id),
             CrumbsOfAGroupOverflow(group_id, index) => {
                 write!(f, "Index {} overflows grouped crumbs for {:?}", index, group_id)
@@ -116,8 +120,16 @@ impl VisError {
         InnerError::LayerMissingForId(group_id).into()
     }
 
+    pub(crate) fn gradient_mismatch_for_name<S: AsRef<str>>(name: S) -> Self {
+        InnerError::GradientMismatchForName(name.as_ref().to_string()).into()
+    }
+
     pub(crate) fn marker_missing_for_id(marker_id: MarkerId) -> Self {
         InnerError::MarkerMissingForId(marker_id).into()
+    }
+
+    pub(crate) fn gradient_missing_for_name<S: AsRef<str>>(name: S) -> Self {
+        InnerError::GradientMissingForName(name.as_ref().to_string()).into()
     }
 
     pub(crate) fn group_reuse_attempt(group_id: GroupId) -> Self {

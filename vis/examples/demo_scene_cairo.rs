@@ -116,7 +116,11 @@ impl App {
         }
     }
 
-    fn render_to_svg(&self, scene: &mut Scene, theme: &Theme) -> Result<Option<&Path>, Box<dyn Error>> {
+    fn render_to_svg(
+        &self,
+        scene: &mut Scene,
+        theme: &Theme,
+    ) -> Result<Option<&Path>, Box<dyn Error>> {
         if let Some(ref svg_path) = self.svg_path {
             let start_time = self.start("Rendering to svg...");
             let svg = scene.to_svg(theme, self.out_size, self.out_margin)?;
@@ -150,7 +154,7 @@ impl App {
     fn save_bitmap_image(&self, device: BitmapDevice) -> Result<&Path, Box<dyn Error>> {
         let start_time = self.start("Rendering to bitmap...");
 
-        if self.png_color_type != png::ColorType::RGBA || self.png_bit_depth != png::BitDepth::Eight
+        if self.png_color_type != png::ColorType::Rgba || self.png_bit_depth != png::BitDepth::Eight
         {
             unimplemented!()
         }

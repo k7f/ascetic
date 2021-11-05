@@ -2,7 +2,7 @@
 
 TOY_CRATES="log clap glob"
 PET_CRATES="roxmltree cssparser"
-VIS_CRATES="kurbo piet png usvg resvg tiny-skia piet-cairo cairo-rs"
+VIS_CRATES="kurbo png glutin rgb femtovg usvg resvg tiny-skia piet piet-cairo cairo-rs"
 RUT_CRATES="tracing tracing-subscriber tracing-log pixels winit"
 
 print_requested_version() {

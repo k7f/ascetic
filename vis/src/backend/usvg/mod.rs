@@ -3,7 +3,7 @@ use kurbo::{Point, Line, Rect, RoundedRect, Circle, Arc, BezPath, Shape, Transla
 use usvg::NodeExt;
 use crate::{
     Scene, Theme, Style, StyleId, Stroke, Fill, GradientStop, Gradient, Crumb, CrumbItem,
-    TextLabel, VisError,
+    Crumbling, TextLabel, VisError,
 };
 
 pub use usvg::{Tree, FitTo};
@@ -78,24 +78,7 @@ impl AsUsvgTree for Scene {
     }
 }
 
-pub trait AsUsvgNodeWithStyle {
-    fn end_angle(&self, points: &[Point]) -> f64 {
-        if let Some((p1, head)) = points.split_last() {
-            if let Some(p0) = head.last() {
-                let angle = (p1.y - p0.y).atan2(p1.x - p0.x);
-
-                if !angle.is_nan() {
-                    if angle < 0.0 {
-                        return angle % (PI * 2.0) + PI * 2.0
-                    } else {
-                        return angle % (PI * 2.0)
-                    }
-                }
-            }
-        }
-        0.0
-    }
-
+pub trait AsUsvgNodeWithStyle: Crumbling {
     fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData;
 
     fn as_path_data_and_points(&self, ts: TranslateScale) -> (usvg::PathData, Vec<Point>) {
@@ -125,19 +108,7 @@ pub trait AsUsvgNodeWithStyle {
 }
 
 impl AsUsvgNodeWithStyle for Crumb {
-    fn end_angle(&self, points: &[Point]) -> f64 {
-        match self {
-            Crumb::Line(line) => line.end_angle(points),
-            Crumb::Rect(rect) => rect.end_angle(points),
-            Crumb::RoundedRect(rr) => rr.end_angle(points),
-            Crumb::Circle(circ) => circ.end_angle(points),
-            Crumb::Arc(arc) => arc.end_angle(points),
-            Crumb::Path(path) => path.end_angle(points),
-            Crumb::Pin(pin) => pin.end_angle(points),
-            Crumb::Label(label) => label.end_angle(points),
-        }
-    }
-
+    #[inline]
     fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData {
         match self {
             Crumb::Line(line) => line.as_path_data(ts),
@@ -151,6 +122,7 @@ impl AsUsvgNodeWithStyle for Crumb {
         }
     }
 
+    #[inline]
     fn as_path_data_and_points(&self, ts: TranslateScale) -> (usvg::PathData, Vec<Point>) {
         match self {
             Crumb::Line(line) => line.as_path_data_and_points(ts),
@@ -164,6 +136,7 @@ impl AsUsvgNodeWithStyle for Crumb {
         }
     }
 
+    #[inline]
     fn as_usvg_node_with_style(
         &self,
         ts: TranslateScale,
@@ -184,18 +157,6 @@ impl AsUsvgNodeWithStyle for Crumb {
 }
 
 impl AsUsvgNodeWithStyle for Line {
-    fn end_angle(&self, _points: &[Point]) -> f64 {
-        let angle = (self.p1.y - self.p0.y).atan2(self.p1.x - self.p0.x);
-
-        if angle.is_nan() {
-            0.0
-        } else if angle < 0.0 {
-            angle % (PI * 2.0) + PI * 2.0
-        } else {
-            angle % (PI * 2.0)
-        }
-    }
-
     fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData {
         self.as_path_data_and_points(ts).0
     }

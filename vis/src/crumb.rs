@@ -1,4 +1,5 @@
-use kurbo::{Line, Rect, RoundedRect, Circle, Arc, BezPath, TranslateScale};
+use std::f64::consts::PI;
+use kurbo::{Point, Line, Rect, RoundedRect, Circle, Arc, BezPath, TranslateScale};
 use crate::{Scene, StyleId, TextLabel, VisError};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -19,6 +20,81 @@ pub enum Crumb {
     Label(TextLabel),
 }
 
+macro_rules! impl_into_crumb {
+    ($shape:ty, $variant:ident) => {
+        impl From<$shape> for Crumb {
+            #[inline]
+            fn from(shape: $shape) -> Self {
+                Crumb::$variant(shape)
+            }
+        }
+    };
+}
+
+impl_into_crumb!(Line, Line);
+impl_into_crumb!(Rect, Rect);
+impl_into_crumb!(RoundedRect, RoundedRect);
+impl_into_crumb!(Circle, Circle);
+impl_into_crumb!(Arc, Arc);
+impl_into_crumb!(BezPath, Path);
+impl_into_crumb!(TextLabel, Label);
+
+pub trait Crumbling: Into<Crumb> {
+    fn end_angle(&self, points: &[Point]) -> f64 {
+        if let Some((p1, head)) = points.split_last() {
+            if let Some(p0) = head.last() {
+                let angle = (p1.y - p0.y).atan2(p1.x - p0.x);
+
+                if !angle.is_nan() {
+                    if angle < 0.0 {
+                        return angle % (PI * 2.0) + PI * 2.0
+                    } else {
+                        return angle % (PI * 2.0)
+                    }
+                }
+            }
+        }
+        0.0
+    }
+}
+
+impl Crumbling for Crumb {
+    #[inline]
+    fn end_angle(&self, points: &[Point]) -> f64 {
+        match self {
+            Crumb::Line(line) => line.end_angle(points),
+            Crumb::Rect(rect) => rect.end_angle(points),
+            Crumb::RoundedRect(rr) => rr.end_angle(points),
+            Crumb::Circle(circ) => circ.end_angle(points),
+            Crumb::Arc(arc) => arc.end_angle(points),
+            Crumb::Path(path) => path.end_angle(points),
+            Crumb::Pin(pin) => pin.end_angle(points),
+            Crumb::Label(label) => label.end_angle(points),
+        }
+    }
+}
+
+impl Crumbling for Line {
+    fn end_angle(&self, _points: &[Point]) -> f64 {
+        let angle = (self.p1.y - self.p0.y).atan2(self.p1.x - self.p0.x);
+
+        if angle.is_nan() {
+            0.0
+        } else if angle < 0.0 {
+            angle % (PI * 2.0) + PI * 2.0
+        } else {
+            angle % (PI * 2.0)
+        }
+    }
+}
+
+impl Crumbling for Rect {}
+impl Crumbling for RoundedRect {}
+impl Crumbling for Circle {}
+impl Crumbling for Arc {}
+impl Crumbling for BezPath {}
+impl Crumbling for TextLabel {}
+
 #[derive(Clone, Default, Debug)]
 pub struct CrumbSet {
     crumbs: Vec<CrumbItem>,
@@ -32,7 +108,7 @@ impl CrumbSet {
 
     pub fn try_for_each_label<F>(&self, scene: &mut Scene, mut f: F) -> Result<(), VisError>
     where
-        F: FnMut(&mut TextLabel, TranslateScale, Option<StyleId>) -> Result<(), VisError>
+        F: FnMut(&mut TextLabel, TranslateScale, Option<StyleId>) -> Result<(), VisError>,
     {
         for CrumbItem(crumb_id, ts, style_id) in &self.crumbs {
             if let Some(crumb) = scene.get_crumb_mut(*crumb_id) {

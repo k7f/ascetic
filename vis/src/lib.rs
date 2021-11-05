@@ -13,7 +13,7 @@ mod builder;
 mod error;
 pub mod backend;
 
-pub use crumb::{Crumb, CrumbId, CrumbItem, CrumbSet};
+pub use crumb::{Crumb, CrumbId, CrumbItem, CrumbSet, Crumbling};
 pub use group::{Group, GroupId, GroupItem};
 pub use style::{
     Style, StyleId, Color, Rgba, Stroke, Fill, UnitPoint, ScaleMode, GradientStop, GradientStops,

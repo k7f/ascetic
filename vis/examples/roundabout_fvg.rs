@@ -2,17 +2,18 @@ use std::{
     fs::File,
     path::{Path, PathBuf},
     env::temp_dir,
-    io::Write,
+    io::{Write, BufWriter},
     error::Error,
 };
+use rgb::ComponentBytes;
+use glutin::{event_loop::EventLoop, window::WindowBuilder, ContextBuilder, dpi::PhysicalSize};
+use femtovg::{Renderer, Canvas, renderer::OpenGl};
 use ascetic_vis::{
     Scene, Theme, Style, Color, Stroke, Fill, UnitPoint, Marker, Variation, Group, Crumb,
     CrumbItem, Joint, PinBuilder, NodeLabelBuilder, VisError,
     kurbo::{Rect, Circle, Arc, BezPath, PathEl},
-    backend::{
-        usvg::AsUsvgTree, usvg::Tree as UsvgTree, usvg::FitTo, usvg::Pixmap,
-        usvg::render_to_pixmap, svg::ToSvg,
-    },
+    backend::svg::ToSvg,
+    backend::fvg::Renderable,
 };
 
 const SCENE_NAME: &str = "scene";
@@ -482,24 +483,52 @@ impl App {
     }
 
     fn render_to_png(&self, scene: &Scene, theme: &Theme) -> Result<&Path, Box<dyn Error>> {
-        let start_time = self.start("Rendering to usvg...");
-        let rtree = scene.as_usvg_tree(theme, self.out_size, self.out_margin)?;
+        let start_time = self.start("Rendering to fvg...");
+        let window_size = PhysicalSize::new(self.out_size.0, self.out_size.1);
+        let el = EventLoop::new();
+        let wb = WindowBuilder::new().with_inner_size(window_size).with_resizable(false);
+
+        let windowed_context = ContextBuilder::new().build_windowed(wb, &el)?;
+        let windowed_context = unsafe { windowed_context.make_current().unwrap() }; // FIXME
+
+        let renderer = OpenGl::new(|s| windowed_context.get_proc_address(s) as *const _)?;
+        let mut canvas = Canvas::new(renderer)?;
+
+        scene.render_as_fvg(&mut canvas, theme, self.out_size, self.out_margin);
+
+        canvas.flush();
         done_in_micros(start_time);
 
-        self.save_bitmap_image(&rtree)
+        self.save_bitmap_image(&mut canvas)
     }
 
-    fn save_bitmap_image(&self, rtree: &UsvgTree) -> Result<&Path, Box<dyn Error>> {
+    fn save_bitmap_image<T: Renderer>(
+        &self,
+        canvas: &mut Canvas<T>,
+    ) -> Result<&Path, Box<dyn Error>> {
         let start_time = self.start("Rendering to bitmap...");
-        let pixmap_size = rtree.svg_node().size.to_screen_size();
-        let mut pixmap =
-            Pixmap::new(pixmap_size.width(), pixmap_size.height()).expect("pixmap creation");
-        render_to_pixmap(rtree, FitTo::Original, pixmap.as_mut()).expect("pixmap rendering");
+
+        if self.png_color_type != png::ColorType::Rgba || self.png_bit_depth != png::BitDepth::Eight
+        {
+            unimplemented!()
+        }
+
+        let target_image_vec = canvas.screenshot()?;
+        let (target_buffer, width, height) = target_image_vec.into_contiguous_buf();
+
         done_in_micros(start_time);
 
         let start_time = self
             .start(format!("Writing image data to \"{}\"...", self.png_path.display()).as_str());
-        pixmap.save_png(&self.png_path)?;
+
+        let png_file = File::create(&self.png_path)?;
+        let mut buf_writer = BufWriter::new(png_file);
+        let mut encoder = png::Encoder::new(&mut buf_writer, width as u32, height as u32);
+        encoder.set_color(self.png_color_type);
+        encoder.set_depth(self.png_bit_depth);
+        encoder.set_compression(self.png_compression.clone());
+        encoder.set_filter(self.png_filter);
+        encoder.write_header()?.write_image_data(target_buffer.as_bytes())?;
         done_in_micros(start_time);
 
         Ok(self.png_path.as_path())

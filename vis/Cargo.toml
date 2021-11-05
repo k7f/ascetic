@@ -13,21 +13,26 @@ readme = "README.md"
 
 default = ["tiny"]
 tiny = ["usvg", "resvg", "tiny-skia"]
+fvg = ["femtovg", "rgb"]
 cairo = ["piet", "piet-cairo", "cairo-rs"]
 svg = []
 
 [dependencies]
 
 kurbo = "0.8"
-png = "0.17"
-usvg = { git = "https://github.com/RazrFalcon/resvg", rev = "bd4574d", optional = true }
-resvg = { git = "https://github.com/RazrFalcon/resvg", rev = "bd4574d", optional = true }
-# usvg = { version = "0.14", optional = true }
-# resvg = { version = "0.14", optional = true }
+usvg = { version = "0.19", optional = true }
+resvg = { version = "0.19", optional = true }
 tiny-skia = { version = "0.6", optional = true }
+rgb = { version = "0.8", optional = true }
+femtovg = { version = "0.2", optional = true }
 piet = { version = "0.4", optional = true }
 piet-cairo = { version = "0.4", optional = true }
 cairo-rs = { version = "0.9", optional = true }
+
+[dev-dependencies]
+
+png = "0.17"
+glutin = { version = "0.27", features = [ "wayland" ] }
 
 [[example]]
 
@@ -38,6 +43,11 @@ required-features = ["tiny", "svg"]
 
 name = "roundabout_tiny"
 required-features = ["tiny", "svg"]
+
+[[example]]
+
+name = "roundabout_fvg"
+required-features = ["fvg", "svg"]
 
 [[example]]
 

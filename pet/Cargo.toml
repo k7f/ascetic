@@ -13,4 +13,4 @@ readme = "README.md"
 
 log = "0.4"
 roxmltree = "0.14"
-cssparser = "0.28"
+cssparser = "0.29"
