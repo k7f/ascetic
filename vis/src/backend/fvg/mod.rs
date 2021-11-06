@@ -97,6 +97,7 @@ impl AsPath for Crumb {
 }
 
 impl AsPath for Line {
+    #[inline]
     fn as_fvg_path(&self, ts: TranslateScale) -> fvg::Path {
         self.as_fvg_path_and_points(ts).0
     }
@@ -236,13 +237,74 @@ impl AsPath for BezPath {
 }
 
 impl AsPath for TextLabel {
+    #[inline]
     fn as_fvg_path(&self, ts: TranslateScale) -> fvg::Path {
-        fvg::Path::new()
+        self.as_fvg_path_and_points(ts).0
+    }
+
+    fn as_fvg_path_and_points(&self, ts: TranslateScale) -> (fvg::Path, Vec<Point>) {
+        // FIXME
+        (fvg::Path::new(), Vec::new())
     }
 }
 
-pub trait RenderableWithStyle<T: fvg::Renderer>: Crumbling + AsPath {
-    fn render_as_fvg_with_style(
+pub trait Markable: Crumbling {
+    fn render_named_marker<T: fvg::Renderer>(
+        &self,
+        canvas: &mut fvg::Canvas<T>,
+        marker_name: &str,
+        marker_scale: f32,
+        points: &[Point],
+        anchor: Option<bool>,
+        theme: &Theme,
+    ) -> Result<(), VisError> {
+        if let Some(marker) = theme.get_marker_by_name(marker_name) {
+            if let Some(style) =
+                marker.get_style_name().and_then(|name| theme.get_style_by_name(name))
+            {
+                let (angle, origin) = match anchor {
+                    Some(false) => (
+                        marker.get_orient().unwrap_or_else(|| self.end_angle(points)),
+                        points.first().unwrap(),
+                    ),
+                    Some(true) => (
+                        marker.get_orient().unwrap_or_else(|| self.end_angle(points)),
+                        points.last().unwrap(),
+                    ),
+                    None => unimplemented!(),
+                };
+                let refx = -marker.get_refx();
+                let refy = -marker.get_refy();
+
+                canvas.translate(origin.x as f32, origin.y as f32);
+                canvas.rotate(angle as f32);
+                canvas.scale(marker_scale, marker_scale);
+                canvas.translate(refx as f32, refy as f32);
+
+                // FIXME precompute marker's path, clone it here.
+                let mut marker_path = marker.get_crumb().as_fvg_path(TranslateScale::default());
+
+                if let Some(fill) = style.get_fill() {
+                    canvas.fill_path(&mut marker_path, fill.as_fvg_paint_with_theme(theme)?);
+                }
+
+                if let Some(stroke) = style.get_stroke() {
+                    canvas.stroke_path(&mut marker_path, stroke.as_fvg_paint());
+                }
+
+                canvas.reset_transform();
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl Markable for Line {}
+impl Markable for BezPath {}
+
+pub trait RenderableWithStyle: Crumbling + AsPath {
+    fn render_as_fvg_with_style<T: fvg::Renderer>(
         &self,
         canvas: &mut fvg::Canvas<T>,
         ts: TranslateScale,
@@ -275,9 +337,9 @@ pub trait RenderableWithStyle<T: fvg::Renderer>: Crumbling + AsPath {
     }
 }
 
-impl<T: fvg::Renderer> RenderableWithStyle<T> for Crumb {
+impl RenderableWithStyle for Crumb {
     #[inline]
-    fn render_as_fvg_with_style(
+    fn render_as_fvg_with_style<T: fvg::Renderer>(
         &self,
         canvas: &mut fvg::Canvas<T>,
         ts: TranslateScale,
@@ -297,8 +359,8 @@ impl<T: fvg::Renderer> RenderableWithStyle<T> for Crumb {
     }
 }
 
-impl<T: fvg::Renderer> RenderableWithStyle<T> for Line {
-    fn render_as_fvg_with_style(
+impl RenderableWithStyle for Line {
+    fn render_as_fvg_with_style<T: fvg::Renderer>(
         &self,
         canvas: &mut fvg::Canvas<T>,
         ts: TranslateScale,
@@ -307,75 +369,114 @@ impl<T: fvg::Renderer> RenderableWithStyle<T> for Line {
     ) -> Result<(), VisError> {
         let style = theme.get_style(style_id).unwrap_or_else(|| theme.get_default_style());
         let stroke = style.get_stroke().or_else(|| theme.get_default_style().get_stroke());
-        let paint = if let Some(stroke) = stroke {
+        let stroke_paint = if let Some(stroke) = stroke {
             stroke.as_fvg_paint()
         } else {
             let stroke = Stroke::default();
             stroke.as_fvg_paint()
         };
-        let mut path = {
-            let markers = style.get_markers();
+        let (mut path, points) = self.as_fvg_path_and_points(ts);
 
-            if let Some(marker) =
-                markers.get_end_name().and_then(|name| theme.get_marker_by_name(name))
-            {
-                let (path, points) = self.as_fvg_path_and_points(ts);
+        canvas.stroke_path(&mut path, stroke_paint);
 
-                // FIXME precompute marker's path, clone it here.
-                let mut marker_path = marker.get_crumb().as_fvg_path(TranslateScale::default());
+        let marker_scale = stroke.as_ref().map(|s| 0.5 * (s.get_width() as f32)).unwrap_or(0.5);
+        let markers = style.get_markers();
 
-                // FIXME precompute unit width.
-                let unit_width = stroke.as_ref().map(|s| s.get_width()).unwrap_or(1.0);
-                let angle =
-                    marker.get_orient().unwrap_or_else(|| self.end_angle(points.as_slice()));
-                let a = angle.cos() * unit_width;
-                let b = angle.sin() * unit_width;
-                let refx = marker.get_refx();
-                let refy = marker.get_refy();
-                let p1 = points.last().unwrap();
+        if let Some(marker_name) = markers.get_start_name() {
+            self.render_named_marker(
+                canvas,
+                marker_name,
+                marker_scale,
+                &points,
+                Some(false),
+                theme,
+            )?;
+        }
 
-                path
-            } else {
-                self.as_fvg_path(ts)
-            }
-        };
-
-        canvas.stroke_path(&mut path, paint);
+        if let Some(marker_name) = markers.get_end_name() {
+            self.render_named_marker(
+                canvas,
+                marker_name,
+                marker_scale,
+                &points,
+                Some(true),
+                theme,
+            )?;
+        }
 
         Ok(())
     }
 }
 
-impl<T: fvg::Renderer> RenderableWithStyle<T> for Rect {}
-impl<T: fvg::Renderer> RenderableWithStyle<T> for RoundedRect {}
-impl<T: fvg::Renderer> RenderableWithStyle<T> for Circle {}
+impl RenderableWithStyle for Rect {}
+impl RenderableWithStyle for RoundedRect {}
+impl RenderableWithStyle for Circle {}
 
-impl<T: fvg::Renderer> RenderableWithStyle<T> for Arc {
-    fn render_as_fvg_with_style(
+impl RenderableWithStyle for Arc {
+    fn render_as_fvg_with_style<T: fvg::Renderer>(
         &self,
         canvas: &mut fvg::Canvas<T>,
         ts: TranslateScale,
         style_id: Option<StyleId>,
         theme: &Theme,
     ) -> Result<(), VisError> {
-        Ok(())
+        let path = BezPath::from_vec(self.path_elements(0.1).collect());
+
+        path.render_as_fvg_with_style(canvas, ts, style_id, theme)
     }
 }
 
-impl<T: fvg::Renderer> RenderableWithStyle<T> for BezPath {
-    fn render_as_fvg_with_style(
+impl RenderableWithStyle for BezPath {
+    fn render_as_fvg_with_style<T: fvg::Renderer>(
         &self,
         canvas: &mut fvg::Canvas<T>,
         ts: TranslateScale,
         style_id: Option<StyleId>,
         theme: &Theme,
     ) -> Result<(), VisError> {
+        let (mut path, points) = self.as_fvg_path_and_points(ts);
+        let style = theme.get_style(style_id).unwrap_or_else(|| theme.get_default_style());
+        let stroke = style.get_stroke().or_else(|| theme.get_default_style().get_stroke());
+
+        if let Some(fill) = style.get_fill().or_else(|| theme.get_default_style().get_fill()) {
+            canvas.fill_path(&mut path, fill.as_fvg_paint_with_theme(theme)?);
+        }
+
+        if let Some(stroke) = stroke {
+            canvas.stroke_path(&mut path, stroke.as_fvg_paint());
+        }
+
+        let marker_scale = stroke.as_ref().map(|s| 0.5 * (s.get_width() as f32)).unwrap_or(0.5);
+        let markers = style.get_markers();
+
+        if let Some(marker_name) = markers.get_start_name() {
+            self.render_named_marker(
+                canvas,
+                marker_name,
+                marker_scale,
+                &points,
+                Some(false),
+                theme,
+            )?;
+        }
+
+        if let Some(marker_name) = markers.get_end_name() {
+            self.render_named_marker(
+                canvas,
+                marker_name,
+                marker_scale,
+                &points,
+                Some(true),
+                theme,
+            )?;
+        }
+
         Ok(())
     }
 }
 
-impl<T: fvg::Renderer> RenderableWithStyle<T> for TextLabel {
-    fn render_as_fvg_with_style(
+impl RenderableWithStyle for TextLabel {
+    fn render_as_fvg_with_style<T: fvg::Renderer>(
         &self,
         canvas: &mut fvg::Canvas<T>,
         ts: TranslateScale,
@@ -394,7 +495,7 @@ impl AsPaint for Stroke {
     fn as_fvg_paint(&self) -> fvg::Paint {
         let mut paint = fvg::Paint::color(self.get_brush().as_fvg_color());
 
-        paint.set_line_width(self.get_width() as f32);
+        paint.set_line_width(0.5 * (self.get_width() as f32));
 
         paint
     }

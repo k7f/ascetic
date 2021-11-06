@@ -78,36 +78,15 @@ impl AsUsvgTree for Scene {
     }
 }
 
-pub trait AsUsvgNodeWithStyle: Crumbling {
+pub trait AsPathData {
     fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData;
 
     fn as_path_data_and_points(&self, ts: TranslateScale) -> (usvg::PathData, Vec<Point>) {
         (self.as_path_data(ts), Vec::new())
     }
-
-    fn as_usvg_node_with_style(
-        &self,
-        ts: TranslateScale,
-        style_id: Option<StyleId>,
-        theme: &Theme,
-    ) -> (Option<usvg::NodeKind>, Vec<usvg::NodeKind>) {
-        let path_data = self.as_path_data(ts);
-
-        if path_data.0.is_empty() {
-            (None, Vec::new())
-        } else {
-            let (fill, stroke) = theme.get_style_as_usvg(style_id);
-            let data = std::rc::Rc::new(path_data);
-
-            (
-                Some(usvg::NodeKind::Path(usvg::Path { fill, stroke, data, ..Default::default() })),
-                Vec::new(),
-            )
-        }
-    }
 }
 
-impl AsUsvgNodeWithStyle for Crumb {
+impl AsPathData for Crumb {
     #[inline]
     fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData {
         match self {
@@ -135,7 +114,193 @@ impl AsUsvgNodeWithStyle for Crumb {
             Crumb::Label(label) => label.as_path_data_and_points(ts),
         }
     }
+}
 
+impl AsPathData for Line {
+    #[inline]
+    fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData {
+        self.as_path_data_and_points(ts).0
+    }
+
+    fn as_path_data_and_points(&self, ts: TranslateScale) -> (usvg::PathData, Vec<Point>) {
+        let p0 = ts * self.p0;
+        let p1 = ts * self.p1;
+
+        (
+            usvg::PathData(vec![
+                usvg::PathSegment::MoveTo { x: p0.x, y: p0.y },
+                usvg::PathSegment::LineTo { x: p1.x, y: p1.y },
+            ]),
+            vec![p0, p1],
+        )
+    }
+}
+
+impl AsPathData for Rect {
+    fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData {
+        let rect = ts * *self;
+
+        usvg::PathData(vec![
+            usvg::PathSegment::MoveTo { x: rect.x0, y: rect.y0 },
+            usvg::PathSegment::LineTo { x: rect.x1, y: rect.y0 },
+            usvg::PathSegment::LineTo { x: rect.x1, y: rect.y1 },
+            usvg::PathSegment::LineTo { x: rect.x0, y: rect.y1 },
+            usvg::PathSegment::ClosePath,
+        ])
+    }
+}
+
+impl AsPathData for RoundedRect {
+    fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData {
+        let rr = ts * *self;
+
+        if let Some(radius) = rr.radii().as_single_radius() {
+            let rect = rr.rect();
+            let (rx, ry) = (radius, radius);
+            let mut path = usvg::PathData::with_capacity(10);
+
+            path.push_move_to(rect.x0 + rx, rect.y0);
+
+            path.push_line_to(rect.x1 - rx, rect.y0);
+            path.push_arc_to(rx, ry, 0.0, false, true, rect.x1, rect.y0 + ry);
+
+            path.push_line_to(rect.x1, rect.y1 - ry);
+            path.push_arc_to(rx, ry, 0.0, false, true, rect.x1 - rx, rect.y1);
+
+            path.push_line_to(rect.x0 + rx, rect.y1);
+            path.push_arc_to(rx, ry, 0.0, false, true, rect.x0, rect.y1 - ry);
+
+            path.push_line_to(rect.x0, rect.y0 + ry);
+            path.push_arc_to(rx, ry, 0.0, false, true, rect.x0 + rx, rect.y0);
+
+            path.push_close_path();
+
+            path
+        } else {
+            self.rect().as_path_data(ts)
+        }
+    }
+}
+
+impl AsPathData for Circle {
+    fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData {
+        let center = ts * self.center;
+        let (cx, cy) = (center.x, center.y);
+        let radius = ts.as_tuple().1 * self.radius;
+        let (rx, ry) = (radius, radius);
+        let mut path = usvg::PathData::with_capacity(6);
+
+        path.push_move_to(cx + rx, cy);
+        path.push_arc_to(rx, ry, 0.0, false, true, cx, cy + ry);
+        path.push_arc_to(rx, ry, 0.0, false, true, cx - rx, cy);
+        path.push_arc_to(rx, ry, 0.0, false, true, cx, cy - ry);
+        path.push_arc_to(rx, ry, 0.0, false, true, cx + rx, cy);
+        path.push_close_path();
+
+        path
+    }
+}
+
+impl AsPathData for Arc {
+    #[inline]
+    fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData {
+        let path = BezPath::from_vec(self.path_elements(0.1).collect());
+
+        path.as_path_data(ts)
+    }
+
+    #[inline]
+    fn as_path_data_and_points(&self, ts: TranslateScale) -> (usvg::PathData, Vec<Point>) {
+        let path = BezPath::from_vec(self.path_elements(0.1).collect());
+
+        path.as_path_data_and_points(ts)
+    }
+}
+
+impl AsPathData for BezPath {
+    #[inline]
+    fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData {
+        self.as_path_data_and_points(ts).0
+    }
+
+    fn as_path_data_and_points(&self, ts: TranslateScale) -> (usvg::PathData, Vec<Point>) {
+        let mut out_path = usvg::PathData::with_capacity(self.elements().len());
+        let mut out_points = Vec::new();
+
+        for path_el in self.iter() {
+            use kurbo::PathEl::*;
+            match path_el {
+                MoveTo(point) => {
+                    let point = ts * point;
+                    out_path.push_move_to(point.x, point.y);
+                    out_points.push(point);
+                }
+                LineTo(point) => {
+                    let point = ts * point;
+                    out_path.push_line_to(point.x, point.y);
+                    out_points.push(point);
+                }
+                QuadTo(point1, point2) => {
+                    let point1 = ts * point1;
+                    let point2 = ts * point2;
+                    out_path.push_quad_to(point1.x, point1.y, point2.x, point2.y);
+                    out_points.push(point1);
+                    out_points.push(point2);
+                }
+                CurveTo(point1, point2, point3) => {
+                    let point1 = ts * point1;
+                    let point2 = ts * point2;
+                    let point3 = ts * point3;
+                    out_path
+                        .push_curve_to(point1.x, point1.y, point2.x, point2.y, point3.x, point3.y);
+                    out_points.push(point1);
+                    out_points.push(point2);
+                    out_points.push(point3);
+                }
+                ClosePath => out_path.push_close_path(),
+            }
+        }
+
+        (out_path, out_points)
+    }
+}
+
+impl AsPathData for TextLabel {
+    #[inline]
+    fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData {
+        self.as_path_data_and_points(ts).0
+    }
+
+    fn as_path_data_and_points(&self, _ts: TranslateScale) -> (usvg::PathData, Vec<Point>) {
+        // FIXME
+        (usvg::PathData::new(), Vec::new())
+    }
+}
+
+pub trait AsUsvgNodeWithStyle: Crumbling + AsPathData {
+    fn as_usvg_node_with_style(
+        &self,
+        ts: TranslateScale,
+        style_id: Option<StyleId>,
+        theme: &Theme,
+    ) -> (Option<usvg::NodeKind>, Vec<usvg::NodeKind>) {
+        let path_data = self.as_path_data(ts);
+
+        if path_data.0.is_empty() {
+            (None, Vec::new())
+        } else {
+            let (fill, stroke) = theme.get_style_as_usvg(style_id);
+            let data = std::rc::Rc::new(path_data);
+
+            (
+                Some(usvg::NodeKind::Path(usvg::Path { fill, stroke, data, ..Default::default() })),
+                Vec::new(),
+            )
+        }
+    }
+}
+
+impl AsUsvgNodeWithStyle for Crumb {
     #[inline]
     fn as_usvg_node_with_style(
         &self,
@@ -157,23 +322,6 @@ impl AsUsvgNodeWithStyle for Crumb {
 }
 
 impl AsUsvgNodeWithStyle for Line {
-    fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData {
-        self.as_path_data_and_points(ts).0
-    }
-
-    fn as_path_data_and_points(&self, ts: TranslateScale) -> (usvg::PathData, Vec<Point>) {
-        let p0 = ts * self.p0;
-        let p1 = ts * self.p1;
-
-        (
-            usvg::PathData(vec![
-                usvg::PathSegment::MoveTo { x: p0.x, y: p0.y },
-                usvg::PathSegment::LineTo { x: p1.x, y: p1.y },
-            ]),
-            vec![p0, p1],
-        )
-    }
-
     fn as_usvg_node_with_style(
         &self,
         ts: TranslateScale,
@@ -245,84 +393,11 @@ impl AsUsvgNodeWithStyle for Line {
     }
 }
 
-impl AsUsvgNodeWithStyle for Rect {
-    fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData {
-        let rect = ts * *self;
-
-        usvg::PathData(vec![
-            usvg::PathSegment::MoveTo { x: rect.x0, y: rect.y0 },
-            usvg::PathSegment::LineTo { x: rect.x1, y: rect.y0 },
-            usvg::PathSegment::LineTo { x: rect.x1, y: rect.y1 },
-            usvg::PathSegment::LineTo { x: rect.x0, y: rect.y1 },
-            usvg::PathSegment::ClosePath,
-        ])
-    }
-}
-
-impl AsUsvgNodeWithStyle for RoundedRect {
-    fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData {
-        let rr = ts * *self;
-
-        if let Some(radius) = rr.radii().as_single_radius() {
-            let rect = rr.rect();
-            let (rx, ry) = (radius, radius);
-            let mut path = usvg::PathData::with_capacity(10);
-
-            path.push_move_to(rect.x0 + rx, rect.y0);
-
-            path.push_line_to(rect.x1 - rx, rect.y0);
-            path.push_arc_to(rx, ry, 0.0, false, true, rect.x1, rect.y0 + ry);
-
-            path.push_line_to(rect.x1, rect.y1 - ry);
-            path.push_arc_to(rx, ry, 0.0, false, true, rect.x1 - rx, rect.y1);
-
-            path.push_line_to(rect.x0 + rx, rect.y1);
-            path.push_arc_to(rx, ry, 0.0, false, true, rect.x0, rect.y1 - ry);
-
-            path.push_line_to(rect.x0, rect.y0 + ry);
-            path.push_arc_to(rx, ry, 0.0, false, true, rect.x0 + rx, rect.y0);
-
-            path.push_close_path();
-
-            path
-        } else {
-            self.rect().as_path_data(ts)
-        }
-    }
-}
-
-impl AsUsvgNodeWithStyle for Circle {
-    fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData {
-        let center = ts * self.center;
-        let (cx, cy) = (center.x, center.y);
-        let radius = ts.as_tuple().1 * self.radius;
-        let (rx, ry) = (radius, radius);
-        let mut path = usvg::PathData::with_capacity(6);
-
-        path.push_move_to(cx + rx, cy);
-        path.push_arc_to(rx, ry, 0.0, false, true, cx, cy + ry);
-        path.push_arc_to(rx, ry, 0.0, false, true, cx - rx, cy);
-        path.push_arc_to(rx, ry, 0.0, false, true, cx, cy - ry);
-        path.push_arc_to(rx, ry, 0.0, false, true, cx + rx, cy);
-        path.push_close_path();
-
-        path
-    }
-}
+impl AsUsvgNodeWithStyle for Rect {}
+impl AsUsvgNodeWithStyle for RoundedRect {}
+impl AsUsvgNodeWithStyle for Circle {}
 
 impl AsUsvgNodeWithStyle for Arc {
-    fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData {
-        let path = BezPath::from_vec(self.path_elements(0.1).collect());
-
-        path.as_path_data(ts)
-    }
-
-    fn as_path_data_and_points(&self, ts: TranslateScale) -> (usvg::PathData, Vec<Point>) {
-        let path = BezPath::from_vec(self.path_elements(0.1).collect());
-
-        path.as_path_data_and_points(ts)
-    }
-
     fn as_usvg_node_with_style(
         &self,
         ts: TranslateScale,
@@ -336,51 +411,6 @@ impl AsUsvgNodeWithStyle for Arc {
 }
 
 impl AsUsvgNodeWithStyle for BezPath {
-    fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData {
-        self.as_path_data_and_points(ts).0
-    }
-
-    fn as_path_data_and_points(&self, ts: TranslateScale) -> (usvg::PathData, Vec<Point>) {
-        let mut out_path = usvg::PathData::with_capacity(self.elements().len());
-        let mut out_points = Vec::new();
-
-        for path_el in self.iter() {
-            use kurbo::PathEl::*;
-            match path_el {
-                MoveTo(point) => {
-                    let point = ts * point;
-                    out_path.push_move_to(point.x, point.y);
-                    out_points.push(point);
-                }
-                LineTo(point) => {
-                    let point = ts * point;
-                    out_path.push_line_to(point.x, point.y);
-                    out_points.push(point);
-                }
-                QuadTo(point1, point2) => {
-                    let point1 = ts * point1;
-                    let point2 = ts * point2;
-                    out_path.push_quad_to(point1.x, point1.y, point2.x, point2.y);
-                    out_points.push(point1);
-                    out_points.push(point2);
-                }
-                CurveTo(point1, point2, point3) => {
-                    let point1 = ts * point1;
-                    let point2 = ts * point2;
-                    let point3 = ts * point3;
-                    out_path
-                        .push_curve_to(point1.x, point1.y, point2.x, point2.y, point3.x, point3.y);
-                    out_points.push(point1);
-                    out_points.push(point2);
-                    out_points.push(point3);
-                }
-                ClosePath => out_path.push_close_path(),
-            }
-        }
-
-        (out_path, out_points)
-    }
-
     fn as_usvg_node_with_style(
         &self,
         ts: TranslateScale,
@@ -456,16 +486,7 @@ impl AsUsvgNodeWithStyle for BezPath {
     }
 }
 
-impl AsUsvgNodeWithStyle for TextLabel {
-    fn as_path_data(&self, ts: TranslateScale) -> usvg::PathData {
-        self.as_path_data_and_points(ts).0
-    }
-
-    fn as_path_data_and_points(&self, _ts: TranslateScale) -> (usvg::PathData, Vec<Point>) {
-        // FIXME
-        (usvg::PathData::new(), Vec::new())
-    }
-}
+impl AsUsvgNodeWithStyle for TextLabel {}
 
 pub trait AsUsvgNodeWithName {
     fn as_usvg_node_with_name<S: AsRef<str>>(&self, name: S) -> usvg::NodeKind;
