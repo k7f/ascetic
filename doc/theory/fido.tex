@@ -1,0 +1,313 @@
+\documentclass [a4paper,12pt] {article}
+\usepackage{fullpage}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath, amssymb, amsthm, mathabx, bm, mathtools, relsize, accents, cancel}
+\usepackage{wasysym}
+\usepackage{tikz, tabu}
+\usepackage{stackengine}
+\usepackage{enumitem}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{lemma}{Lemma}[section]
+
+\setcounter{equation}{0}
+\renewcommand{\theequation}{\arabic{section}.\arabic{equation}}
+
+\newcommand{\Forall}{}
+\DeclareRobustCommand{\Forall}{\mathop{\mathlarger{\forall}}}
+\newcommand{\Exists}{}
+\DeclareRobustCommand{\Exists}{\mathop{\mathlarger{\exists}}}
+\newcommand{\Qed}{}
+\DeclareRobustCommand{\Qed}{\tag*{\qed}}
+\newcommand{\inconflict}{}
+\DeclareRobustCommand{\inconflict}{\mathbin{\natural}}
+\newcommand{\exconflict}{}
+\DeclareRobustCommand{\exconflict}{\mathbin{\sharp}}
+\newcommand{\absorption}{}
+\DeclareRobustCommand{\absorption}{\mathbin{\flat}}
+\newcommand{\symdiff}{}
+\DeclareRobustCommand{\symdiff}{\mathbin{\triangle}}
+
+\newcommand{\undercone}{}
+\DeclareRobustCommand{\undercone}{\mathop{\downarrow}}
+\newcommand{\overcone}{}
+\DeclareRobustCommand{\overcone}{\mathop{\uparrow}}
+
+% FIXME superscript
+\newcommand{\domain}{}
+\DeclareRobustCommand{\domain}{\mathop{\textstyle\mathsmaller{\bf {Dom}}}}
+\newcommand{\image}{}
+\DeclareRobustCommand{\image}{\mathop{\textstyle\mathsmaller{\bf {Im}}}}
+\newcommand{\carrier}{}
+\DeclareRobustCommand{\carrier}{\mathop{\textstyle\mathsmaller{\bf {Car}}}}
+\newcommand{\relative}{}
+\DeclareRobustCommand{\relative}{\mathop{\textstyle\mathsmaller{\bf {Rel}}}}
+\newcommand{\negative}{}
+\DeclareRobustCommand{\negative}{\mathop{\textstyle\mathsmaller{\bf {Neg}}}}
+\newcommand{\scope}{}
+\DeclareRobustCommand{\scope}{\mathop{\textstyle\mathsmaller{\bf {Sco}}}}
+\newcommand{\uniform}{}
+\DeclareRobustCommand{\uniform}{\mathop{\textstyle\mathsmaller{\bf {Rep}}}}
+\newcommand{\move}{}
+\DeclareRobustCommand{\move}{\mathop{\textstyle\mathsmaller{\bf {Mov}}}}
+\newcommand{\shift}{}
+\DeclareRobustCommand{\shift}{\mathop{\textstyle\mathsmaller{\bf {Shi}}}}
+\newcommand{\scaling}{}
+\DeclareRobustCommand{\scaling}{\mathop{\textstyle\mathsmaller{\bf {Sca}}}}
+\newcommand{\composition}{}
+\DeclareRobustCommand{\composition}{\mathop{\textstyle\mathsmaller{\bf {Com}}}}
+
+\newcommand{\id}{}
+\DeclareRobustCommand{\id}{\mathop{\textstyle{\rm {id}}}}
+
+\newcommand{\xbot}{}
+\DeclareRobustCommand{\xbot}{\mathop{\textstyle\mathsmaller{\bm\bot}}}
+\newcommand{\xtop}{}
+\DeclareRobustCommand{\xtop}{\mathop{\textstyle\mathsmaller{\bm\top}}}
+
+\DeclareMathAlphabet{\xmathbb}{U}{BOONDOX-ds}{m}{n}
+
+\newcommand{\ThetaXV}{}
+\DeclareRobustCommand{\ThetaXV}{\Theta_{{\mathbb X}\times{\mathbb V}}}
+
+\newcommand{\uni}{}
+\DeclareRobustCommand{\uni}{{\textstyle\mathlarger{\mathfrak{u}}}}
+
+\newcommand{\preset}[1]{\prescript{\bullet}{}{\!#1}}
+\newcommand{\postset}[1]{#1^{\bullet}}
+
+\newcommand{\varset}[2]{\mathop {\textbf {\small\em #1}\,_{#2}}}
+
+\makeatletter
+\newcommand\c@rcle[2]{\mathbin{\ooalign{\hidewidth$#1#2$\hidewidth\crcr$#1\ocircle$}}}
+\newcommand\di@mond[2]{\mathbin{\ooalign{\hidewidth$#1#2$\hidewidth\crcr$#1$\raisebox{-0.06em}{$\Diamond$}}}}
+\newcommand\cr@ss[2]{\mathbin{\ooalign{\hidewidth$#1#2$\hidewidth\crcr$#1$\raisebox{0.13em}{$\times$}}}}
+\newcommand\bcr@ss[2]{\mathbin{\ooalign{\hidewidth$#1#2$\hidewidth\crcr$#1$\raisebox{0.09em}{$\bm{\times}$}}}}
+\newcommand\bc@rc[2]{\mathbin{\ooalign{\hidewidth$#1#2$\hidewidth\crcr$#1$\raisebox{0.27em}{$\mathsmaller{\bm{\circ}}$}}}}
+\newcommand{\oeq}{\mathbin{\mathpalette\c@rcle{\raisebox{0.08em}{$\mathsmaller{=}$}}}}
+\newcommand{\obullet}{\mathbin{\mathpalette\c@rcle{\raisebox{0.08em}{$\mathsmaller{\bullet}$}}}}
+\newcommand{\nbullet}{\mathbin{\raisebox{0.08em}{$\mathsmaller{\bullet}$}}}
+\newcommand{\wxp}{\mathbin{\mathpalette\c@rcle{\raisebox{0.035em}{$\mathsmaller{\triangledown}$}}}}
+\newcommand{\nxp}{\mathbin{\raisebox{0.035em}{$\mathsmaller{\triangledown}$}}}
+\newcommand{\wct}{\mathbin{\mathpalette\c@rcle{\raisebox{0.085em}{$\mathsmaller{\vartriangle}$}}}}
+\newcommand{\nct}{\mathbin{\raisebox{0.085em}{$\mathsmaller{\vartriangle}$}}}
+\newcommand{\wtimes}{\mathbin{\mathpalette\c@rcle{\raisebox{0.085em}{$\mathsmaller{\times}$}}}}
+\newcommand{\ntimes}{\mathbin{\mathpalette\di@mond{\raisebox{0.12em}{$\mathsmaller{\times}$}}}}
+\makeatother
+
+\begin {document}
+\title {Firing domain sequences\\(a draft)}
+\author {}
+\date {}
+\maketitle
+
+\section {Introduction}
+
+To set the stage we need symbols $\mathbb {N}$, $\mathbb {N}_0$,
+$\mathbb {B}$, $\xmathbb {0}$, $\xmathbb {1}$, $\xbot$, and $\xtop$,
+where first two symbols represent, respectively, positive and
+nonnegative integers, last four represent some non-integer constants,
+and $\mathbb {B} = \{ \xmathbb {0}, \xmathbb {1} \}$.  Then, we
+introduce an arbitrary, finite or countably infinite set $\mathbf {X}$
+of (``unsigned integer'') {\em variables}\/.  We call $\mathbf {U} =
+(\mathbb {N}\cup\{\xtop\})^\mathbf {X}$ --- the set of {\em
+  envelopes}\/ (upper bounds), and $\mathbf {S} = \mathbb
+{N}_0^\mathbf {X}$ --- the set of {\em markings}\/.
+
+We also assume that there is a finite set $\mathbf {A}$ of {\em
+  actions}\/ (aka {\em aliens}\/), call $\mathbf {W} = (\mathbb
+{N}_0\cup\{\xbot, \xtop\})^{\mathbf {A} \times \mathbb {B} \times
+  \mathbf {X}}$ --- the set of {\em weightings}\/, and for $a \in
+\mathbf {A}$, $x \in \mathbf {X}$ write $a^- = (a, \xmathbb {0})$,
+$a^+ = (a, \xmathbb {1})$, $[a^-x] = (a, \xmathbb {0}, x)$, and
+$[a^+x] = (a, \xmathbb {1}, x)$.  It is sometimes convenient to use
+custom names of some subsets of $\mathbf {X}$:
+%
+\begin {align*}
+\qquad\qquad\qquad\textit {pre-set}\/:&&\varset {pre}{w}a =&\; \{ x \in \mathbf {X} \;|\; w[a^-x] \neq \xbot \},\qquad\qquad\qquad\\
+\qquad\qquad\qquad\textit {post-set}\/:&&\varset {post}{w}a =&\; \{ x \in \mathbf {X} \;|\; w[a^+x] \neq \xbot \},\qquad\qquad\qquad\\
+\qquad\qquad\qquad\textit {residuals}\/:&& \varset {res}{w}a =&\; \{ x \in \mathbf {X} \;|\; w[a^-x] = w[a^+x] = \xbot \},\qquad\qquad\qquad\\
+\qquad\qquad\qquad\textit {actuators}\/:&& \varset {act}{w}a =&\; \{ x \in \mathbf {X} \;|\; w[a^-x] = 0 \},\qquad\qquad\qquad\\
+\qquad\qquad\qquad\textit {anihilators}\/:&& \varset {ani}{w}a =&\; \{ x \in \mathbf {X} \;|\; w[a^+x] = 0 \},\qquad\qquad\qquad\\
+\qquad\qquad\qquad\textit {inhibitors}\/:&& \varset {inh}{w}a =&\; \{ x \in \mathbf {X} \;|\; w[a^-x] = \xtop \},\qquad\qquad\qquad\\
+\qquad\qquad\qquad\textit {exhibitors}\/:&& \varset {exh}{w}a =&\; \{ x \in \mathbf {X} \;|\; w[a^+x] = \xtop \},\qquad\qquad\qquad
+\end {align*}
+%
+where $a \in \mathbf {A}$ and $w \in \mathbf {W}$.  Whenever weighting
+is fixed, the customary notation may be applied: $\preset{a}$ for a
+pre-set and $\postset{a}$ for a post-set of action $a$.
+
+The usual integer arithmetics is extended by declaring that $\xbot$ is
+the absorbing element of multiplication and the neutral element of
+addition, and conversely, $\xtop$ is the absorbing element of addition
+and the neutral element of multiplication.  In particular, $n \cdot
+\xbot = \xbot$, $n + \xtop = \xtop$, and $n + \xbot = n \cdot \xtop =
+n$, for any $n \in \mathbb {N}_0$.  The extended integer operations
+are lifted (pointwise) so that they apply to functions $\mathbf {X}
+\rightarrow \mathbb {N}_0 \cup \{\xbot, \xtop\}$.  Similarly, the
+linear ordering of integers is extended, by declaring that any integer
+is greater than $\xbot$ and less than $\xtop$, and lifted to the
+partial order $f \leq g \iff \forall_{x \in \mathbf {X}}\,fx \leq gx$,
+where $f, g\!: \mathbf {X} \rightarrow \mathbb {N}_0 \cup \{\xbot,
+\xtop\}$.
+
+\subsection {Consistency}
+
+Now we can introduce the notion of {\em consistency}\/ represented by
+the predicate $\bm {C}$.  For any $s \in \mathbf {S}$, $u \in \mathbf
+{U}$, and $w \in \mathbf {W}$,
+  %
+\begin {align}\label{eq:static-consistency}\stepcounter{equation}
+  \tag{\theequation.a}
+  \bm {C}(s, u) \iff &s \leq u,\\
+  %
+  \tag{\theequation.b}
+  \bm {C}w \iff &\Forall_{x \in \mathbf {X}, a \in \mathbf {A}}\,w[a^-x] \cdot w[a^+x] \in \{\xbot, 0\},\\
+  %
+  \tag{\theequation.c}
+  \bm {C}(u, w) \iff &\bm {C}w \,\land\, \Forall_{(a, b, x) \in \mathbf {A} \times \mathbb {B} \times \mathbf {X} }\;%
+  w(a,b,x) > ux \Rightarrow w(a,b,x) = \xtop,\\
+  %
+  \tag{\theequation.d}
+  \bm {C}(s, u, w) \iff &\bm {C}(s, u) \,\land\, \bm {C}(u, w).
+\end {align}
+
+The definition of consistency is developed further to cover more
+complex objects.  Given an action $a \in \mathbf {A}$, the quadruple
+$(a, s, u, w)$ is consistent iff $\bm {C}(s, u, w)$ and the {\em
+  enablement condition}\/,
+%
+\begin {align}\label {eq:enablement-condition}
+  \Forall_{x \in \mathbf {X}}\;&%
+  \begin {cases}
+    sx = 0, &\textrm { if } w[a^-x] = \xtop\\
+    \max(w[a^-x],1) \leq sx, &\textrm { otherwise}
+  \end {cases}
+  %
+  \land\;&%
+  \begin {cases}
+    sx > 0, &\textrm { if } w[a^+x] = \xtop\\
+    w[a^+x] \leq ux - sx, &\textrm { otherwise},
+  \end {cases}
+\end {align}
+%
+holds (alternatively, we say that $a$ is {\em enabled}\/ in $s$ given
+$u$ and $w$).  Moreover, given $a \in \mathbf {A}$ and $s' \in \mathbf
+{S}$, the quintuple $(a, s, s', u, w)$ is consistent iff $\bm {C}(a,
+s, u, w)$ and the {\em firing condition}\/,
+%
+\begin {equation}\label {eq:firing-condition}
+\Forall_{x \in \mathbf {X}}\; s'x =
+\begin {cases}
+sx,& \text {if } w[a^-x] + w[a^+x] = \xtop\\
+sx - w[a^-x] + w[a^+x],& \text {otherwise.}
+\end {cases}
+\end {equation}
+%
+is satisfied.  In what follows, the relation defined by the quadruple
+consistency predicate is called {\em enablement consistency}\/, while
+the quintuple variant specifies {\em transition consistency}\/
+relation.  Fixing $u$ and $w$ reduces these relations to binary and
+ternary --- in such cases special notation improves readability:
+$s\searrow a$ denotes binary enablement consistency, i.e.\ $\searrow =
+\{ (s, a) \in \mathbf {S} \times \mathbf {A} \;|\; \bm {C}(a, s, u, w)
+\}$, and similarly, $s\overset{a}{\rightarrow}s'$ denotes ternary
+transition consistency.
+
+Clearly, the description in terms of relations between individual
+actions and markings doesn't capture behavior, therefore the next step
+is to explore relations between sequences of actions and markings.
+
+\subsection {Firing sequence}
+
+In all relevant cases it is possible to modify statements about
+consistency by replacing individual elements of $\mathbf {A}$ and
+$\mathbf {S}$ with elements of free monoids $\mathbf {A}^{\!\ast}$ and
+$\mathbf {S}^\ast$.  We adopt the symbol $.$ as the concatenation
+operator (usually omitted), define $\mathbf {A}^{\!k} = \{ \alpha \in
+\mathbf {A}^{\!\ast} \;|\; |\alpha| = k \}$ (same for $\mathbf
+        {S}^k$), where $|\alpha|$ denotes the length of word $\alpha$,
+        and use parentheses to distinguish single-letter words from
+        letters themselves --- thus, in particular, $\mathbf {A}^{\!1}
+        = \{ (a) \;|\; a \in \mathbf {A} \}$.
+
+Let us start from informal definition of consistency for the quadruple
+case.
+
+\begin {quote}
+    Given $u \in \mathbf {U}$ and $w \in \mathbf {W}$, two words, one
+    from $\mathbf {A}^{\!\ast}$, another from $\mathbf {S}^\ast$, are
+    consistent iff enablement and firing conditions are satisfied for
+    all corresponding actions and markings.
+\end {quote}
+
+\noindent
+We say that an action sequence with a corresponding marking sequence
+jointly form a {\em firing sequence}\/ --- if they are constistent for
+a given $u$ and $w$.
+
+There may be a partial correspondence between action and marking
+sequences.  If $|\alpha| + 1 < |\sigma|$, then action sequence
+$\alpha$ has to be consistent with the corresponding prefix of the
+given marking sequence $\sigma$, while the remaining part of $\sigma$
+is expected to be matched by at least one action sequence $\alpha'$ of
+proper length, such that the enablement and firing conditions are
+satisfied throughout --- and conversely for $|\alpha| + 1 > |\sigma|$.
+The {\em length}\/ of a firing sequence $(\alpha, \sigma)$ is the
+number $\max (|\alpha|, |\sigma| - 1)$.
+
+Formally, we introduce the sequential consistency predicate $\bm
+{C}_k$ parameterized by firing sequence length $k \in \mathbb {N}_0$,
+and define the {\em run consistency}\/ relation.
+
+\begin {definition}\label{def:k-consistency}
+  Assuming that $a \in \mathbf {A}$, $s, s' \in \mathbf {S}$, $\alpha,
+  \alpha' \in \mathbf {A}^{\!\ast}$, $\sigma, \sigma' \in \mathbf
+          {S}^\ast$, $u \in \mathbf {U}$, and $w \in \mathbf {W}$ are
+          arbitrary, $\lambda_{\mathbf {A}} \in \mathbf {A}^{\!\ast}$,
+          $\lambda_{\mathbf {S}} \in \mathbf {S}^{\ast}$ are empty
+          words, and $k \in \mathbb {N}_0$,
+
+\begin {enumerate}[leftmargin=16pt]
+  \item a quadruple $(\alpha, \sigma, u, w)$ is $k$-consistent,
+    symbolically $\bm {C}_k(\alpha, \sigma, u, w)$, iff one of the
+    following is true:
+%
+\begin {enumerate}[leftmargin=16pt]
+\item[a.] $\displaystyle\alpha = \lambda_{\mathbf {A}} \,\land\, \sigma = (s) \;\land\; \bm {C}(s, u, w)$,
+  %
+\item[b.] $\displaystyle|\alpha| = k = |\sigma| - 1 \;\land\;
+  \alpha = (a)\alpha' \,\land\, \sigma = (ss')\sigma' \;\land\; \bm {C}(a, s, s', u, w) \,\land\,\\
+  \,\land\, \bm {C}_{k-1}(\alpha', (s')\sigma', u, w)$,
+  %
+\item[c.] $\displaystyle|\alpha| < k = |\sigma| - 1 \;\land\;
+  \Exists_{\alpha' \in \mathbf {A}^{\!|\sigma| - |\alpha| - 1}}\,\bm {C}_k(\alpha\alpha', \sigma, u, w)$,
+  %
+\item[d.] $\displaystyle|\alpha| = k > |\sigma| - 1 \;\land\;
+    \Exists_{\sigma' \in \mathbf {S}^{|\alpha| + 1 - |\sigma|}}\,\bm {C}_k(\alpha, \sigma\sigma', u, w)$,
+\end {enumerate}
+
+\item $k$-consistency of triples is given by
+%
+\begin {enumerate}[leftmargin=16pt]
+\item[a.] $\displaystyle\bm {C}_k(\alpha, u, w) \iff \Exists_{\sigma \in \mathbf {S}^\ast}\,\bm {C}_k(\alpha, \sigma, u, w)$,
+  %
+\item[b.] $\displaystyle\bm {C}_k(\sigma, u, w) \iff \Exists_{\alpha \in \mathbf {A}^{\!\ast}}\,\bm {C}_k(\alpha, \sigma, u, w)$,
+\end {enumerate}
+
+\item {\em run consistency}\/ relation is the set of quadruples,
+%
+\begin {equation*}
+  \{ (\alpha, \sigma, u, w) \in \mathbf {A}^{\!\ast} \times \mathbf {S}^{\ast} \times \mathbf {U} \times \mathbf {W}
+  \;|\; \bm {C}_{\max (|\alpha|, |\sigma| - 1)}(\alpha, \sigma, u, w) \}.\qed
+\end {equation*}
+\end {enumerate}
+\end {definition}
+
+\noindent
+If $u$ and $w$ are fixed, then the preferred simplified form of run
+consistency is a binary relation $\searrow \subseteq \mathbf
+{S}^{\ast} \times \mathbf {A}^{\!\ast}$.
+
+\end {document}
