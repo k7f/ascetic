@@ -10,6 +10,8 @@
 \theoremstyle{definition}
 \newtheorem{definition}{Definition}[section]
 \newtheorem{lemma}{Lemma}[section]
+\newtheorem{example}{Example}[section]
+\newtheorem{remark}{Remark}[section]
 
 \setcounter{equation}{0}
 \renewcommand{\theequation}{\arabic{section}.\arabic{equation}}
@@ -97,32 +99,122 @@
 \makeatother
 
 \begin {document}
-\title {Firing domain sequences\\(a draft)}
-\author {}
-\date {}
-\maketitle
+\title {Flux types, their runs\\and state space decomposition\\(a
+  draft)} \author {} \date {} \maketitle
 
 \section {Introduction}
 
-To set the stage we need symbols $\mathbb {N}$, $\mathbb {N}_0$,
-$\mathbb {B}$, $\xmathbb {0}$, $\xmathbb {1}$, $\xbot$, and $\xtop$,
-where first two symbols represent, respectively, positive and
-nonnegative integers, last four represent some non-integer constants,
-and $\mathbb {B} = \{ \xmathbb {0}, \xmathbb {1} \}$.  Then, we
-introduce an arbitrary, finite or countably infinite set $\mathbf {X}$
-of (``unsigned integer'') {\em variables}\/.  We call $\mathbf {U} =
-(\mathbb {N}\cup\{\xtop\})^\mathbf {X}$ --- the set of {\em
-  envelopes}\/ (upper bounds), and $\mathbf {S} = \mathbb
-{N}_0^\mathbf {X}$ --- the set of {\em markings}\/.
+Our primary motivation is to learn how to answer some interesting
+questions concerning state space of any cause-effect structure of
+reasonable size --- and to pay for the answer with an acceptable
+computational effort.  A more distant goal is to relate algebraic
+properties of \mbox {c-e} structures to compositional aspects of their
+behavior.  In practical terms, we want the ability to predict
+behavioral consequences of certain structural operations (take it with
+a grain of salt, of course).
 
-We also assume that there is a finite set $\mathbf {A}$ of {\em
-  actions}\/ (aka {\em aliens}\/), call $\mathbf {W} = (\mathbb
-{N}_0\cup\{\xbot, \xtop\})^{\mathbf {A} \times \mathbb {B} \times
-  \mathbf {X}}$ --- the set of {\em weightings}\/, and for $a \in
-\mathbf {A}$, $x \in \mathbf {X}$ write $a^- = (a, \xmathbb {0})$,
-$a^+ = (a, \xmathbb {1})$, $[a^-x] = (a, \xmathbb {0}, x)$, and
-$[a^+x] = (a, \xmathbb {1}, x)$.  It is sometimes convenient to use
-custom names of some subsets of $\mathbf {X}$:
+\section {Basic notions}
+
+To set the stage, we need symbols $\mathbb {N}$, $\mathbb {N}_0$,
+$\mathbb {Z}$, $\mathbb {B}$, $\xmathbb {0}$, $\xmathbb {1}$, $\xbot$,
+and $\xtop$, where first three symbols represent, respectively,
+positive, nonnegative, and all integers, last four represent some
+non-integer constants, and $\mathbb {B} = \{ \xmathbb {0}, \xmathbb
+{1} \}$.  We also use shorthands, $\mathbb {N}_{\,\omega} = \mathbb
+{N}\cup\{\xtop\}$, and $\mathbb {Z}_{\,\omega} = \mathbb
+{Z}\cup\{\xbot,\xtop\}$.
+
+We need to extend standard integer arithmetics by declaring that
+$\xbot$ is the absorbing element of multiplication and the neutral
+element of addition, and conversely, $\xtop$ is the absorbing element
+of addition and the neutral element of multiplication in $\mathbb
+{Z}_{\,\omega}$.  In particular, $z \cdot \xbot = \xbot$, $z + \xtop =
+\xtop$, and $z + \xbot = z \cdot \xtop = z$, for any $z \in \mathbb
+     {Z}_{\,\omega}$.  The extended integer operations are lifted
+     (pointwise) so that they apply to functions of the type $X
+     \rightarrow \mathbb {Z}_{\,\omega}$, where $X$ is any fixed set.
+     Similarly, the linear ordering of integers is extended, by
+     declaring that any integer is greater than $\xbot$ and less than
+     $\xtop$, and lifted to the partial order $f \leq g \iff
+     \forall_{x \in X}\,fx \leq gx$, where $f, g\!: X \rightarrow
+     \mathbb {Z}_{\,\omega}$.  A constant $z \in \mathbb
+             {Z}_{\,\omega}$ appearing in an expression may be
+             interpreted as the constant function $X \rightarrow \{ z
+             \}$, whenever such interpretation is feasible.
+
+\subsection {Flux type}
+
+\begin {definition}\label {def:flux-type}
+Take an arbitrary, nonempty finite or countably infinite set $\mathbf
+{X}$ of {\em variables}\/.  Call $\mathbf {S} = \mathbb {Z}^\mathbf
+{X}$ the set of {\em markings}\/, and $\mathbf {V} = 2^{\mathbf {S}}$
+--- the set of {\em scopes}\/.
+
+Assume also, that there is a nonempty finite or countably infinite set
+$\mathbf {A}$ of {\em actions}\/.  Call $\mathbf {W} = \mathbb
+{Z}_{\,\omega}^{\mathbf {A}{\times}\mathbb {B}{\times}\mathbf {X}}$
+the set of {\em weightings}\/, and for $a \in \mathbf {A}$, $x \in
+\mathbf {X}$, declare $[a^-] = (a, \xmathbb {0})$, $[a^+] = (a,
+\xmathbb {1})$, $[{}^-x] = (\xmathbb {0}, x)$, $[{}^+x] = (\xmathbb
+         {1}, x)$, $[a^-x] = (a, \xmathbb {0}, x)$, and $[a^+x] = (a,
+         \xmathbb {1}, x)$.
+
+Given sets $\mathbf {X}$ and $\mathbf {A}$ as above, a {\em step
+  relation}\/ is any set $\mathbf {T} \subseteq \mathbf
+{V}{\times}\mathbf {W}{\times}\mathbf {S}{\times}\mathbf
+{A}{\times}\mathbf {S}$, such that $(v, w, s, a, s') \in \mathbf {T}
+\,\Longrightarrow\, s,s' \in v$, a {\em flux type}\/ is any so defined
+triple, $(\mathbf {X}, \mathbf {A}, \mathbf {T})$, and a {\em
+  subtype}\/ of it is any triple $(\mathbf {X'}, \mathbf {A'}, \mathbf
+{T'})$, such that $\mathbf {X'} \subseteq \mathbf {X}$, $\mathbf {A'}
+\subseteq \mathbf {A}$ and $\mathbf {T'} \subseteq \mathbf {T}$.  A
+flux type is
+%
+\begin {itemize}
+\item {\em finite}\/ iff $\mathbf {X}$, $\mathbf {A}$ and $\mathbf
+  {T}$ are all finite,
+  %
+\item {\em semideterministic}\/ iff $\mathbf {T}$ is the graph of some
+  partial function $\mathbf {V}{\times}\mathbf {W}{\times}\mathbf
+  {S}{\times}\mathbf {A} \rightarrow \mathbf {S}$,
+  %
+\item {\em deterministic}\/ iff $\mathbf {T}$ is the graph of some
+  partial function $\mathbf {V}{\times}\mathbf {W}{\times}\mathbf
+  {S} \rightarrow \mathbf {A}{\times}\mathbf {S}$.
+\end {itemize}
+%
+If $t = (v, w, s, a, s') \in \mathbf {T}$ for some flux type $(\mathbf
+{X}, \mathbf {A}, \mathbf {T})$, then $t$ is a {\em step}\/ in
+$\mathbf {T}$, $s$ is the {\em input marking}\/, and $s'$ is the {\em
+  output marking}\/ of $t$.  Finally, {\em enablement relations}\/ are
+subsets of the set $\{ (v, w, s, a) \in \mathbf {V}{\times}\mathbf
+{W}{\times}\mathbf {S}{\times}\mathbf {A} \;|\; s \in v \}$.\qed
+\end {definition}
+
+\begin {remark}
+  Whenever we declare that symbols $\mathbf {X}$, $\mathbf {A}$, and
+  $\mathbf {T}$ denote components of a flux type, we also implicitly
+  reserve symbols $\mathbf {S}$, $\mathbf {U}$, $\mathbf {V}$, and
+  $\mathbf {W}$ to be understood in accordance with definitions \ref
+  {def:flux-type} and \ref {def:canonical-scope} --- and to be
+  interpreted as if they were parameterized: $\mathbf {S}_{\mathbf
+    {X}}$, $\mathbf {U}_{\mathbf {X}}$, $\mathbf {V}_{\mathbf {X}}$,
+  and $\mathbf {W}_{\mathbf {X}, \mathbf {A}}$.
+\end {remark}
+
+\begin {remark}\label {flux-class}
+   We sometimes call a collection of flux types their ``class'',
+   without providing any formal definition --- roughly, a class
+   contains all flux types possessing some property.  Most of our
+   attention is focused on the ``canonical'' class (see definition
+   \ref {def:canonical-consistency}).  A similar notion is a
+   ``family'' --- a maximal subset of a given collection of flux
+   types, such that all pairs of family members satisfy some property
+   (for example, at least one member is homomorphic to the other).
+\end {remark}
+
+It is convenient to use custom names of some subsets of
+$\mathbf {X}$:
 %
 \begin {align*}
 \qquad\qquad\qquad\textit {pre-set}\/:&&\varset {pre}{w}a =&\; \{ x \in \mathbf {X} \;|\; w[a^-x] \neq \xbot \},\qquad\qquad\qquad\\
@@ -134,70 +226,300 @@ custom names of some subsets of $\mathbf {X}$:
 \qquad\qquad\qquad\textit {exhibitors}\/:&& \varset {exh}{w}a =&\; \{ x \in \mathbf {X} \;|\; w[a^+x] = \xtop \},\qquad\qquad\qquad
 \end {align*}
 %
-where $a \in \mathbf {A}$ and $w \in \mathbf {W}$.  Whenever weighting
-is fixed, the customary notation may be applied: $\preset{a}$ for a
-pre-set and $\postset{a}$ for a post-set of action $a$.
+where $a \in \mathbf {A}$ and $w \in \mathbf {W}$.  Customary
+notation: $\preset{a} = \varset {pre}{w}a$, $\postset{a} = \varset
+{post}{w}a$ and $\postset{\preset{a}} = \preset{a} \cup \postset{a}$,
+may be applied whenever weighting $w$ is fixed.
 
-The usual integer arithmetics is extended by declaring that $\xbot$ is
-the absorbing element of multiplication and the neutral element of
-addition, and conversely, $\xtop$ is the absorbing element of addition
-and the neutral element of multiplication.  In particular, $n \cdot
-\xbot = \xbot$, $n + \xtop = \xtop$, and $n + \xbot = n \cdot \xtop =
-n$, for any $n \in \mathbb {N}_0$.  The extended integer operations
-are lifted (pointwise) so that they apply to functions $\mathbf {X}
-\rightarrow \mathbb {N}_0 \cup \{\xbot, \xtop\}$.  Similarly, the
-linear ordering of integers is extended, by declaring that any integer
-is greater than $\xbot$ and less than $\xtop$, and lifted to the
-partial order $f \leq g \iff \forall_{x \in \mathbf {X}}\,fx \leq gx$,
-where $f, g\!: \mathbf {X} \rightarrow \mathbb {N}_0 \cup \{\xbot,
-\xtop\}$.
+\begin {definition}\label {def:consistency-and-instance}
+  We say that an action, input marking, output marking, scope,
+  weighting, or any combination of the five, is {\em consistent}\/
+  with a given step relation, if it is contained in the corresponding
+  projection of that relation.  A projection of arity 2 or greater is
+  called, in its entirety, the {\em maximally consistent}\/ relation.
 
-\subsection {Consistency}
-
-Now we can introduce the notion of {\em consistency}\/ represented by
-the predicate $\bm {C}$.  For any $s \in \mathbf {S}$, $u \in \mathbf
-{U}$, and $w \in \mathbf {W}$,
-  %
-\begin {align}\label{eq:static-consistency}\stepcounter{equation}
-  \tag{\theequation.a}
-  \bm {C}(s, u) \iff &s \leq u,\\
-  %
-  \tag{\theequation.b}
-  \bm {C}w \iff &\Forall_{x \in \mathbf {X}, a \in \mathbf {A}}\,w[a^-x] \cdot w[a^+x] \in \{\xbot, 0\},\\
-  %
-  \tag{\theequation.c}
-  \bm {C}(u, w) \iff &\bm {C}w \,\land\, \Forall_{(a, b, x) \in \mathbf {A} \times \mathbb {B} \times \mathbf {X} }\;%
-  w(a,b,x) > ux \Rightarrow w(a,b,x) = \xtop,\\
-  %
-  \tag{\theequation.d}
-  \bm {C}(s, u, w) \iff &\bm {C}(s, u) \,\land\, \bm {C}(u, w).
-\end {align}
-
-The definition of consistency is developed further to cover more
-complex objects.  Given an action $a \in \mathbf {A}$, the quadruple
-$(a, s, u, w)$ is consistent iff $\bm {C}(s, u, w)$ and the {\em
-  enablement condition}\/,
+  In particular, given step relation $\mathbf {T}$, we define the {\em
+    instantiation}\/ relation as the projection of $\mathbf {T}$ onto
+  its first two coordinates,
 %
-\begin {align}\label {eq:enablement-condition}
+\begin {equation*}
+  \mathbf {Q}_{\mathbf {T}} = \{\, (v, w) \in \mathbf {V}{\times}\mathbf {W} \;|\;
+  \Exists_{(s, a, s')\,\in\,v{\times}\mathbf {A}{\times}v}\,
+  (v, w, s, a, s') \in \mathbf {T}\, \},
+\end {equation*}
+%
+and similarly, the {\em enablement}\/ relation is defined as
+%
+\begin {equation*}
+  \mathbf {E}_{\mathbf {T}} = \{\, (v, w, s, a) \in \mathbf {V}{\times}\mathbf {W}{\times}\mathbf {S}{\times}\mathbf {A}
+  \;|\; \Exists_{s'\,\in\, v}\,(v, w, s, a, s') \in \mathbf {T}\, \}.
+\end {equation*}
+
+Any pair of scope and weighting consistent with step relation $\mathbf
+{T}$ is called an {\em instantiation}\/ of $\mathbf {T}$.  A flux type
+is called {\em instantiated}\/ iff its step relation has exactly one
+instantiation.  By a {\em flux instance}\/ of some flux type we
+understand any of its maximal instantiated subtypes.
+
+For an instantiation $(v, w) \in \mathbf {Q}_{\mathbf {T}}$ we define
+that its
+%
+\begin {itemize}
+\item {\em effective scope}\/ is the set $\bm {l}_1v\cup\bm {r}_1v$
+  (see definition \ref {def:lr-scopes}),
+  %
+\item {\em slicing operator}\/ $\bm {s}\!: \mathbf {A} \rightarrow
+  2^{\mathbf {S}^2}$ is the mapping $a \mapsto \{\, (s, s') \in
+  v{\times}v \;|\; (v, w, s, a, s') \in \mathbf {T}\, \}$, extended to
+  $\mathbf {A} \supseteq A \mapsto \bigcup_{a \in A}\bm {s}a$,
+%
+\item {\em marking graph}\/ is the directed graph with vertex set $v$
+  and edge set $\bm {s}\mathbf {A}$, and subgraphs induced by a single
+  action are called {\em slices}\/.
+\end {itemize}
+%
+An instantiation $(v, w) \in \mathbf {Q}_{\mathbf {T}}$ is
+%
+\begin {itemize}
+\item {\em transitive}\/ iff for all $s, s', s'' \in v$,
+  %
+  \begin {equation*}
+    \Exists_{a,a' \in \mathbf {A}}\,((v,w,s,a,s'), (v,w,s',a',s'')) \in \mathbf {T}^2
+    \Longrightarrow \Exists_{a'' \in \mathbf {A}}\,(v,w,s,a'',s'') \in \mathbf {T},
+  \end {equation*}
+  %
+\item {\em symmetric}\/ iff for all $s, s' \in v$,
+  %
+  \begin {equation*}
+    \Exists_{a \in \mathbf {A}}\,(v,w,s,a,s') \in \mathbf {T}
+    \iff \Exists_{a' \in \mathbf {A}}\,(v,w,s',a',s) \in \mathbf {T},
+  \end {equation*}
+  %
+\item {\em reflexive}\/ iff $s \in v \Longrightarrow \Exists_{a \in
+  \mathbf {A}}\,(v,w,s,a,s) \in \mathbf {T}$,
+  %
+\item {\em irreflexive}\/ iff $ \Forall_{s \in v, a \in \mathbf
+  {A}}\,(v,w,s,a,s) \not\in \mathbf {T}$,
+  %
+\item {\em complete}\/ iff $v = \bm {l}_1v \cup \bm {r}_1v$,
+  %
+\item {\em total in}\/ $u \subseteq v$ iff $u \ni s \neq s' \in u
+  \Longrightarrow \Exists_{a \in \mathbf {A}}\,(v, w, s, a, s') \in
+  \mathbf {T} \,\lor\, (v, w, s', a, s) \in \mathbf {T}$,
+  %
+\item {\em effectively total}\/ iff it is total in $\bm {l}_1v \cup
+  \bm {r}_1v$,
+  %
+\item {\em connected}\/ iff all its transitive closures are
+  effectively total,
+  %
+\item {\em total}\/ iff it is total in $v$.
+\end {itemize}
+%
+A flux type is transitive iff all instantiations of its step relation
+are transitive --- and similarly for other properties shared by all
+instantiations.\qed
+\end {definition}
+
+\begin {remark}
+  If there is more than one action in $\mathbf {A}$, then any step
+  relation over $\mathbf {A}$ has many transitive closures.  However,
+  they are all FIXME family.  Therefore, in particular, all transitive
+  closures are total in some scope iff any of them is.
+\end {remark}
+
+\subsection {Live and reachable scopes}
+
+\begin {definition}\label {def:lr-scopes}
+Take a flux type $(\mathbf {X}, \mathbf {A}, \mathbf {T})$, together
+with sets $\mathbf {V}$ and $\mathbf {W}$ as in definition \ref
+{def:flux-type}, and with parameters: $k \in \mathbb {N}_0$ and $q =
+(v, w) \in \mathbf {Q}_{\mathbf {T}}$.  Scope transformation
+operators, $\bm {l}$, $\bm {r}$, $\bm {L}$, $\bm {R}\!: \mathbf {V}
+\rightarrow \mathbf {V}$, are mappings such that for every $u
+\subseteq v$,
+%
+\begin {align*}
+  &\;\bm {l}_{0,q} = \bm {r}_{0,q} = \bm {L}_{0,q} = \bm {R}_{0,q} = \id,\\
+  %
+  &\begin {rcases}
+  \bm {l}_{k,q}u\!\!\!\!&=\, \{\, s \in u \;|\; \Exists_{a \in \mathbf {A},\, s' \in \bm {l}_{k-1,q}u}\,
+  (v, w, s, a, s') \in \mathbf {T}\, \}\\
+  %
+  \bm {r}_{k,q}u\!\!\!\!&=\, \{\, s \in u \;|\; \Exists_{a \in \mathbf {A},\, s' \in \bm {r}_{k-1,q}u}\,
+  (v, w, s', a, s) \in \mathbf {T}\, \}\\
+  %
+  \bm {L}_{k,q}u\!\!\!\!&=\, \{\, s \in v \;|\; \Exists_{a \in \mathbf {A},\, s' \in \bm {L}_{k-1,q}u}\,
+  (v, w, s, a, s') \in \mathbf {T}\, \}\\
+  %
+  \bm {R}_{k,q}u\!\!\!\!&=\, \{\, s \in v \;|\; \Exists_{a \in \mathbf {A},\, s' \in \bm {R}_{k-1,q}u}\,
+  (v, w, s', a, s) \in \mathbf {T}\, \}\quad
+  \end {rcases}
+  \textrm {for }k > 0,\\
+  %
+  &\;\bm {l}_q \;= \bigcap_{k>0}\bm {l}_{k,q},\quad\quad\bm {r}_q = \bigcap_{k>0}\bm {r}_{k,q},\\
+  %
+  &\;\bm {L}_q = \bigcup_{k>0}\bm {L}_{k,q},\quad\;\bm {R}_q = \bigcup_{k>0}\bm {R}_{k,q}.
+\end {align*}
+%
+If $q$ is known, then we use shorthands: $\bm {l}_k = \bm {l}_{k,q}$,
+$\bm {l} = \bm {l}_q$, and similarly for $\bm {r}$, $\bm {L}$ and $\bm
+{R}$.
+
+We call $\bm {l}_ku$ (resp.\ $\bm {r}_ku$) the $k$-{\em live}\/
+(resp.\ $k$-{\em reachable}\/) {\em subscope}\/ of $u$, and $\bm
+{L}_ku$ (resp.\ $\bm {R}_ku$) --- the $k$-{\em live prescope}\/
+(resp.\ $k$-{\em reachable postscope}\/) of $u$.  Similarly, $\bm
+{l}u$ is the live subscope, $\bm {r}u$ is the reachable subscope, $\bm
+{L}u$ is the prescope, and $\bm {R}u$ is the postscope of $u$.  The
+set $\bm {o}u = \bm {l}u \cap \bm {r}u$ is the {\em underscope}\/ of
+$u$, and the set $\bm {O}u = u \cup \bm {L}u \cup \bm {R}u$ is the
+{\em overscope}\/ of $u$.
+
+Two scopes, $u, u' \subseteq v$ are $\bm {l}_k$-equivalent
+(resp.\ $\bm {l}$-equivalent) iff $\bm {l}_ku = \bm {l}_ku'$
+(resp.\ $\bm {l}u = \bm {l}u'$) --- and similarly for $\bm {r}$, $\bm
+{o}$, $\bm {L}$, $\bm {R}$ and $\bm {O}$.\qed
+\end {definition}
+
+\begin {remark}
+  The $k$-live subscope $\bm {l}_ku$ (resp.\ $k$-reachable subscope
+  $\bm {r}_ku$) is the subset of $u$ consisting of all initial
+  (resp.\ final) markings of a $k$-step evolution restricted to $u$.
+  The $k$-live prescope $\bm {L}_ku$ (resp.\ $k$-reachable postscope
+  $\bm {R}_ku$) is the subset of $v$ consisting of all initial
+  (resp.\ final) markings of a $k$-step evolution ending at
+  (resp.\ starting from) a marking in $u$.
+\end {remark}
+
+\begin {remark}
+  FIXME modalities: eventualy dead scope is different from potentially
+  dead scope
+\end {remark}
+
+Properties.
+
+All scope transformation operators are non-decreasing:
+$u \subseteq u' \Longrightarrow \bm {\tau}u \subseteq \bm {\tau}u'$,
+where $\bm {\tau}$ is one of $\bm {l}$, $\bm {r}$, etc.  Subscope and
+underscope operators are anti-extensive, overscope operator is
+extensive.
+
+FIXME Fixpoints
+
+\subsection {Canonical consistency}
+
+From now on, we abandon the general settings, and focus instead on the
+class of ``canonical'' flux types (see remark \ref {flux-class}) and
+their canonical instances --- specifically reflecting the behavior of
+extended \mbox {c-e} structures in accordance with the original
+formulation of their semantics.
+
+\begin {definition}\label {def:canonical-scope}
+  Given a flux type $(\mathbf {X}, \mathbf {A}, \mathbf {T})$, a {\em
+    scope interval}\/ is any nonempty intersection of $\mathbf {S} =
+  \mathbb {Z}^{\mathbf {X}}$ with a closed interval in $\mathbb
+          {Z}_{\omega}^{\mathbf {X}}$ under $\leq$.  A scope interval
+          $u \subseteq \mathbf {S}$ is {\em canonical}\/ iff it is
+          nowhere negative,
+  %
+  \begin {equation*}
+  \Exists_{s_0,\,s_1}\,
+  s_0 = \mathsmaller{\bigwedge}u \in \mathbb {N}_0^\mathbf {X} \,\land\,
+  s_1 = \mathsmaller{\bigvee}u \in \mathbb {N}_\omega^\mathbf {X} \,\land\,
+  u = \{ s \in \mathbf {S} \;|\; s_0 \leq s \leq s_1 \},
+  \end {equation*}
+  %
+  A scope $u \subseteq \mathbf {S}$ is {\em canonical}\/ iff it is a
+  union of a nonempty finite collection of canonical scope intervals.
+  The least upper bound of a canonical scope is called the {\em
+    envelope}\/ of that scope.  The set of all canonical scopes is
+  $\mathbf {U}$.\qed
+\end {definition}
+
+\begin {remark}
+  The union of all canonical scopes is the set $\mathbb {N}_0^{\mathbf
+    {X}}$, which forms a lattice under $\leq$, and the bounded lattice
+  over $(\mathbb {N}_0\cup\{\xtop\})^{\mathbf {X}}$ is its completion.
+  We write $\bigcup\mathbf {U}$ for the former, and $\bigsqcup\mathbf
+  {U}$ for the latter.
+\end {remark}
+
+\begin {remark}
+  For every scope in $\mathbf {U}$ a minimal decomposition into
+  non-overlapping intervals exists, but is seldom unique.  FIXME
+  clarify and extend.
+\end {remark}
+
+\begin {remark}
+  The notion of canonical scope presented here is designed for
+  behavioral analysis.  It is more general than necessary for static
+  description, of course, because the actual set of all markings
+  allowed for any cause-effect structure translates to a scope $u$,
+  which has everywhere positive envelope (capacity assignment) and is
+  always equal to a single interval: $u = [0, {\bigvee}u] \cap \mathbf
+  {S}$, where ${\bigvee}u \geq 1$.
+\end {remark}
+
+In order to identify the class of canonical flux types, it is
+sufficient to specify the quintuple canonical consistency predicate
+(see definition \ref {def:consistency-and-instance}).  However, we
+begin with lower arities, and incrementally develop the variadic
+predicate $\bm {C}$.
+
+\begin {definition}\label {def:canonical-consistency}
+  A flux type $(\mathbf {X}, \mathbf {A}, \mathbf {T})$ is {\em
+    canonical}\/ iff it is finite and semideterministic, and its step
+  relation is defined by the {\em is-canonical}\/ predicate $\bm {C}$,
+  such that for any $a \in \mathbf {A}$, $s, s' \in \mathbf {S}$, $u
+  \in \mathbf {V}$, and $w \in \mathbf {W}$,
+  %
+\begin {align}\label{eq:is-canonical}\stepcounter{equation}
+  \tag{\theequation.a}
+  \bm {C}u \iff &u \in \mathbf {U},\\
+  %
+  \tag{\theequation.b}\label{eq:is-canonical-b}
+  \bm {C}w \iff &\Forall_{x \in \mathbf {X}, a \in \mathbf {A}}\,w[a^-x] \cdot w[a^+x] \in \{\xbot, 0\}
+  \;\land\; w[a^-x] + w[a^+x] \in \mathbb {N}_0 \cup \{ \xbot, \xtop \},\\
+  %
+  \tag{\theequation.c}\label{eq:is-canonical-c}
+  \bm {C}(u, w) \iff &\bm {C}u \,\land\, \bm {C}w \,\land\, \Forall_{(a, b, x) \in \mathbf {A}{\times}\mathbb {B}{\times}\mathbf {X} }\;%
+  w(a,b,x) > (\mathsmaller{\bigvee}u)x \Rightarrow w(a,b,x) = \xtop,\\
+  %
+  \tag{\theequation.d}\label{eq:is-canonical-d}
+  \bm {C}(u, s) \iff &\bm {C}u \,\land\, s \in u,\\
+  %
+  \tag{\theequation.e}\label{eq:is-canonical-e}
+  \bm {C}(u, w, s) \iff &\bm {C}(u, w) \,\land\, \bm {C}(u, s);
+\end {align}
+%
+the quadruple $(u, w, s, a)$ is canonical iff $\bm {C}(u, w, s)$ and
+the two {\em enablement conditions}\/,
+%
+\begin {align}\label {eq:enablement-conditions}
+  \tag{\theequation.a}
   \Forall_{x \in \mathbf {X}}\;&%
   \begin {cases}
     sx = 0, &\textrm { if } w[a^-x] = \xtop\\
-    \max(w[a^-x],1) \leq sx, &\textrm { otherwise}
-  \end {cases}
+    \max(w[a^-x],1) \leq sx, &\textrm { if } w[a^-x] \in \mathbb {N}_0,
+  \end {cases}\\
   %
-  \land\;&%
+  \intertext{and}
+  %
+  \tag{\theequation.b}
+  \Forall_{x \in \mathbf {X}}\;&%
   \begin {cases}
     sx > 0, &\textrm { if } w[a^+x] = \xtop\\
-    w[a^+x] \leq ux - sx, &\textrm { otherwise},
+    w[a^+x] \leq (\bigvee u)x - sx, &\textrm { otherwise},
   \end {cases}
 \end {align}
 %
-holds (alternatively, we say that $a$ is {\em enabled}\/ in $s$ given
-$u$ and $w$).  Moreover, given $a \in \mathbf {A}$ and $s' \in \mathbf
-{S}$, the quintuple $(a, s, s', u, w)$ is consistent iff $\bm {C}(a,
-s, u, w)$ and the {\em firing condition}\/,
+hold --- if this is the case, we can say that action $a$ is {\em
+  enabled}\/ in marking $s$ for a given $(u, w)$; finally, the
+quintuple $(u, w, s, a, s')$ is canonical iff $\bm {C}(u, w, s, a)$,
+$\bm {C}(u, s')$, and the {\em step condition}\/,
 %
-\begin {equation}\label {eq:firing-condition}
+\begin {equation}\label {eq:step-condition}
 \Forall_{x \in \mathbf {X}}\; s'x =
 \begin {cases}
 sx,& \text {if } w[a^-x] + w[a^+x] = \xtop\\
@@ -205,109 +527,40 @@ sx - w[a^-x] + w[a^+x],& \text {otherwise.}
 \end {cases}
 \end {equation}
 %
-is satisfied.  In what follows, the relation defined by the quadruple
-consistency predicate is called {\em enablement consistency}\/, while
-the quintuple variant specifies {\em transition consistency}\/
-relation.  Fixing $u$ and $w$ reduces these relations to binary and
-ternary --- in such cases special notation improves readability:
-$s\searrow a$ denotes binary enablement consistency, i.e.\ $\searrow =
-\{ (s, a) \in \mathbf {S} \times \mathbf {A} \;|\; \bm {C}(a, s, u, w)
-\}$, and similarly, $s\overset{a}{\rightarrow}s'$ denotes ternary
-transition consistency.
-
-Clearly, the description in terms of relations between individual
-actions and markings doesn't capture behavior, therefore the next step
-is to explore relations between sequences of actions and markings.
-
-\subsection {Firing sequence}
-
-In all relevant cases it is possible to modify statements about
-consistency by replacing individual elements of $\mathbf {A}$ and
-$\mathbf {S}$ with elements of free monoids $\mathbf {A}^{\!\ast}$ and
-$\mathbf {S}^\ast$.  We adopt the symbol $.$ as the concatenation
-operator (usually omitted), define $\mathbf {A}^{\!k} = \{ \alpha \in
-\mathbf {A}^{\!\ast} \;|\; |\alpha| = k \}$ (same for $\mathbf
-        {S}^k$), where $|\alpha|$ denotes the length of word $\alpha$,
-        and use parentheses to distinguish single-letter words from
-        letters themselves --- thus, in particular, $\mathbf {A}^{\!1}
-        = \{ (a) \;|\; a \in \mathbf {A} \}$.
-
-Let us start from informal definition of consistency for the quadruple
-case.
-
-\begin {quote}
-    Given $u \in \mathbf {U}$ and $w \in \mathbf {W}$, two words, one
-    from $\mathbf {A}^{\!\ast}$, another from $\mathbf {S}^\ast$, are
-    consistent iff enablement and firing conditions are satisfied for
-    all corresponding actions and markings.
-\end {quote}
-
-\noindent
-We say that an action sequence with a corresponding marking sequence
-jointly form a {\em firing sequence}\/ --- if they are constistent for
-a given $u$ and $w$.
-
-There may be a partial correspondence between action and marking
-sequences.  If $|\alpha| + 1 < |\sigma|$, then action sequence
-$\alpha$ has to be consistent with the corresponding prefix of the
-given marking sequence $\sigma$, while the remaining part of $\sigma$
-is expected to be matched by at least one action sequence $\alpha'$ of
-proper length, such that the enablement and firing conditions are
-satisfied throughout --- and conversely for $|\alpha| + 1 > |\sigma|$.
-The {\em length}\/ of a firing sequence $(\alpha, \sigma)$ is the
-number $\max (|\alpha|, |\sigma| - 1)$.
-
-Formally, we introduce the sequential consistency predicate $\bm
-{C}_k$ parameterized by firing sequence length $k \in \mathbb {N}_0$,
-and define the {\em run consistency}\/ relation.
-
-\begin {definition}\label{def:k-consistency}
-  Assuming that $a \in \mathbf {A}$, $s, s' \in \mathbf {S}$, $\alpha,
-  \alpha' \in \mathbf {A}^{\!\ast}$, $\sigma, \sigma' \in \mathbf
-          {S}^\ast$, $u \in \mathbf {U}$, and $w \in \mathbf {W}$ are
-          arbitrary, $\lambda_{\mathbf {A}} \in \mathbf {A}^{\!\ast}$,
-          $\lambda_{\mathbf {S}} \in \mathbf {S}^{\ast}$ are empty
-          words, and $k \in \mathbb {N}_0$,
-
-\begin {enumerate}[leftmargin=16pt]
-  \item a quadruple $(\alpha, \sigma, u, w)$ is $k$-consistent,
-    symbolically $\bm {C}_k(\alpha, \sigma, u, w)$, iff one of the
-    following is true:
-%
-\begin {enumerate}[leftmargin=16pt]
-\item[a.] $\displaystyle\alpha = \lambda_{\mathbf {A}} \,\land\, \sigma = (s) \;\land\; \bm {C}(s, u, w)$,
-  %
-\item[b.] $\displaystyle|\alpha| = k = |\sigma| - 1 \;\land\;
-  \alpha = (a)\alpha' \,\land\, \sigma = (ss')\sigma' \;\land\; \bm {C}(a, s, s', u, w) \,\land\,\\
-  \,\land\, \bm {C}_{k-1}(\alpha', (s')\sigma', u, w)$,
-  %
-\item[c.] $\displaystyle|\alpha| < k = |\sigma| - 1 \;\land\;
-  \Exists_{\alpha' \in \mathbf {A}^{\!|\sigma| - |\alpha| - 1}}\,\bm {C}_k(\alpha\alpha', \sigma, u, w)$,
-  %
-\item[d.] $\displaystyle|\alpha| = k > |\sigma| - 1 \;\land\;
-    \Exists_{\sigma' \in \mathbf {S}^{|\alpha| + 1 - |\sigma|}}\,\bm {C}_k(\alpha, \sigma\sigma', u, w)$,
-\end {enumerate}
-
-\item $k$-consistency of triples is given by
-%
-\begin {enumerate}[leftmargin=16pt]
-\item[a.] $\displaystyle\bm {C}_k(\alpha, u, w) \iff \Exists_{\sigma \in \mathbf {S}^\ast}\,\bm {C}_k(\alpha, \sigma, u, w)$,
-  %
-\item[b.] $\displaystyle\bm {C}_k(\sigma, u, w) \iff \Exists_{\alpha \in \mathbf {A}^{\!\ast}}\,\bm {C}_k(\alpha, \sigma, u, w)$,
-\end {enumerate}
-
-\item {\em run consistency}\/ relation is the set of quadruples,
-%
-\begin {equation*}
-  \{ (\alpha, \sigma, u, w) \in \mathbf {A}^{\!\ast} \times \mathbf {S}^{\ast} \times \mathbf {U} \times \mathbf {W}
-  \;|\; \bm {C}_{\max (|\alpha|, |\sigma| - 1)}(\alpha, \sigma, u, w) \}.\qed
-\end {equation*}
-\end {enumerate}
+is satisfied.\qed
 \end {definition}
 
-\noindent
-If $u$ and $w$ are fixed, then the preferred simplified form of run
-consistency is a binary relation $\searrow \subseteq \mathbf
-{S}^{\ast} \times \mathbf {A}^{\!\ast}$.
+\begin {remark}
+  By {\em canonical consistency}\/ we understand consistency with a
+  step relation of some canonical flux type.  In particular, a pair
+  $(u, w)$ of scope and weighting is canonically consistent iff there
+  is a canonical flux type $(\mathbf {X}, \mathbf {A}, \mathbf {T})$,
+  such that $(u, w, s, a, s') \in \mathbf {T}$ for some $(s, a, s')
+  \in \mathbf {S}_{\mathbf {X}}{\times}\mathbf {A}{\times}\mathbf
+      {S}_{\mathbf {X}}$ (see definition \ref
+      {def:consistency-and-instance}).  Any such pair is called a {\em
+        canonical instantiation}\/.  The symbol $\mathbf {Q}$ (without
+      a subscript) denotes the set of all canonical instantiations,
+      i.e.\ the union of $\mathbf {Q}_{\mathbf {T}}$ over all
+      canonical $\mathbf {T}$.
+\end {remark}
+
+\begin {remark}
+  Note, that $(u, w) \in \mathbf {Q}$ doesn't follow from $\bm {C}(u,
+  w)$.  Take, for example, $|\mathbf {X}| = 2$, $\mathbf {A} = \{ a
+  \}$, $u = \{ (0, 0), (2, 2) \}$, $w[a^-] = (\xtop, \xbot)$, and
+  $w[a^+] = (\xbot, 1)$.  FIXME what are the sufficient conditions?
+\end {remark}
+
+In line with definition \ref {def:flux-type}, the quadruple and
+quintuple forms of predicate $\bm {C}$ determine the canonical
+enablement and step relations.  By sticking to a single canonical
+scope and weighting we may reduce these relations to binary and
+ternary, and apply special notation for improved readability: infix
+relational operator $\searrow$ denotes binary enablement relation,
+i.e.\ $\searrow = \{ (s, a) \in \mathbf {S}{\times}\mathbf {A} \;|\;
+\bm {C}(u, w, s, a) \}$, and similarly, the reduced form of step
+relation is $s\overset{a}{\rightarrow}s' \iff \bm {C}(u, w, s, a,
+s')$.
 
 \end {document}
